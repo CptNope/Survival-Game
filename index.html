@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Removed theme-color meta tag as it's not supported in Firefox and some other browsers -->
+    <meta name="description" content="A 3D survival game with procedural terrain, crafting, and combat">
+    <title>Survival Game</title>
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS PWA support -->
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    
+    <!-- Babylon.js libraries -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/proceduralTextures/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <!-- Physics engine -->
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    
+    <!-- SimplexNoise library for terrain generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    
+    <!-- External CSS file for better organization and maintainability -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading screen -->
+    <div id="loadingScreen">
+        <h1>Survival Game</h1>
+        <div id="loadingBar">
+            <div id="loadingProgress"></div>
+        </div>
+        <div id="loadingText">Loading assets...</div>
+        <button id="installButton" class="installPrompt">Install Game</button>
+    </div>
+    
+    <!-- PWA Install Banner -->
+    <div id="pwaInstallBanner">
+        <p>Install this game on your device for the best experience!</p>
+        <button id="pwaInstallButton">Install</button>
+        <button id="pwaCloseButton">×</button>
+    </div>
+    
+    <canvas id="renderCanvas"></canvas>
+    
+    <!-- Service worker registration -->
+    <script>
+        // Register service worker for PWA support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+        
+        // Handle PWA installation
+        let deferredPrompt;
+        const installButton = document.getElementById('installButton');
+        const pwaInstallBanner = document.getElementById('pwaInstallBanner');
+        const pwaInstallButton = document.getElementById('pwaInstallButton');
+        const pwaCloseButton = document.getElementById('pwaCloseButton');
+        
+        // Check if the banner has been dismissed before
+        const bannerDismissed = localStorage.getItem('pwaInstallBannerDismissed');
+        
+        // The 'beforeinstallprompt' event is a non-standard API primarily supported in Chromium-based browsers
+        // It may not work in all browsers but degrades gracefully
+        // Note: IDE may flag this as an unknown word, but it is a valid event in the PWA specification
+        // See: https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67+ from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            
+            // Show the install button in the loading screen
+            installButton.style.display = 'block';
+            
+            // Show the install banner if it hasn't been dismissed
+            if (!bannerDismissed) {
+                // Wait a bit before showing the banner to not overwhelm the user
+                setTimeout(() => {
+                    pwaInstallBanner.style.display = 'flex';
+                }, 5000);
+            }
+        });
+        
+        // Handle the install button in the loading screen
+        installButton.addEventListener('click', () => {
+            if (!deferredPrompt) return;
+            
+            // Hide the install button
+            installButton.style.display = 'none';
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                    // Hide the banner if it's visible
+                    pwaInstallBanner.style.display = 'none';
+                } else {
+                    console.log('User dismissed the install prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+        
+        // Handle the install button in the banner
+        pwaInstallButton.addEventListener('click', () => {
+            if (!deferredPrompt) return;
+            
+            // Hide the banner
+            pwaInstallBanner.style.display = 'none';
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                } else {
+                    console.log('User dismissed the install prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+        
+        // Handle the close button in the banner
+        pwaCloseButton.addEventListener('click', () => {
+            // Hide the banner
+            pwaInstallBanner.style.display = 'none';
+            // Remember that the user dismissed the banner
+            localStorage.setItem('pwaInstallBannerDismissed', 'true');
+        });
+        
+        // Simulate loading progress
+        const loadingProgress = document.getElementById('loadingProgress');
+        const loadingText = document.getElementById('loadingText');
+        const loadingScreen = document.getElementById('loadingScreen');
+        
+        let progress = 0;
+        const loadingInterval = setInterval(() => {
+            progress += Math.random() * 10;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(loadingInterval);
+                loadingText.textContent = 'Ready!';
+                
+                // Hide loading screen after a short delay
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }
+            loadingProgress.style.width = `${progress}%`;
+            loadingText.textContent = `Loading assets... ${Math.floor(progress)}%`;
+        }, 200);
+    </script>
+    
+    <!-- Load modules -->
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/components/terrain.js"></script>
+    <script type="module" src="js/components/player.js"></script>
+    <script type="module" src="js/components/ui.js"></script>
+    <script type="module" src="js/components/inventory.js"></script>
+    <script type="module" src="js/components/animals.js"></script>
+    <script type="module" src="js/components/combat.js"></script>
+    <script type="module" src="js/game.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
