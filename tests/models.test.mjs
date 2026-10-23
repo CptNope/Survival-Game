@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import BABYLON from 'babylonjs';
-import {createTreeModel,createRockModel,createDeerModel,createLootModel,animateDeer} from '../js/models/wilderness.js';
+import {createTreeModel,createRockModel,createDeerModel,createLootModel,createOreModel,createPlantModel,animateDeer} from '../js/models/wilderness.js';
 import {CombatSystem} from '../js/components/combat.js';
 globalThis.BABYLON = BABYLON;
 function fixture() { const engine=new BABYLON.NullEngine();return {engine,scene:new BABYLON.Scene(engine)}; }
 test('all asset variants have finite geometry and fully release resources',()=>{
  const {engine,scene}=fixture();
  try {
-  const factories=[s=>createTreeModel(scene,s,'pine'),s=>createTreeModel(scene,s,'oak'),s=>createRockModel(scene,s),s=>createDeerModel(scene,s).mesh,...['wood','stone','planks','tools'].map(type=>()=>createLootModel(scene,type))];
+  const factories=[s=>createTreeModel(scene,s,'pine'),s=>createTreeModel(scene,s,'oak'),s=>createRockModel(scene,s),s=>createDeerModel(scene,s).mesh,s=>createOreModel(scene,s),...['fiber','herb','berry'].map(type=>s=>createPlantModel(scene,s,type)),...['wood','stone','planks','tools','ironOre','iron','fiber','herbs','berries','ironTools'].map(type=>()=>createLootModel(scene,type))];
   for(const factory of factories) for(let seed=1;seed<=10;seed++) {
    const root=factory(seed);
    for(const mesh of [root,...root.getChildMeshes()]) {
@@ -42,8 +42,9 @@ test('combat recognizes deer geometry below leg pivots',()=>{
  const {engine,scene}=fixture();try {
  const deer={...createDeerModel(scene,1),health:30};
  const hitMesh=deer.legs[0].getChildMeshes()[0];
- const game={paused:false,playerSystem:{isDead:false},animalSystem:{animals:[deer]},pickTarget:()=>({hit:true,pickedMesh:hitMesh})};
+ const game={inventorySystem:{inventory:{ironTools:0}},paused:false,playerSystem:{isDead:false},animalSystem:{animals:[deer]},pickTarget:()=>({hit:true,pickedMesh:hitMesh})};
  new CombatSystem(game).tryAttack();assert.equal(deer.health,20);
+ game.inventorySystem.inventory.ironTools=1;new CombatSystem(game).tryAttack();assert.equal(deer.health,2);
  } finally {engine.dispose();}
 });
 
