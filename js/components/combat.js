@@ -16,23 +16,15 @@ export class CombatSystem {
     }
     
     tryAttack() {
-        if (this.isAttacking) return;
+        if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking) return;
         
         this.isAttacking = true;
         // Cooldown is a gaming term for a period during which an action cannot be performed again
         // This prevents players from attacking too rapidly and balances gameplay
         setTimeout(() => { this.isAttacking = false; }, 500); // Attack cooldown of 500ms
         
-        // Create a ray from the camera to detect what we're looking at
-        const ray = this.game.scene.createPickingRay(
-            this.game.scene.pointerX, 
-            this.game.scene.pointerY, 
-            BABYLON.Matrix.Identity(), 
-            this.game.playerSystem.camera
-        );
-        
-        const hit = this.game.scene.pickWithRay(ray);
-        
+        const hit = this.game.pickTarget();
+
         if (hit && hit.hit) {
             // Check if we hit an animal
             for (let animal of this.game.animalSystem.animals) {
@@ -54,7 +46,7 @@ export class CombatSystem {
     }
     
     specialAttack() {
-        if (this.isAttacking || this.game.inventorySystem.inventory.tools <= 0) return;
+        if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking || this.game.inventorySystem.inventory.tools <= 0) return;
         
         // Use a tool
         this.game.inventorySystem.inventory.tools--;
@@ -92,7 +84,7 @@ export class CombatSystem {
         console.log(`Gained ${amount} experience. Total: ${this.experience}/${this.expToNextLevel}`);
         
         // Check for level up
-        if (this.experience >= this.expToNextLevel) {
+        while (this.experience >= this.expToNextLevel) {
             this.levelUp();
         }
         
@@ -106,8 +98,8 @@ export class CombatSystem {
         this.level++;
         this.experience -= this.expToNextLevel;
         this.expToNextLevel = Math.floor(this.expToNextLevel * 1.5); // Increase exp needed for next level
-        this.maxHealth += 20;
-        this.health = this.maxHealth; // Heal on level up
+        this.game.playerSystem.maxHealth += 20;
+        this.game.playerSystem.health = this.game.playerSystem.maxHealth; // Heal on level up
         this.attackPower += 5;
         
         console.log(`Leveled up to ${this.level}! Next level at ${this.expToNextLevel} exp`);
@@ -115,7 +107,7 @@ export class CombatSystem {
         // Update UI
         if (this.game.uiSystem) {
             this.game.uiSystem.updateExperienceUI();
-            this.game.uiSystem.updateHealthUI(this.health, this.maxHealth);
+            this.game.uiSystem.updateHealthUI(this.game.playerSystem.health, this.game.playerSystem.maxHealth);
             
             // Show level up message
             this.game.uiSystem.showLevelUpMessage();
