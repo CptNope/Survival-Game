@@ -28,7 +28,7 @@ export class CombatSystem {
         if (hit && hit.hit) {
             // Check if we hit an animal
             for (let animal of this.game.animalSystem.animals) {
-                if (hit.pickedMesh === animal.mesh || hit.pickedMesh.parent === animal.mesh) {
+                if (hit.pickedMesh === animal.mesh || hit.pickedMesh.isDescendantOf(animal.mesh)) {
                     // Calculate damage based on level and tools
                     let damage = this.attackPower + (this.level - 1) * 2;
                     
