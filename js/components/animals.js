@@ -23,19 +23,34 @@ export class AnimalSystem {
                 continue;
             }
             
-            // Move animal randomly
-            const randomMove = Math.random() * 0.05;
-            const randomDirection = Math.random() * Math.PI * 2;
-            animal.mesh.position.x += Math.sin(randomDirection) * randomMove;
-            animal.mesh.position.z += Math.cos(randomDirection) * randomMove;
-            
+            const dt = Math.min(this.game.engine.getDeltaTime() / 1000, 0.05);
+            const player = this.game.playerSystem;
+            const offset = player.camera.position.subtract(animal.mesh.position);
+            const distance = offset.length();
+            if (distance > 100) {
+                animal.mesh.dispose(false, true);
+                this.animals.splice(i, 1);
+                continue;
+            }
+            animal.turnTimer = (animal.turnTimer || 0) - dt;
+            if (animal.turnTimer <= 0) {
+                animal.heading = Math.random() * Math.PI * 2;
+                animal.turnTimer = 2 + Math.random() * 3;
+            }
+            const threatened = distance < 9;
+            const heading = threatened ? Math.atan2(-offset.x, -offset.z) : animal.heading;
+            const speed = threatened ? 4 : 1;
+            animal.mesh.position.x += Math.sin(heading) * speed * dt;
+            animal.mesh.position.z += Math.cos(heading) * speed * dt;
+            animal.mesh.rotation.y = heading;
+
             // Keep animal on terrain
             const terrainHeight = this.game.terrainSystem.getPerlinHeight(animal.mesh.position.x, animal.mesh.position.z);
-            animal.mesh.position.y = terrainHeight + 0.5;
+            animal.mesh.position.y = terrainHeight + 1.1;
             
             // Check if animal is dead
             if (animal.health <= 0) {
-                animal.mesh.dispose();
+                animal.mesh.dispose(false, true);
                 this.animals.splice(i, 1);
                 
                 // Give experience for killing animal if combat system exists
@@ -65,7 +80,7 @@ export class AnimalSystem {
         // Create animal body (cube) - position at exact terrain height
         const animalBody = BABYLON.MeshBuilder.CreateBox("animalBody", { width: 1, height: 1, depth: 2 }, this.game.scene);
         // Position the body so its bottom is exactly at terrain height
-        animalBody.position.set(x, y + 0.5, z); // y + 0.5 puts the bottom of the box at terrain height
+        animalBody.position.set(x, y + 1.1, z); // y + 0.5 puts the bottom of the box at terrain height
         
         // Create animal material
         const animalMaterial = new BABYLON.StandardMaterial("animalMat", this.game.scene);

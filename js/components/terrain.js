@@ -17,7 +17,7 @@ export class TerrainSystem {
         
         // Player spawn parameters
         this.spawnPosition = { x: 0, y: 0, z: 0 };
-        this.spawnAreaRadius = 20; // Clear area radius around spawn point
+        this.spawnAreaRadius = 10; // Clear area radius around spawn point
         
         // Water parameters
         this.waterHeight = 1.0; // Height of water surface
@@ -103,7 +103,12 @@ export class TerrainSystem {
         this.chunkMap.set(key, { mesh: ground });
         
         // Populate with trees and rocks
+        const before = this.game.inventorySystem.harvestableObjects.length;
+        const waterBefore = this.waterMeshes.length;
         this.populateChunk(chunkX, chunkZ);
+        const chunk = this.chunkMap.get(key);
+        chunk.objects = this.game.inventorySystem.harvestableObjects.slice(before);
+        chunk.water = this.waterMeshes.slice(waterBefore);
     }
     
     // Apply height modifications to the terrain using our height function
@@ -223,7 +228,14 @@ export class TerrainSystem {
             
             if (distance > this.renderDistance) {
                 // Remove this chunk
-                chunk.mesh.dispose();
+                for (const obj of chunk.objects) {
+                    obj.mesh.dispose(false, true);
+                    for (const mesh of obj.relatedMeshes || []) mesh.dispose(false, true);
+                }
+                this.game.inventorySystem.harvestableObjects = this.game.inventorySystem.harvestableObjects.filter(obj => !chunk.objects.includes(obj));
+                for (const water of chunk.water) water.dispose(false, true);
+                this.waterMeshes = this.waterMeshes.filter(mesh => !chunk.water.includes(mesh));
+                chunk.mesh.dispose(false, true);
                 this.chunkMap.delete(key);
             }
         }
@@ -241,8 +253,8 @@ export class TerrainSystem {
     // Populate a chunk with trees, rocks, water, and other objects
     populateChunk(chunkX, chunkZ) {
         // Calculate world position of chunk
-        const worldX = chunkX * this.chunkSize;
-        const worldZ = chunkZ * this.chunkSize;
+        const worldX = chunkX * this.chunkSize - this.chunkSize / 2;
+        const worldZ = chunkZ * this.chunkSize - this.chunkSize / 2;
         
         // Check if this chunk should have water
         let hasWater = false;
@@ -262,7 +274,7 @@ export class TerrainSystem {
         }
         
         // Add trees - REDUCED NUMBER significantly
-        const numTrees = 1 + Math.floor(Math.random() * 2); // Only 1-3 trees per chunk
+        const numTrees = 4 + Math.floor(Math.random() * 4); // Only 1-3 trees per chunk
         for (let i = 0; i < numTrees; i++) {
             // Random position within chunk
             const x = worldX + Math.random() * this.chunkSize;
@@ -346,19 +358,24 @@ export class TerrainSystem {
         trunk.position.set(x, y + 2, z);
         
         // Create leaves
-        const leaves = BABYLON.MeshBuilder.CreateSphere("leaves", {
-            diameter: 4,
-            segments: 8
+        const leaves = BABYLON.MeshBuilder.CreateCylinder("leaves", {
+            height: 6,
+            diameterTop: 0,
+            diameterBottom: 4.5,
+            tessellation: 7
         }, this.game.scene);
         leaves.position.set(x, y + 5, z);
         
         // Materials
         const trunkMaterial = new BABYLON.StandardMaterial("trunkMat", this.game.scene);
         trunkMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.3, 0.2);
+        trunkMaterial.specularColor = BABYLON.Color3.Black();
         trunk.material = trunkMaterial;
+        trunk.checkCollisions = true;
         
         const leavesMaterial = new BABYLON.StandardMaterial("leavesMat", this.game.scene);
-        leavesMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.5, 0.1);
+        leavesMaterial.diffuseColor = new BABYLON.Color3(0.13, 0.29 + Math.random() * 0.12, 0.22);
+        leavesMaterial.specularColor = BABYLON.Color3.Black();
         leaves.material = leavesMaterial;
         
         // Add to harvestable objects with reference to both trunk and leaves

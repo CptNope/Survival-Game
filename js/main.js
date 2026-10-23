@@ -23,7 +23,15 @@ window.addEventListener('appinstalled', () => {
 // Start the game when the page loads
 window.addEventListener("load", () => {
     // Initialize game
-    const game = new SurvivalGame();
+    try {
+        const game = new SurvivalGame();
+        window.game = game;
+        game.scene.executeWhenReady(() => {
+            document.getElementById('loadingScreen').style.display = 'none';
+        });
+    } catch (error) {
+        document.getElementById('loadingText').textContent = 'Unable to start. Check your connection and reload.';
+    }
     console.log("Game initialized");
     
     // Check if running as installed PWA

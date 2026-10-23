@@ -5,8 +5,8 @@ export class PlayerSystem {
         this.scene = game.scene;
         
         // Player properties
-        this.jumpHeight = 5;
-        this.gravity = 0.5;
+        this.jumpHeight = 0.22;
+        this.gravity = 0.012;
         this.jumpVelocity = 0;
         this.isGrounded = true;
         this.isJumping = false;
@@ -55,7 +55,7 @@ export class PlayerSystem {
         
         // Create camera at spawn position
         this.camera = new BABYLON.FreeCamera("playerCamera", new BABYLON.Vector3(0, 5, -10), this.scene);
-        this.camera.setTarget(BABYLON.Vector3.Zero());
+        this.camera.rotation.set(0, 0, 0);
         this.camera.attachControl(this.game.engine.getRenderingCanvas(), true);
         
         // Set initial position after terrain is generated
@@ -202,7 +202,7 @@ export class PlayerSystem {
             // Check if we've landed while flying (by pressing jump again)
             if (!this.isFlying && this.game.terrainSystem) {
                 const terrainHeight = this.game.terrainSystem.getPerlinHeight(x, z);
-                if (y <= terrainHeight + 2) {
+                if (this.camera.position.y <= terrainHeight + 2 && this.jumpVelocity <= 0) {
                     this.camera.position.y = terrainHeight + 2;
                     this.isGrounded = true;
                     this.isJumping = false;
@@ -234,14 +234,14 @@ export class PlayerSystem {
             
         } else if (!this.isGrounded) {
             // Normal jumping and gravity when not flying or swimming
-            this.jumpVelocity -= this.gravity;
+            this.jumpVelocity -= this.gravity * deltaTime;
             this.camera.position.y += this.jumpVelocity * deltaTime;
             
             // Check if we've landed
             // Make sure terrainSystem is initialized before trying to get height
             if (this.game.terrainSystem) {
                 const terrainHeight = this.game.terrainSystem.getPerlinHeight(x, z);
-                if (y <= terrainHeight + 2) {
+                if (this.camera.position.y <= terrainHeight + 2 && this.jumpVelocity <= 0) {
                     this.camera.position.y = terrainHeight + 2;
                     this.isGrounded = true;
                     this.isJumping = false;
@@ -251,9 +251,9 @@ export class PlayerSystem {
             }
             
             // Check for fall damage
-            if (this.isGrounded && this.jumpVelocity < -10) {
+            if (this.isGrounded && this.jumpVelocity < -0.6) {
                 // Calculate fall damage based on velocity
-                const fallDamage = Math.abs(this.jumpVelocity) - 10;
+                const fallDamage = (Math.abs(this.jumpVelocity) - 0.6) * 50;
                 if (fallDamage > 0) {
                     this.takeDamage(fallDamage);
                 }
@@ -269,6 +269,7 @@ export class PlayerSystem {
     
     // Handle player taking damage
     takeDamage(amount) {
+        if (this.isDead) return;
         this.health -= amount;
         
         // Check for death
@@ -338,6 +339,7 @@ export class PlayerSystem {
         }
         
         // Reset other states
+        this.jumpVelocity = 0;
         this.isGrounded = true;
         this.isJumping = false;
         this.isFlying = false;

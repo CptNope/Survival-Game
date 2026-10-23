@@ -1,109 +1,220 @@
-/* Main game styles */
-html, body {
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    background-color: #000;
+:root{color-scheme:dark;
+    --ink:#e9e9d9;
+    --muted:#9ba99c;
+    --accent:#c5dd8a;
+    --panel:rgba(15,26,24,.92)}
+*{box-sizing:border-box}
+body{margin:0;
+    overflow:hidden;
+    background:#12211e;
+    color:var(--ink);
+    font-family:'DM Sans',sans-serif}
+#renderCanvas{width:100vw;
+    height:100vh;
+    display:block;
+    outline:none;
+    touch-action:none}
+button{font:inherit;
+    color:inherit;
+    cursor:pointer;
+    border:1px solid #67776766;
+    background:var(--panel);
+    padding:13px 20px;
+    border-radius:6px}
+button:hover{border-color:var(--accent);
+    background:#293a30}
+button:focus-visible{outline:2px solid var(--accent);
+    outline-offset:4px}
+button:disabled{opacity:.4;
+    cursor:not-allowed}
+[hidden]{display:none!important}
+small{font-size:10px;
+    letter-spacing:2px;
+    color:var(--muted);
+    font-weight:700}
+#hud{position:fixed;
+    inset:0;
+    pointer-events:none}
+.hud-top{display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:28px 34px;
+    background:linear-gradient(#10201dbb,transparent)}
+.hud-top strong{display:block;
+    font-family:'Space Grotesk';
+    font-size:20px;
+    margin-top:5px}
+#world-clock{font-size:11px;
+    letter-spacing:3px}
+button,.panel{pointer-events:auto}
+.objective{position:absolute;
+    top:130px;
+    left:34px;
+    width:245px;
+    padding:20px;
+    background:var(--panel);
+    border-left:2px solid var(--accent);
+    border-radius:0 8px 8px 0}
+.objective h2{font-size:16px;
+    margin:12px 0}
+.objective p{font-size:12px;
+    line-height:1.7;
+    color:#bcc5b8}
+.objective span{font-size:11px;
+    color:var(--accent)}
+#crosshair{position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    font-size:24px;
+    color:#ffffffe0;
+    text-shadow:0 1px 6px #000}
+#target-hint{position:absolute;
+    top:56%;
+    width:100%;
+    text-align:center;
+    font-size:12px;
+    text-shadow:0 1px 5px #000}
+.hud-bottom{position:absolute;
+    bottom:0;
+    width:100%;
+    padding:28px 34px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    background:linear-gradient(transparent,#10201ddd)}
+.vitals{width:220px;
+    display:grid;
+    gap:6px}
+.vitals label{display:flex;
+    justify-content:space-between;
+    font-size:10px;
+    color:#d1d7cc}
+.vitals small{margin-bottom:8px}
+progress{appearance:none;
+    width:100%;
+    height:5px;
+    border:0;
+    background:#ffffff22;
+    border-radius:3px}
+progress::-webkit-progress-bar{background:#ffffff22}
+progress::-webkit-progress-value{background:var(--accent)}
+#oxygen::-webkit-progress-value{background:#8dc6cb}
+#experience{height:2px;
+    margin-top:7px}
+.inventory{display:flex;
+    border:1px solid #ffffff22;
+    background:var(--panel);
+    border-radius:8px;
+    overflow:hidden}
+.inventory div{padding:14px 23px;
+    border-right:1px solid #ffffff14;
+    min-width:90px}
+.inventory small{font-size:8px;
+    letter-spacing:1px;
+    display:block;
+    text-transform:uppercase}
+.inventory strong{font:26px 'Space Grotesk';
+    display:block;
+    margin-top:8px}
+#toast{position:absolute;
+    top:100px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:12px 25px;
+    border:1px solid #a0b17b;
+    background:var(--panel);
+    border-radius:30px;
+    opacity:0;
+    transition:opacity .2s;
+    font-size:13px}
+#toast.visible{opacity:1}
+.modal{position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    background:#06120d88;
+    backdrop-filter:blur(7px);
+    pointer-events:auto}
+.panel{width:min(540px,92vw);
+    max-height:90vh;
+    overflow:auto;
+    padding:42px;
+    background:#14241ff5;
+    border:1px solid #6d806455;
+    border-radius:14px;
+    box-shadow:0 30px 100px #0006}
+.panel h1{font:500 44px/1.08 'Space Grotesk';
+    letter-spacing:-2px;
+    margin:20px 0}
+.panel p{color:#aebbad;
+    line-height:1.7;
+    font-size:13px}
+.primary{background:var(--accent);
+    color:#15201a;
+    font-weight:700;
+    border:0;
+    width:100%;
+    margin-top:20px}
+.primary:hover{background:#dfedb8}
+kbd{color:var(--ink);
+    font:11px 'DM Sans';
+    padding:4px;
+    border:1px solid #5a6e5e;
+    border-radius:3px}
+#controls{margin:24px 0}
+.recipe{display:grid;
+    grid-template-columns:1fr auto;
+    text-align:left;
+    width:100%;
+    margin-top:10px;
+    gap:7px}
+.recipe span{font-size:11px;
+    color:var(--muted);
+    grid-column:1}
+.recipe b{grid-column:2;
+    grid-row:1/3;
+    align-self:center;
+    color:var(--accent);
+    font-size:12px}
+#loadingScreen{position:fixed;
+    inset:0;
+    background:#14241f;
+    z-index:10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column}
+#loadingBar{height:3px;
+    width:200px;
+    background:#c5dd8a;
+    margin:20px}
+.installPrompt,#pwaInstallBanner{display:none}
+#pwaInstallBanner{position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:20;
+    background:#14241f;
+    padding:10px;
+    gap:10px;
+    align-items:center}
+@media(max-width:800px){.hud-top,.hud-bottom{padding:16px}
+.objective{left:16px;
+    top:110px;
+    width:185px}
+.inventory div{padding:10px;
+    min-width:55px}
+.vitals{width:145px}
+.hud-bottom{gap:10px;
+    flex-wrap:wrap}
+#world-clock{font-size:9px}
+.panel{padding:26px}
+.panel h1{font-size:36px}
 }
-
-#renderCanvas {
-    width: 100%;
-    height: 100%;
-    touch-action: none;
-}
-
-/* Loading screen styles */
-#loadingScreen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #000;
-    color: #4CAF50;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-family: Arial, sans-serif;
-    z-index: 1000;
-}
-
-#loadingScreen h1 {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-}
-
-#loadingBar {
-    width: 80%;
-    max-width: 400px;
-    height: 20px;
-    background-color: #333;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 20px;
-}
-
-#loadingProgress {
-    height: 100%;
-    background-color: #4CAF50;
-    width: 0%;
-    transition: width 0.3s;
-}
-
-/* PWA installation styles */
-.installPrompt {
-    display: none;
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    cursor: pointer;
-    margin-top: 20px;
-}
-
-#pwaInstallBanner {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 10px;
-    display: none; /* Hidden by default */
-    align-items: center;
-    z-index: 100;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    max-width: 90%;
-    width: 400px;
-}
-
-#pwaInstallBanner p {
-    margin: 0 15px 0 0;
-    flex-grow: 1;
-}
-
-#pwaInstallButton {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-#pwaCloseButton {
-    background: none;
-    border: none;
-    color: #aaa;
-    cursor: pointer;
-    margin-left: 10px;
-    font-size: 1.2rem;
+@media(max-height:600px){.objective{display:none}
+.panel{padding:22px}
+.panel h1{font-size:28px;
+    margin:10px 0}
 }

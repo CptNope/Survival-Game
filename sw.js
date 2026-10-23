@@ -1,6 +1,6 @@
 // Service Worker for Survival Game PWA
 
-const CACHE_NAME = 'survival-game-v1';
+const CACHE_NAME = 'survival-game-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -46,7 +46,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
+          if (cache.startsWith('survival-game-') && cache !== CACHE_NAME) {
             console.log('Clearing old cache:', cache);
             return caches.delete(cache);
           }

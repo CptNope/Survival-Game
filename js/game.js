@@ -22,7 +22,9 @@ export class SurvivalGame {
         this.inventorySystem = null;
         
         // Day/night cycle properties
-        this.dayTime = 0; // 0 to 300 (5 min cycle)
+        this.paused = true;
+        this.dayCount = 1;
+        this.dayTime = 60; // 0 to 300 (5 min cycle)
         this.dayLength = 300; // seconds
         this.sunLight = null;
         this.ambientLight = null;
@@ -41,6 +43,8 @@ export class SurvivalGame {
             
             // Create the scene
             this.scene = new BABYLON.Scene(this.engine);
+            this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+            this.scene.fogDensity = 0.012;
             this.scene.clearColor = new BABYLON.Color3(0.5, 0.8, 1.0); // Sky blue background
             
             // Enable physics engine with error handling
@@ -101,6 +105,7 @@ export class SurvivalGame {
             });
         } catch (e) {
             console.error("Error initializing game:", e);
+            throw e;
         }
     }
     
@@ -115,55 +120,58 @@ export class SurvivalGame {
         this.ambientLight.intensity = 0.2;
     }
     
-    setupControls() {
-        const keys = {};
-        this.scene.actionManager = new BABYLON.ActionManager(this.scene);
-        
-        this.scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-            BABYLON.ActionManager.OnKeyDownTrigger, (evt) => {
-                keys[evt.sourceEvent.key] = true;
-            }
-        ));
-        
-        this.scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
-            BABYLON.ActionManager.OnKeyUpTrigger, (evt) => {
-                keys[evt.sourceEvent.key] = false;
-            }
-        ));
+    pickTarget() {
+        return this.scene.pickWithRay(this.playerSystem.camera.getForwardRay(5));
+    }
 
-        // Add click action for harvesting and attacking
-        window.addEventListener('click', () => {
+    setPaused(value) {
+        this.paused = value;
+        const camera = this.playerSystem.camera;
+        this.playerSystem.keys.jump = false;
+        this.playerSystem.keys.descend = false;
+        camera.cameraDirection.setAll(0);
+        camera.cameraRotation.setAll(0);
+        if (value) {
+            camera.detachControl();
+            document.exitPointerLock?.();
+        } else camera.attachControl(this.engine.getRenderingCanvas(), true);
+    }
+
+    setupControls() {
+        const canvas = this.engine.getRenderingCanvas();
+        canvas.addEventListener('click', () => {
+            if (this.paused) return;
+            if (!document.pointerLockElement) {
+                canvas.requestPointerLock?.()?.catch(() => {});
+                return;
+            }
             this.inventorySystem.tryHarvest();
             this.combatSystem.tryAttack();
         });
-        
-        // Add right-click action for special attack
-        window.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // Prevent context menu
-            this.combatSystem.specialAttack();
+        canvas.addEventListener('contextmenu', event => {
+            event.preventDefault();
+            if (!this.paused) this.combatSystem.specialAttack();
         });
-
-        // Add jump and flying controls
-        window.addEventListener('keydown', (e) => {
-            // Update key state
-            this.playerSystem.updateKeyState(e.keyCode, true);
-            
-            // Handle jump action
-            if (e.keyCode === 32) { // Space key
-                this.playerSystem.jump();
-            }
+        window.addEventListener('keydown', event => {
+            if (event.repeat) return;
+            if (event.code === 'Escape') this.uiSystem.toggleMenu();
+            if (event.code === 'KeyC') this.uiSystem.toggleCrafting();
+            if (this.paused) return;
+            this.playerSystem.updateKeyState(event.keyCode, true);
+            if (event.code === 'Space') { event.preventDefault(); this.playerSystem.jump(); }
         });
-        
-        // Track key up events for flying controls
-        window.addEventListener('keyup', (e) => {
-            // Update key state
-            this.playerSystem.updateKeyState(e.keyCode, false);
+        window.addEventListener('keyup', event => this.playerSystem.updateKeyState(event.keyCode, false));
+        window.addEventListener('blur', () => this.uiSystem.openPanel('menu'));
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) this.uiSystem.openPanel('menu');
         });
+        this.setPaused(true);
     }
-    
+
     setupGameLoop() {
         // Game loop for physics and movement
         this.scene.onBeforeRenderObservable.add(() => {
+            if (this.paused) return;
             // Update player physics
             this.playerSystem.update();
             
@@ -177,10 +185,11 @@ export class SurvivalGame {
         // Start render loop
         this.engine.runRenderLoop(() => {
             // Update day/night cycle
-            this.updateDayNightCycle();
+            if (!this.paused) this.updateDayNightCycle();
             
             // Update animal spawning and movement
-            this.animalSystem.update();
+            if (!this.paused) this.animalSystem.update();
+            this.uiSystem.update();
             
             // Scene rendering
             this.scene.render();
@@ -189,26 +198,16 @@ export class SurvivalGame {
     
     // Day/night cycle
     updateDayNightCycle() {
-        // Increment time
-        this.dayTime += this.scene.getEngine().getDeltaTime() / 1000;
-        if (this.dayTime > this.dayLength) {
-            this.dayTime = 0;
-        }
-        
-        // Calculate sun position
-        const angle = (this.dayTime / this.dayLength) * Math.PI * 2;
-        const sunX = Math.sin(angle);
-        const sunY = Math.cos(angle);
-        
-        // Update sun direction
-        this.sunLight.direction = new BABYLON.Vector3(sunX, sunY, 0);
-        
-        // Update light intensity based on time of day
-        const dayFactor = Math.max(0, Math.sin((this.dayTime / this.dayLength) * Math.PI));
-        this.sunLight.intensity = 0.5 + dayFactor * 0.5;
-        
-        // Update sky color
-        const skyBlue = 0.5 + dayFactor * 0.3;
-        this.scene.clearColor = new BABYLON.Color3(skyBlue * 0.5, skyBlue * 0.8, skyBlue);
+        this.dayTime += Math.min(this.engine.getDeltaTime() / 1000, 0.05);
+        if (this.dayTime >= this.dayLength) { this.dayTime -= this.dayLength; this.dayCount++; }
+        const angle = this.dayTime / this.dayLength * Math.PI * 2;
+        const daylight = Math.max(0, Math.sin(angle));
+        this.sunLight.direction.set(Math.cos(angle), -Math.sin(angle), 0.25);
+        this.sunLight.intensity = daylight * 1.15;
+        this.ambientLight.intensity = 0.22 + daylight * 0.45;
+        const night = new BABYLON.Color3(0.035, 0.065, 0.12);
+        const day = new BABYLON.Color3(0.55, 0.72, 0.77);
+        this.scene.clearColor = BABYLON.Color3.Lerp(night, day, daylight);
+        this.scene.fogColor = this.scene.clearColor;
     }
 }
