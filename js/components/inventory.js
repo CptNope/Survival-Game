@@ -1,3 +1,4 @@
+import { createLootModel } from '../models/wilderness.js';
 // Inventory system for handling resources and crafting
 export class InventorySystem {
     constructor(game) {
@@ -104,41 +105,17 @@ export class InventorySystem {
     // Create a loot bag at the specified position
     createLootBag(position, itemType, count) {
         // Create a mesh for the loot bag
-        const lootBag = BABYLON.MeshBuilder.CreateBox(
-            `loot_${itemType}_${Date.now()}`,
-            { width: 0.5, height: 0.5, depth: 0.5 },
-            this.game.scene
-        );
-        
+        const lootBag = createLootModel(this.game.scene, itemType);
+        lootBag.name = `loot_${itemType}_${Date.now()}`;
+
         // Position the loot bag
         lootBag.position.x = position.x + (Math.random() - 0.5) * 2; // Scatter slightly
         lootBag.position.y = position.y;
         lootBag.position.z = position.z + (Math.random() - 0.5) * 2; // Scatter slightly
         
-        // Create material based on item type
-        const lootMaterial = new BABYLON.StandardMaterial(`lootMat_${itemType}`, this.game.scene);
-        
-        // Set color based on item type
-        switch (itemType) {
-            case 'wood':
-                lootMaterial.diffuseColor = new BABYLON.Color3(0.6, 0.3, 0.1);
-                break;
-            case 'stone':
-                lootMaterial.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-                break;
-            case 'planks':
-                lootMaterial.diffuseColor = new BABYLON.Color3(0.8, 0.6, 0.3);
-                break;
-            case 'tools':
-                lootMaterial.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.7);
-                break;
-            default:
-                lootMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1);
-        }
-        
-        lootMaterial.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.2); // Slight glow
-        lootBag.material = lootMaterial;
-        
+        const lootMaterial = lootBag.material;
+        lootMaterial.emissiveColor = new BABYLON.Color3(0.12, 0.12, 0.08);
+
         // Make the loot bag rotate slowly
         const spin = this.game.scene.onBeforeRenderObservable.add(() => {
             lootBag.rotation.y += 0.01;

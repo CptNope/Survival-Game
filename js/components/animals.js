@@ -1,3 +1,4 @@
+import { createDeerModel, animateDeer } from '../models/wilderness.js';
 // Animal system for handling animal spawning and behavior
 export class AnimalSystem {
     constructor(game) {
@@ -46,7 +47,8 @@ export class AnimalSystem {
 
             // Keep animal on terrain
             const terrainHeight = this.game.terrainSystem.getPerlinHeight(animal.mesh.position.x, animal.mesh.position.z);
-            animal.mesh.position.y = terrainHeight + 1.1;
+            animal.mesh.position.y = terrainHeight;
+            animateDeer(animal, dt, speed);
             
             // Check if animal is dead
             if (animal.health <= 0) {
@@ -77,54 +79,9 @@ export class AnimalSystem {
     }
     
     spawnAnimal(x, y, z) {
-        // Create animal body (cube) - position at exact terrain height
-        const animalBody = BABYLON.MeshBuilder.CreateBox("animalBody", { width: 1, height: 1, depth: 2 }, this.game.scene);
-        // Position the body so its bottom is exactly at terrain height
-        animalBody.position.set(x, y + 1.1, z); // y + 0.5 puts the bottom of the box at terrain height
-        
-        // Create animal material
-        const animalMaterial = new BABYLON.StandardMaterial("animalMat", this.game.scene);
-        animalMaterial.diffuseColor = new BABYLON.Color3(0.6, 0.3, 0.1); // Brown color
-        animalBody.material = animalMaterial;
-        
-        // Create head (smaller cube)
-        const head = BABYLON.MeshBuilder.CreateBox("head", { width: 0.8, height: 0.8, depth: 0.8 }, this.game.scene);
-        // Position relative to the parent (body)
-        head.position = new BABYLON.Vector3(0, 0.4, 1.0); // Position at front of body
-        head.material = animalMaterial;
-        head.parent = animalBody;
-        
-        // Create legs (small cubes)
-        const legMaterial = new BABYLON.StandardMaterial("legMat", this.game.scene);
-        legMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.2, 0.1); // Darker brown
-        
-        // Front legs
-        const frontLeftLeg = BABYLON.MeshBuilder.CreateBox("frontLeftLeg", { width: 0.2, height: 0.6, depth: 0.2 }, this.game.scene);
-        frontLeftLeg.position = new BABYLON.Vector3(-0.4, -0.8, 0.7); // Position relative to body
-        frontLeftLeg.material = legMaterial;
-        frontLeftLeg.parent = animalBody;
-        
-        const frontRightLeg = BABYLON.MeshBuilder.CreateBox("frontRightLeg", { width: 0.2, height: 0.6, depth: 0.2 }, this.game.scene);
-        frontRightLeg.position = new BABYLON.Vector3(0.4, -0.8, 0.7); // Position relative to body
-        frontRightLeg.material = legMaterial;
-        frontRightLeg.parent = animalBody;
-        
-        // Back legs
-        const backLeftLeg = BABYLON.MeshBuilder.CreateBox("backLeftLeg", { width: 0.2, height: 0.6, depth: 0.2 }, this.game.scene);
-        backLeftLeg.position = new BABYLON.Vector3(-0.4, -0.8, -0.7); // Position relative to body
-        backLeftLeg.material = legMaterial;
-        backLeftLeg.parent = animalBody;
-        
-        const backRightLeg = BABYLON.MeshBuilder.CreateBox("backRightLeg", { width: 0.2, height: 0.6, depth: 0.2 }, this.game.scene);
-        backRightLeg.position = new BABYLON.Vector3(0.4, -0.8, -0.7); // Position relative to body
-        backRightLeg.material = legMaterial;
-        backRightLeg.parent = animalBody;
-        
-        // Add animal to list
-        this.animals.push({
-            mesh: animalBody,
-            health: 30,
-            speed: 0.05 + Math.random() * 0.05
-        });
+        const model = createDeerModel(this.game.scene, Math.floor(x * 1000 + z * 13));
+        model.mesh.position.set(x, y, z);
+        this.game.registerModelShadow(model.mesh);
+        this.animals.push({ ...model, health: 30, speed: 1, gait: 0 });
     }
 }
