@@ -97,3 +97,29 @@ node --test tests/game.test.mjs
 
 The world and inventory are session-only. CDN dependencies require an initial
 online load; offline availability depends on successful service-worker caching.
+
+## Wilderness models
+
+Trees, rocks, deer, and dropped supplies are generated locally by
+`js/models/wilderness.js`. The collection uses matte materials and per-face
+colors, with seeded variation for trees and rocks. Pines have layered crowns,
+branches and roots; broadleaf trees use branching trunks and clustered canopies.
+Boulders include smaller stones and moss. Deer have a four-leg diagonal gait,
+antlers, ears, eyes, and hooves. Dropped resources have item-specific silhouettes.
+
+Open `models.html` on the same local server to orbit and inspect the collection.
+The viewer uses studio lighting; the game uses its own day/night lighting and
+camera-following shadow map. Static assets merge into one mesh each; deer use
+five visible meshes to retain leg animation. No external model downloads are
+needed. The first-person player remains invisible.
+
+To run gameplay and real Babylon geometry tests:
+
+```sh
+npm ci --ignore-scripts
+npm test
+```
+
+The pinned Babylon development dependency is test-only; the game still loads
+its existing CDN engine. Tests cover geometry, deterministic variants, disposal,
+canopy orientation, animation, and hits on nested deer meshes.
