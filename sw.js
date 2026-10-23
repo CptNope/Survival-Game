@@ -1,6 +1,6 @@
 // Service Worker for Survival Game PWA
 
-const CACHE_NAME = 'survival-game-v3-models';
+const CACHE_NAME = 'survival-game-v4-resources';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './js/main.js',
   './js/game.js',
   './js/utils.js',
+  './js/resources.js',
   './js/models/wilderness.js',
   './js/components/terrain.js',
   './js/components/player.js',
@@ -66,7 +67,7 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        
+
         // Otherwise fetch from network
         return fetch(event.request)
           .then(networkResponse => {
@@ -74,15 +75,15 @@ self.addEventListener('fetch', event => {
             if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
               return networkResponse;
             }
-            
+
             // Clone the response - one to return, one to cache
             const responseToCache = networkResponse.clone();
-            
+
             caches.open(CACHE_NAME)
               .then(cache => {
                 cache.put(event.request, responseToCache);
               });
-              
+
             return networkResponse;
           });
       })
