@@ -1,3 +1,4 @@
+import { ITEMS, RESOURCES, RECIPES, recipeDescription } from '../resources.js';
 export class UISystem {
     constructor(game) {
         this.game = game;
@@ -16,11 +17,7 @@ export class UISystem {
         this.$('menu-button').onclick = () => this.toggleMenu();
         this.$('craft-button').onclick = () => this.toggleCrafting();
         this.$('resume').onclick = () => this.closePanel();
-        this.$('recipes').innerHTML = [
-            ['planks', 'Wooden planks', '2 wood → 1 plank'],
-            ['tools', 'Stone tool', '1 plank + 2 stone → 1 tool'],
-            ['bandage', 'Field dressing', '3 wood → restore 30 health']
-        ].map(([id, name, cost]) => `<button class="recipe" data-recipe="${id}"><strong>${name}</strong><span>${cost}</span><b>Craft +</b></button>`).join('');
+        this.$('recipes').innerHTML = Object.entries(RECIPES).map(([id, recipe]) => `<button class="recipe" data-recipe="${id}"><strong>${recipe.name}</strong><span>${recipeDescription(recipe)}</span><b>${recipe.heal ? 'Use +' : 'Craft +'}</b></button>`).join('');
         this.$('recipes').querySelectorAll('button').forEach(button => button.onclick = () => game.inventorySystem.craft(button.dataset.recipe));
         this.renderPanel();
         this.updateInventoryUI();
@@ -46,11 +43,10 @@ export class UISystem {
     }
     updateInventoryUI() {
         const inv = this.game.inventorySystem.inventory;
-        this.$('inventory').innerHTML = Object.entries(inv).map(([name, count], i) => `<div><small>0${i + 1} / ${name}</small><strong>${count}</strong></div>`).join('');
-        this.$('objective-progress').textContent = inv.tools ? '✓ Tool ready. Explore, hunt, and level up.' : `${inv.wood} wood · ${inv.stone} stone · ${inv.planks} planks`;
-        const costs = { planks: { wood: 2 }, tools: { planks: 1, stone: 2 }, bandage: { wood: 3 } };
+        this.$('inventory').innerHTML = Object.entries(inv).map(([name, count], i) => `<div><small>${String(i + 1).padStart(2, '0')} / ${ITEMS[name]}</small><strong>${count}</strong></div>`).join('');
+        this.$('objective-progress').textContent = inv.ironTools ? '✓ Iron tool ready: +1 ore per deposit and +8 attack damage.' : inv.tools ? 'Mine iron ore, gather fiber, and craft an iron tool. Purple flowers make healing wraps.' : `${inv.wood} wood · ${inv.stone} stone · ${inv.planks} planks`;
         this.$('recipes').querySelectorAll('button').forEach(button => {
-            button.disabled = Object.entries(costs[button.dataset.recipe]).some(([key, count]) => inv[key] < count) || this.game.playerSystem.isDead || (button.dataset.recipe === 'bandage' && this.game.playerSystem.health >= this.game.playerSystem.maxHealth);
+            button.disabled = !this.game.inventorySystem.canCraft(button.dataset.recipe);
         });
         this.updateExperienceUI();
     }
@@ -77,6 +73,6 @@ export class UISystem {
         if (this.game.paused) return;
         const hit = this.game.pickTarget();
         const obj = hit?.hit && this.game.inventorySystem.harvestableObjects.find(o => o.mesh === hit.pickedMesh || o.relatedMeshes?.includes(hit.pickedMesh));
-        this.$('target-hint').textContent = p.isDead ? 'You fell. Returning to the clearing…' : obj ? `Click to gather ${obj.type === 'tree' ? 'wood' : 'stone'}` : p.isFlying ? 'Flying · Space to land / Ctrl to descend' : 'Explore · Gather · Craft';
+        this.$('target-hint').textContent = p.isDead ? 'You fell. Returning to the clearing…' : obj ? `${RESOURCES[obj.type]?.requiresTool && !this.game.inventorySystem.inventory.tools && !this.game.inventorySystem.inventory.ironTools ? 'Tool required to mine' : 'Click to gather'} ${RESOURCES[obj.type]?.label || obj.type}` : p.isFlying ? 'Flying · Space to land / Ctrl to descend' : 'Explore · Gather · Craft';
     }
 }

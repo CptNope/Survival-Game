@@ -2,11 +2,11 @@
 export class CombatSystem {
     constructor(game) {
         this.game = game;
-        
+
         // Combat properties
         this.isAttacking = false;
         this.attackPower = 10;
-        
+
         // Player stats
         this.health = 100;
         this.maxHealth = 100;
@@ -14,15 +14,15 @@ export class CombatSystem {
         this.level = 1;
         this.expToNextLevel = 100;
     }
-    
+
     tryAttack() {
         if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking) return;
-        
+
         this.isAttacking = true;
         // Cooldown is a gaming term for a period during which an action cannot be performed again
         // This prevents players from attacking too rapidly and balances gameplay
         setTimeout(() => { this.isAttacking = false; }, 500); // Attack cooldown of 500ms
-        
+
         const hit = this.game.pickTarget();
 
         if (hit && hit.hit) {
@@ -30,70 +30,70 @@ export class CombatSystem {
             for (let animal of this.game.animalSystem.animals) {
                 if (hit.pickedMesh === animal.mesh || hit.pickedMesh.isDescendantOf(animal.mesh)) {
                     // Calculate damage based on level and tools
-                    let damage = this.attackPower + (this.level - 1) * 2;
-                    
+                    let damage = this.attackPower + (this.level - 1) * 2 + (this.game.inventorySystem.inventory.ironTools > 0 ? 8 : 0);
+
                     // Apply damage
                     animal.health -= damage;
-                    
+
                     // Visual feedback
                     animal.mesh.scaling.y = 0.8; // Squish effect
                     setTimeout(() => { if (animal.mesh) animal.mesh.scaling.y = 1; }, 200);
-                    
+
                     break;
                 }
             }
         }
     }
-    
+
     specialAttack() {
         if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking || this.game.inventorySystem.inventory.tools <= 0) return;
-        
+
         // Use a tool
         this.game.inventorySystem.inventory.tools--;
         this.game.uiSystem.updateInventoryUI();
-        
+
         this.isAttacking = true;
         setTimeout(() => { this.isAttacking = false; }, 1000); // Longer cooldown
-        
+
         // Attack all animals within range
         const attackRange = 10;
         let animalHit = false;
-        
+
         for (let animal of this.game.animalSystem.animals) {
             const distance = BABYLON.Vector3.Distance(this.game.playerSystem.camera.position, animal.mesh.position);
             if (distance < attackRange) {
                 // Apply heavy damage
                 animal.health -= this.attackPower * 3;
                 animalHit = true;
-                
+
                 // Visual feedback
                 animal.mesh.scaling.y = 0.5; // Stronger squish effect
                 setTimeout(() => { if (animal.mesh) animal.mesh.scaling.y = 1; }, 300);
             }
         }
-        
+
         // Give some experience for using special attack
         if (animalHit) {
             this.gainExperience(10);
         }
     }
-    
+
     // Experience and leveling system
     gainExperience(amount) {
         this.experience += amount;
         console.log(`Gained ${amount} experience. Total: ${this.experience}/${this.expToNextLevel}`);
-        
+
         // Check for level up
         while (this.experience >= this.expToNextLevel) {
             this.levelUp();
         }
-        
+
         // Update UI - directly update the experience UI
         if (this.game.uiSystem) {
             this.game.uiSystem.updateExperienceUI();
         }
     }
-    
+
     levelUp() {
         this.level++;
         this.experience -= this.expToNextLevel;
@@ -101,14 +101,14 @@ export class CombatSystem {
         this.game.playerSystem.maxHealth += 20;
         this.game.playerSystem.health = this.game.playerSystem.maxHealth; // Heal on level up
         this.attackPower += 5;
-        
+
         console.log(`Leveled up to ${this.level}! Next level at ${this.expToNextLevel} exp`);
-        
+
         // Update UI
         if (this.game.uiSystem) {
             this.game.uiSystem.updateExperienceUI();
             this.game.uiSystem.updateHealthUI(this.game.playerSystem.health, this.game.playerSystem.maxHealth);
-            
+
             // Show level up message
             this.game.uiSystem.showLevelUpMessage();
         }

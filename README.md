@@ -123,3 +123,22 @@ npm test
 The pinned Babylon development dependency is test-only; the game still loads
 its existing CDN engine. Tests cover geometry, deterministic variants, disposal,
 canopy orientation, animation, and hits on nested deer meshes.
+
+## Ore and foraging
+
+Iron deposits, fiber plants, purple medicinal flowers, and red berry bushes now
+populate dry terrain. A starter group appears just outside the spawn clearing.
+Aim at the plant/deposit within five units and click; the reticle shows its type.
+Ore requires a stone or iron tool in inventory (mining does not consume it).
+
+- Iron deposits yield 2 ore, or 3 with an iron tool.
+- Fiber plants yield 3 fiber; medicinal flowers yield 2 herbs; bushes yield 3 berries.
+- 2 ore + 2 wood smelts into 1 iron ingot through field crafting.
+- 2 ingots + 1 plank + 2 fiber crafts an iron tool (+8 normal attack damage).
+- 2 fiber + 2 herbs restores up to 50 health; eating 2 berries restores up to 15.
+
+Recipes are shared between the UI and inventory logic in `js/resources.js`.
+Healing consumes nothing at full health. All new items drop on death and can be
+recovered. Resource depletion is session/chunk-local, like the existing trees.
+Open `resources.html` for an orbitable resource field guide. Run `npm test` for
+gathering gates, crafting costs, healing, death drops, and asset cleanup tests.

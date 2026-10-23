@@ -218,3 +218,10 @@ kbd{color:var(--ink);
 .panel h1{font-size:28px;
     margin:10px 0}
 }
+/* Ten resource types remain readable without covering the whole viewport. */
+.inventory{display:grid;grid-template-columns:repeat(5,minmax(58px,1fr));max-width:530px;flex:1}
+.inventory div{min-width:0;padding:9px 12px}
+.inventory strong{font-size:19px;margin-top:4px}
+.inventory small{font-size:8px;letter-spacing:.5px}
+@media(max-width:800px){.hud-bottom{align-items:center}.inventory{max-width:400px}.inventory div{padding:7px}.inventory small{font-size:7px}.hud-bottom>button{padding:10px}.objective{top:100px}}
+@media(max-width:550px){.inventory{flex-basis:100%;order:3;max-width:none}.hud-bottom{padding:10px}.vitals{width:150px}.inventory div{padding:5px}.inventory strong{font-size:15px}.objective{width:155px;padding:12px}}
