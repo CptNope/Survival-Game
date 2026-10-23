@@ -73,3 +73,27 @@ The game is built using Babylon.js, a powerful 3D engine for the web. The modula
 ## License
 
 MIT License
+
+## Expedition update
+
+The desktop interface now includes a pause screen, centered interaction reticle,
+resource quick view, oxygen/health/XP meters, contextual gathering hints, and a
+first-tool objective. Press **C** for field crafting and **Esc** to pause.
+Click the canvas to capture the mouse; use Esc to release it. Losing focus pauses
+simulation. The original optional virtual gamepad UI has been replaced by this
+desktop-focused interface; a dedicated mobile control pass is still needed.
+
+Recipes: 2 wood makes a plank; 1 plank + 2 stone makes a tool; 3 wood makes a
+field dressing that immediately restores up to 30 health. Gathering and normal
+attacks require a target within 5 units. Right click spends one tool on an area
+attack. Night lighting, distance fog, evergreen trees, and fleeing wildlife add
+atmosphere. Distant terrain now releases its associated resources and water.
+
+Run regression tests with Node.js 22 or newer:
+
+```sh
+node --test tests/game.test.mjs
+```
+
+The world and inventory are session-only. CDN dependencies require an initial
+online load; offline availability depends on successful service-worker caching.
