@@ -22,21 +22,13 @@ export class InventorySystem {
     }
     
     tryHarvest() {
-        // Create a ray from the camera to detect what we're looking at
-        const ray = this.game.scene.createPickingRay(
-            this.game.scene.pointerX, 
-            this.game.scene.pointerY, 
-            BABYLON.Matrix.Identity(), 
-            this.game.playerSystem.camera
-        );
-        
-        const hit = this.game.scene.pickWithRay(ray);
-        
+        if (this.game.paused || this.game.playerSystem.isDead) return;
+        const hit = this.game.pickTarget();
         if (hit && hit.hit) {
             // Check if we hit a harvestable object
             for (let i = this.harvestableObjects.length - 1; i >= 0; i--) {
                 const obj = this.harvestableObjects[i];
-                if (hit.pickedMesh === obj.mesh) {
+                if (hit.pickedMesh === obj.mesh || obj.relatedMeshes?.includes(hit.pickedMesh)) {
                     // Determine what we harvested
                     if (obj.type === "tree") {
                         this.inventory.wood += 2;
@@ -44,14 +36,15 @@ export class InventorySystem {
                         this.inventory.stone += 2;
                     }
                     
+                    this.game.uiSystem.showNotification(obj.type === 'tree' ? '+2 wood' : '+2 stone');
                     // Remove the harvested object and any related meshes
-                    obj.mesh.dispose();
+                    obj.mesh.dispose(false, true);
                     
                     // Dispose of any related meshes (like tree leaves)
                     if (obj.relatedMeshes && Array.isArray(obj.relatedMeshes)) {
                         for (const relatedMesh of obj.relatedMeshes) {
                             if (relatedMesh && relatedMesh.dispose) {
-                                relatedMesh.dispose();
+                                relatedMesh.dispose(false, true);
                             }
                         }
                     }
@@ -66,23 +59,27 @@ export class InventorySystem {
         }
     }
     
-    craftPlanks() {
-        if (this.inventory.wood >= 2) {
-            this.inventory.wood -= 2;
-            this.inventory.planks += 1;
-            this.game.uiSystem.updateInventoryUI();
+    craft(type) {
+        const recipes = { planks: { wood: 2 }, tools: { planks: 1, stone: 2 }, bandage: { wood: 3 } };
+        const cost = recipes[type];
+        if (!cost || this.game.playerSystem.isDead) return false;
+        if (Object.entries(cost).some(([key, count]) => this.inventory[key] < count)) {
+            this.game.uiSystem.showNotification('Gather more resources first');
+            return false;
         }
+        if (type === 'bandage' && this.game.playerSystem.health >= this.game.playerSystem.maxHealth) return false;
+        for (const [key, count] of Object.entries(cost)) this.inventory[key] -= count;
+        if (type === 'bandage') {
+            const player = this.game.playerSystem;
+            player.health = Math.min(player.maxHealth, player.health + 30);
+        } else this.inventory[type]++;
+        this.game.uiSystem.showNotification(type === 'bandage' ? 'Recovered 30 health' : `Crafted ${type}`);
+        this.game.uiSystem.updateInventoryUI();
+        return true;
     }
-    
-    craftTool() {
-        if (this.inventory.planks >= 1 && this.inventory.stone >= 2) {
-            this.inventory.planks -= 1;
-            this.inventory.stone -= 2;
-            this.inventory.tools += 1;
-            this.game.uiSystem.updateInventoryUI();
-        }
-    }
-    
+    craftPlanks() { return this.craft('planks'); }
+    craftTool() { return this.craft('tools'); }
+
     // Drop all items when player dies
     dropAllItems(position) {
         // Create loot objects for each item type that player has
@@ -143,10 +140,14 @@ export class InventorySystem {
         lootBag.material = lootMaterial;
         
         // Make the loot bag rotate slowly
-        this.game.scene.registerBeforeRender(() => {
+        const spin = this.game.scene.onBeforeRenderObservable.add(() => {
             lootBag.rotation.y += 0.01;
         });
         
+        lootBag.onDisposeObservable.add(() => {
+            this.game.scene.onBeforeRenderObservable.remove(spin);
+            lootMaterial.dispose();
+        });
         // Add to dropped items array
         this.droppedItems.push({
             mesh: lootBag,
@@ -163,7 +164,7 @@ export class InventorySystem {
     
     // Check for nearby loot to pick up
     checkForLoot() {
-        if (!this.game.playerSystem || this.droppedItems.length === 0) {
+        if (!this.game.playerSystem || this.game.playerSystem.isDead || this.droppedItems.length === 0) {
             return;
         }
         
