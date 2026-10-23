@@ -45,7 +45,7 @@
     <div id="pwaInstallBanner">
         <p>Install this game on your device for the best experience!</p>
         <button id="pwaInstallButton">Install</button>
-        <button id="pwaCloseButton">×</button>
+        <button id="pwaCloseButton">Ã—</button>
     </div>
     
     <canvas id="renderCanvas"></canvas>
@@ -145,27 +145,6 @@
             localStorage.setItem('pwaInstallBannerDismissed', 'true');
         });
         
-        // Simulate loading progress
-        const loadingProgress = document.getElementById('loadingProgress');
-        const loadingText = document.getElementById('loadingText');
-        const loadingScreen = document.getElementById('loadingScreen');
-        
-        let progress = 0;
-        const loadingInterval = setInterval(() => {
-            progress += Math.random() * 10;
-            if (progress >= 100) {
-                progress = 100;
-                clearInterval(loadingInterval);
-                loadingText.textContent = 'Ready!';
-                
-                // Hide loading screen after a short delay
-                setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                }, 500);
-            }
-            loadingProgress.style.width = `${progress}%`;
-            loadingText.textContent = `Loading assets... ${Math.floor(progress)}%`;
-        }, 200);
     </script>
     
     <!-- Load modules -->
