@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Resource field guide</title><style>
+*{box-sizing:border-box}body{margin:0;background:#142321;color:#e5e9db;font:14px system-ui}canvas{display:block;width:100vw;height:100vh;touch-action:none}header{position:absolute;top:30px;left:36px;pointer-events:none}small{letter-spacing:3px;color:#a5bc91;font-size:10px}h1{font-weight:500;font-size:32px;margin:10px 0}p{color:#b4c0b1;font-size:12px}nav{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:8px}button{border:1px solid #6f8468;background:#1c3029;color:#e6eddf;padding:12px 20px;border-radius:6px;cursor:pointer}button:hover,button.active{background:#bdd18c;color:#19291f}a{color:#bdd18c;position:absolute;right:30px;top:36px}#status{position:absolute;bottom:90px;left:0;right:0;text-align:center;color:#b2bea9;font-size:12px}
+</style><script src="https://cdn.babylonjs.com/babylon.js"></script><canvas id="canvas"></canvas><header><small>THE WILDS / FIELD GUIDE</small><h1>Gather. Refine. Survive.</h1><p>Drag to orbit · Scroll to zoom · Choose a model below</p></header><a href="./">Play the game →</a><div id="status">Iron ore needs a tool · Fiber + herbs heal · Berries restore health</div><nav><button data-view="all" class="active">Collection</button><button data-view="ore">Iron ore</button><button data-view="fiber">Fiber</button><button data-view="herb">Herbs</button><button data-view="berry">Berries</button></nav><script type="module">
+import {createOreModel,createPlantModel} from './js/models/wilderness.js';
+const canvas=document.getElementById('canvas'),engine=new BABYLON.Engine(canvas,true),scene=new BABYLON.Scene(engine);
+scene.clearColor=new BABYLON.Color4(.075,.12,.115,1);
+const camera=new BABYLON.ArcRotateCamera('camera',-Math.PI/2+.25,1.05,13,new BABYLON.Vector3(0,.7,0),scene);
+camera.attachControl(canvas,true);camera.lowerRadiusLimit=3;camera.upperRadiusLimit=40;camera.wheelPrecision=30;
+const fill=new BABYLON.HemisphericLight('fill',new BABYLON.Vector3(0,1,0),scene);fill.intensity=.75;fill.groundColor=new BABYLON.Color3(.24,.29,.25);
+const sun=new BABYLON.DirectionalLight('sun',new BABYLON.Vector3(.6,-1,.4),scene);sun.position=new BABYLON.Vector3(-12,20,-10);sun.intensity=1.7;
+const shadow=new BABYLON.ShadowGenerator(2048,sun);shadow.useBlurExponentialShadowMap=true;shadow.blurKernel=24;shadow.darkness=.35;
+const ground=BABYLON.MeshBuilder.CreateGround('floor',{width:100,height:100},scene);ground.receiveShadows=true;
+const mat=new BABYLON.StandardMaterial('floor',scene);mat.diffuseColor=new BABYLON.Color3(.19,.26,.23);mat.specularColor=BABYLON.Color3.Black();ground.material=mat;
+const ore=createOreModel(scene,7);ore.position.x=-4.5;
+const fiber=createPlantModel(scene,12,'fiber');fiber.position.x=-1.5;
+const herb=createPlantModel(scene,42,'herb');herb.position.x=1.5;
+const berry=createPlantModel(scene,13,'berry');berry.position.x=4.5;
+for(const mesh of [ore,fiber,herb,berry])shadow.addShadowCaster(mesh,true);
+const views={all:[0,.7,0,13],ore:[-4.5,.7,0,4],fiber:[-1.5,.6,0,3],herb:[1.5,.5,0,3],berry:[4.5,.5,0,3]};
+document.querySelectorAll('button').forEach(button=>button.onclick=()=>{
+ const [x,y,z,r]=views[button.dataset.view];camera.setTarget(new BABYLON.Vector3(x,y,z));camera.radius=r;
+ document.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===button));
+});
+engine.runRenderLoop(()=>{scene.render()});
+window.addEventListener('resize',()=>engine.resize());
+</script></html>
