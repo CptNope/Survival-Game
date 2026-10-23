@@ -184,6 +184,19 @@ export function animateDeer(animal, dt, speed) {
     });
 }
 export function createLootModel(scene, itemType = 'wood') {
+    if (['fiber', 'herbs', 'berries', 'ironOre'].includes(itemType)) {
+        const mesh = itemType === 'ironOre' ? createOreModel(scene, 73) : createPlantModel(scene, 73, {fiber: 'fiber', herbs: 'herb', berries: 'berry'}[itemType]);
+        mesh.scaling.setAll(.4); mesh.checkCollisions = false;
+        return mesh;
+    }
+    if (itemType === 'iron') {
+        const random = seededRandom(73);
+        return finish(scene, [ellipsoid(scene, 'ingot', V(0,.12,0), V(.35,.14,.20), [.60,.67,.70],random)], 'iron-ingot');
+    }
+    if (itemType === 'ironTools') {
+        const random = seededRandom(73);
+        return finish(scene, [branch(scene,V(0,.08,-.32),V(0,.15,.35),.09,palette.barkLight,random,.07),ellipsoid(scene,'iron-axe-head',V(.05,.17,.28),V(.32,.08,.18),[.68,.74,.78],random)], 'iron-tool');
+    }
     const random = seededRandom(73), pieces = [];
     if (itemType === 'wood') {
         for (let i = 0; i < 3; i++) pieces.push(branch(scene, V((i - 1) * .16, .14 + (i === 1 ? .12 : 0), -.3), V((i - 1) * .16, .14 + (i === 1 ? .12 : 0), .3), .17, palette.barkLight, random, .17));
@@ -201,4 +214,47 @@ export function createLootModel(scene, itemType = 'wood') {
         for (let i = 0; i < 3; i++) pieces.push(ellipsoid(scene, 'stone-chip', V((i - 1) * .17, .12, 0), V(.17, .15, .21), palette.stone, random));
     }
     return finish(scene, pieces, `${itemType}-pickup`);
+}
+
+export function createOreModel(scene, seed = 1) {
+    const random = seededRandom(seed), pieces = [];
+    pieces.push(ellipsoid(scene, 'ore-host', V(0, .55, 0), V(1.1, .85, .9), [.25, .27, .29], random));
+    for (let i = 0; i < 7; i++) {
+        const angle = i * 2.4, r = .4 + random() * .35;
+        const ore = ellipsoid(scene, 'iron-vein', V(Math.cos(angle) * r, .75 + random() * .4, Math.sin(angle) * r), V(.20, .30 + random() * .18, .20), i % 2 ? [.64, .39, .22] : [.57, .65, .70], random);
+        ore.rotation.z = (random() - .5) * .8;
+        pieces.push(ore);
+    }
+    const model = finish(scene, pieces, 'iron-deposit');
+    model.checkCollisions = true;
+    return model;
+}
+
+export function createPlantModel(scene, seed = 1, kind = 'fiber') {
+    const random = seededRandom(seed), pieces = [];
+    const green = kind === 'herb' ? [.30, .48, .32] : [.22, .40, .19];
+    const count = kind === 'berry' ? 7 : 5;
+    for (let i = 0; i < count; i++) {
+        const angle = i * 2.4, r = .12 + random() * .34;
+        const height = (kind === 'fiber' ? .9 : .6) + random() * .35;
+        const tip = V(Math.cos(angle) * r, height, Math.sin(angle) * r);
+        pieces.push(branch(scene, V(0, 0, 0), tip, .045, green, random, .02));
+        const leaf = ellipsoid(scene, 'leaf', V(tip.x * 1.2, height * .6, tip.z * 1.2), V(kind === 'fiber' ? .12 : .24, .32, .09), green, random);
+        leaf.rotation.z = Math.cos(angle) * .7;
+        leaf.rotation.y = angle;
+        pieces.push(leaf);
+        if (kind === 'herb') {
+            for (let petal = 0; petal < 5; petal++) {
+                const a = petal / 5 * Math.PI * 2;
+                pieces.push(ellipsoid(scene, 'flower', tip.add(V(Math.cos(a) * .09, 0, Math.sin(a) * .09)), V(.07, .035, .07), [.71, .57, .83], random));
+            }
+            pieces.push(ellipsoid(scene, 'pollen', tip.add(V(0,.025,0)), V(.035,.035,.035), [.91,.73,.28],random));
+        } else if (kind === 'berry') {
+            pieces.push(ellipsoid(scene, 'berry-leaves', tip, V(.26,.22,.25),green,random));
+            for (let b = 0; b < 3; b++) pieces.push(ellipsoid(scene, 'berry', tip.add(V((b - 1) * .12, .1, -.17)), V(.065,.07,.065), [.62,.12,.20],random));
+        } else {
+            pieces.push(ellipsoid(scene, 'fiber-head', tip, V(.06,.17,.06), [.74,.65,.40],random));
+        }
+    }
+    return finish(scene, pieces, `${kind}-plant`);
 }
