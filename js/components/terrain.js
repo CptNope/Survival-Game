@@ -1,5 +1,6 @@
 // Terrain generation and management system
 import { Utils } from '../utils.js';
+import { createTreeModel, createRockModel } from '../models/wilderness.js';
 
 export class TerrainSystem {
     constructor(game) {
@@ -98,6 +99,7 @@ export class TerrainSystem {
         
         // Add collision detection
         ground.checkCollisions = true;
+        ground.receiveShadows = true;
         
         // Store in chunk map
         this.chunkMap.set(key, { mesh: ground });
@@ -348,104 +350,24 @@ export class TerrainSystem {
         return distanceToSpawn <= this.spawnAreaRadius;
     }
     
-    // Create a tree at the specified position
+    // One merged mesh per asset keeps picking, disposal, and draw calls simple.
     createTree(x, y, z) {
-        // Create trunk
-        const trunk = BABYLON.MeshBuilder.CreateCylinder("trunk", {
-            height: 4,
-            diameter: 1
-        }, this.game.scene);
-        trunk.position.set(x, y + 2, z);
-        
-        // Create leaves
-        const leaves = BABYLON.MeshBuilder.CreateCylinder("leaves", {
-            height: 6,
-            diameterTop: 0,
-            diameterBottom: 4.5,
-            tessellation: 7
-        }, this.game.scene);
-        leaves.position.set(x, y + 5, z);
-        
-        // Materials
-        const trunkMaterial = new BABYLON.StandardMaterial("trunkMat", this.game.scene);
-        trunkMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.3, 0.2);
-        trunkMaterial.specularColor = BABYLON.Color3.Black();
-        trunk.material = trunkMaterial;
-        trunk.checkCollisions = true;
-        
-        const leavesMaterial = new BABYLON.StandardMaterial("leavesMat", this.game.scene);
-        leavesMaterial.diffuseColor = new BABYLON.Color3(0.13, 0.29 + Math.random() * 0.12, 0.22);
-        leavesMaterial.specularColor = BABYLON.Color3.Black();
-        leaves.material = leavesMaterial;
-        
-        // Add to harvestable objects with reference to both trunk and leaves
-        this.game.inventorySystem.harvestableObjects.push({
-            mesh: trunk,
-            type: "tree",
-            relatedMeshes: [leaves] // Store leaves to dispose when tree is harvested
-        });
+        const seed = Math.floor(x * 73856093) ^ Math.floor(z * 19349663);
+        const mesh = createTreeModel(this.scene, seed, Math.abs(seed % 4) === 0 ? 'oak' : 'pine');
+        mesh.position.set(x, y, z);
+        mesh.rotation.y = (seed % 360) * Math.PI / 180;
+        mesh.receiveShadows = true;
+        this.game.registerModelShadow(mesh);
+        this.game.inventorySystem.harvestableObjects.push({ mesh, type: 'tree' });
     }
-    
-    // Create a rock at the specified position
+
     createRock(x, y, z) {
-        // Create rock mesh with larger size for better visibility
-        const diameter = 2.5 + Math.random() * 1.5; // Random size between 2.5 and 4.0
-        
-        // Use a box shape for some rocks to add variety
-        let rock;
-        if (Math.random() > 0.5) {
-            rock = BABYLON.MeshBuilder.CreateSphere("rock", {
-                diameter: diameter,
-                segments: 6
-            }, this.game.scene);
-            
-            // Flatten the rock a bit for more natural look
-            rock.scaling.y = 0.3 + Math.random() * 0.3; // Random y-scale between 0.3 and 0.6
-        } else {
-            // Create a box-shaped rock for variety
-            rock = BABYLON.MeshBuilder.CreateBox("rock", {
-                width: diameter * 0.8,
-                height: diameter * 0.5,
-                depth: diameter * 0.8
-            }, this.game.scene);
-        }
-        
-        // Position directly on the ground for guaranteed visibility
-        rock.position.set(x, y + diameter * 0.25, z);
-        
-        // Add slight random scaling to x and z for variety
-        const xzScale = 0.8 + Math.random() * 0.6; // Random scale between 0.8 and 1.4
-        rock.scaling.x *= xzScale;
-        rock.scaling.z *= xzScale;
-        
-        // Random rotation on all axes for more natural placement
-        rock.rotation.x = Math.random() * Math.PI * 0.3; // Limit x rotation to avoid weird angles
-        rock.rotation.y = Math.random() * Math.PI * 2;  // Full rotation on y axis
-        rock.rotation.z = Math.random() * Math.PI * 0.3; // Limit z rotation
-        
-        // Disable physics for rocks and use static positioning instead
-        // Position the rock directly on the ground with a small offset to prevent z-fighting
-        const rockHeight = (rock.getBoundingInfo().boundingBox.extendSize.y * 2) * rock.scaling.y;
-        rock.position.y = y + rockHeight / 2 + 0.05; // Add a small offset to prevent sinking
-        
-        // Enable collision detection but without physics
-        rock.checkCollisions = true;
-        
-        // Add a small random rotation for natural appearance
-        rock.rotation.x = Math.random() * Math.PI * 0.2;
-        rock.rotation.z = Math.random() * Math.PI * 0.2;
-        
-        // Material with slight texture variation
-        const rockMaterial = new BABYLON.StandardMaterial("rockMat", this.game.scene);
-        const greyShade = 0.4 + Math.random() * 0.2; // Random grey between 0.4 and 0.6
-        rockMaterial.diffuseColor = new BABYLON.Color3(greyShade, greyShade, greyShade);
-        rockMaterial.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2); // Slight shine
-        rock.material = rockMaterial;
-        
-        // Add to harvestable objects
-        this.game.inventorySystem.harvestableObjects.push({
-            mesh: rock,
-            type: "rock"
-        });
+        const seed = Math.floor(x * 83492791) ^ Math.floor(z * 2971215073);
+        const mesh = createRockModel(this.scene, seed);
+        mesh.position.set(x, y, z);
+        mesh.rotation.y = (seed % 360) * Math.PI / 180;
+        mesh.receiveShadows = true;
+        this.game.registerModelShadow(mesh);
+        this.game.inventorySystem.harvestableObjects.push({ mesh, type: 'rock' });
     }
 }
