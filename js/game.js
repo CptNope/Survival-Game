@@ -113,6 +113,15 @@ export class SurvivalGame {
         // Create sun and moon for day/night cycle
         this.sunLight = new BABYLON.DirectionalLight("sunLight", new BABYLON.Vector3(0, -1, 0), this.scene);
         this.sunLight.intensity = 1.0;
+        this.sunLight.shadowMinZ = 1;
+        this.sunLight.shadowMaxZ = 180;
+        this.sunLight.shadowFrustumSize = 85;
+        this.shadowGenerator = new BABYLON.ShadowGenerator(1024, this.sunLight);
+        this.shadowGenerator.usePercentageCloserFiltering = true;
+        this.shadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_LOW;
+        this.shadowGenerator.bias = 0.001;
+        this.shadowGenerator.normalBias = 0.03;
+        this.shadowGenerator.darkness = 0.3;
         this.sunLight.diffuse = new BABYLON.Color3(1, 1, 0.8);
         
         // Ambient light for night time
@@ -120,6 +129,11 @@ export class SurvivalGame {
         this.ambientLight.intensity = 0.2;
     }
     
+    registerModelShadow(mesh) {
+        this.shadowGenerator.addShadowCaster(mesh, true);
+        mesh.onDisposeObservable.add(() => this.shadowGenerator.removeShadowCaster(mesh, true));
+    }
+
     pickTarget() {
         return this.scene.pickWithRay(this.playerSystem.camera.getForwardRay(5));
     }
@@ -203,6 +217,7 @@ export class SurvivalGame {
         const angle = this.dayTime / this.dayLength * Math.PI * 2;
         const daylight = Math.max(0, Math.sin(angle));
         this.sunLight.direction.set(Math.cos(angle), -Math.sin(angle), 0.25);
+        this.sunLight.position.copyFrom(this.playerSystem.camera.position.subtract(this.sunLight.direction.scale(65)));
         this.sunLight.intensity = daylight * 1.15;
         this.ambientLight.intensity = 0.22 + daylight * 0.45;
         const night = new BABYLON.Color3(0.035, 0.065, 0.12);
