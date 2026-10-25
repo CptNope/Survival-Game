@@ -51,6 +51,8 @@ export class InventorySystem {
                     }
 
                     this.harvestableObjects.splice(i, 1);
+                    // A depleted location should stay depleted when its chunk unloads.
+                    if (obj.resourceId) this.game.terrainSystem?.harvestedIds?.add(obj.resourceId);
 
                     // Update UI
                     this.game.uiSystem.updateInventoryUI();
