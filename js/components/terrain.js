@@ -155,6 +155,7 @@ export class TerrainSystem {
         chunk.objects = this.game.inventorySystem.harvestableObjects.slice(before);
         chunk.water = this.waterMeshes.slice(waterBefore);
         chunk.groundCover = this.createGroundCover(chunkX, chunkZ);
+        if (this.game.explorationSystem?.terrain) this.game.explorationSystem.populateChunk(chunkX, chunkZ, chunk);
     }
 
     // Apply height modifications to the terrain using our height function
@@ -163,6 +164,7 @@ export class TerrainSystem {
         const positions = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
         const indices = mesh.getIndices();
         const normals = mesh.getVerticesData(BABYLON.VertexBuffer.NormalKind);
+        const vertexColors = [];
 
         if (!positions) {
             console.error('No position data found for mesh');
@@ -177,6 +179,9 @@ export class TerrainSystem {
 
             // Set the height based on our height function
             positions[i + 1] = this.getPerlinHeight(x, z);
+            const onTrail = this.game.explorationSystem?.isTrail(x, z) || false;
+            if (onTrail) vertexColors.push(.61, .44, .28, 1);
+            else vertexColors.push(1, 1, 1, 1);
         }
 
         // Update the mesh with the new heights
@@ -185,6 +190,7 @@ export class TerrainSystem {
         // Recompute normals for proper lighting
         BABYLON.VertexData.ComputeNormals(positions, indices, normals);
         mesh.updateVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
+        mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, vertexColors);
 
         console.log(`Applied height map to terrain chunk at (${mesh.position.x}, ${mesh.position.z})`);
     }
@@ -243,7 +249,8 @@ export class TerrainSystem {
             );
 
             if (distance > this.renderDistance) {
-                // Remove this chunk
+                // Remove this chunk and its discoverable site geometry.
+                this.game.explorationSystem?.disposeChunk(chunk);
                 for (const obj of chunk.objects) {
                     obj.mesh.dispose(false, true);
                     for (const mesh of obj.relatedMeshes || []) mesh.dispose(false, true);
@@ -300,7 +307,7 @@ export class TerrainSystem {
             const z = worldZ + random() * this.chunkSize;
 
             // Skip if in spawn area or water area
-            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z)) {
+            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) {
                 continue;
             }
 
@@ -316,7 +323,7 @@ export class TerrainSystem {
             const z = worldZ + random() * this.chunkSize;
 
             // Skip if in spawn area or water area
-            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z)) {
+            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) {
                 continue;
             }
 
@@ -335,7 +342,7 @@ export class TerrainSystem {
             for (let attempt = 0; attempt < 5; attempt++) {
                 const x = worldX + random() * this.chunkSize;
                 const z = worldZ + random() * this.chunkSize;
-                if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z)) continue;
+                if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
                 this.createResource(type, x, this.getPerlinHeight(x, z), z, `${key}:${type}:${index}`);
                 break;
             }
@@ -440,7 +447,7 @@ export class TerrainSystem {
         for (let i = 0; i < 95; i++) {
             const x = x0 + random() * this.chunkSize;
             const z = z0 + random() * this.chunkSize;
-            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z)) continue;
+            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
             const size = .65 + random() * 1.2;
             scale.set(size, size, size);
             pos.set(x, this.getPerlinHeight(x, z) + .04, z);

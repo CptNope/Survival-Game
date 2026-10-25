@@ -8,6 +8,7 @@ export class UISystem {
         root.innerHTML = `
             <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><button id="menu-button">Esc · Pause</button></header>
             <aside class="objective"><small>FIELD NOTES / 01</small><h2>Make your first tool</h2><p>Gather wood and stone. Turn wood into planks, then craft a tool.</p><span id="objective-progress"></span></aside>
+            <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / UNEXPLORED</small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span></div>
             <div id="crosshair">+</div><div id="target-hint"></div>
             <div id="toast" role="status" aria-live="polite"></div>
             <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Field crafting</button></footer>
@@ -69,6 +70,21 @@ export class UISystem {
         const c = this.game.combatSystem;
         this.$('level').textContent = `LEVEL ${c.level} · ${c.experience} / ${c.expToNextLevel} XP`;
         this.$('experience').value = c.experience / c.expToNextLevel * 100;
+    }
+    updateExplorationUI(nearest, discoveredCount) {
+        const title = this.$('location-next');
+        const progress = this.$('location-progress');
+        if (nearest) {
+            const player = this.game.playerSystem.camera.position;
+            const dx = nearest.x - player.x, dz = nearest.z - player.z;
+            const bearing = Math.atan2(dx, dz);
+            const directions = ['N','NE','E','SE','S','SW','W','NW'];
+            const direction = directions[(Math.round(bearing / (Math.PI / 4)) + 8) % 8];
+            title.textContent = nearest.name + ' · ' + Math.round(nearest.distance) + 'm ' + direction;
+        } else {
+            title.textContent = 'Scout farther along the trails';
+        }
+        progress.textContent = discoveredCount + ' locations discovered · Get within 8m to salvage supplies';
     }
     updateHealthUI(health, max) { this.$('health').value = health / max * 100; this.$('health-value').textContent = `${Math.ceil(health)} / ${max}`; }
     updateOxygenUI(oxygen, max) { this.$('oxygen').value = oxygen / max * 100; this.$('oxygen-value').textContent = `${Math.ceil(oxygen)}%`; }
