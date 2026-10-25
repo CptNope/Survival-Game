@@ -41,7 +41,21 @@ export class TerrainSystem {
         // One texture/material for the whole world rather than dozens of
         // identical downloads, GPU textures and shader compilations.
         this.terrainMaterial = new BABYLON.StandardMaterial('terrain-grass', this.scene);
-        const grass = new BABYLON.Texture('https://assets.babylonjs.com/textures/grass.png', this.scene);
+        // Procedural 128px grass texture: visually varied, deterministic, and
+        // generated locally so offline play never waits on another asset host.
+        const grass = new BABYLON.DynamicTexture('local-grass', {width: 128, height: 128}, this.scene, false);
+        const context = grass.getContext();
+        context.fillStyle = '#59764a';
+        context.fillRect(0, 0, 128, 128);
+        const scatter = seededRandom(4172026);
+        const shades = ['#415d36', '#6b8051', '#718a57', '#4e7040', '#829363'];
+        for (let i = 0; i < 1100; i++) {
+            const px = Math.floor(scatter() * 128);
+            const py = Math.floor(scatter() * 128);
+            context.fillStyle = shades[Math.floor(scatter() * shades.length)];
+            context.fillRect(px, py, 1 + Math.floor(scatter() * 3), 2 + Math.floor(scatter() * 6));
+        }
+        grass.update();
         grass.uScale = grass.vScale = 6;
         this.terrainMaterial.diffuseTexture = grass;
         this.terrainMaterial.specularColor = BABYLON.Color3.Black();
