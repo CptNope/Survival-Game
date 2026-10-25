@@ -177,3 +177,10 @@ trail draw calls); trees, rocks, and tall grass avoid paths and site clearings.
 
 Survival progression remains offline-first after initial asset caching.
 World/expedition discoveries still reset upon reloading the game.
+
+## Wildlife
+
+Deer now share the woods with smaller rabbits. Rabbits hop and flee faster,
+take fewer hits to hunt, and provide a little crafting fiber plus experience.
+Both wildlife types are spawned near the player and outside water. Animal
+counts remain capped and distant creatures are released to protect frame rate.
