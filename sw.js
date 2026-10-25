@@ -1,6 +1,6 @@
 // Service Worker for Survival Game PWA
 
-const CACHE_NAME = 'survival-game-v4-resources';
+const CACHE_NAME = 'survival-game-v5-responsive-world';
 const ASSETS = [
   './',
   './index.html',
@@ -20,15 +20,7 @@ const ASSETS = [
   './icons/icon-192x192.png',
   './icons/icon-512x512.png',
   // Babylon.js core libraries
-  'https://cdn.babylonjs.com/babylon.js',
-  'https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js',
-  'https://cdn.babylonjs.com/proceduralTextures/babylonjs.proceduralTextures.min.js',
-  'https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js',
-  'https://cdn.babylonjs.com/gui/babylon.gui.min.js',
-  // Physics engine
-  'https://cdn.babylonjs.com/cannon.js',
-  // SimplexNoise library for terrain generation
-  'https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js'
+  'https://cdn.babylonjs.com/babylon.js'
 ];
 
 // Install event - cache assets
