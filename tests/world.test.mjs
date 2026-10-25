@@ -4,6 +4,10 @@ import { TerrainSystem } from '../js/components/terrain.js';
 import { AnimalSystem } from '../js/components/animals.js';
 import { InventorySystem } from '../js/components/inventory.js';
 import { seededRandom } from '../js/models/wilderness.js';
+import {
+    ExplorationSystem, STARTER_SITES, landmarkForCell, landmarksNear,
+    distanceToSegment, isTrailAt
+} from '../js/components/exploration.js';
 
 test('procedural hills are deterministic and the flat spawn area blends into terrain', () => {
     const world = Object.create(TerrainSystem.prototype);
@@ -70,4 +74,43 @@ test('harvested resource IDs stay depleted if a terrain chunk unloads', () => {
     inventory.tryHarvest();
     assert.equal(inventory.inventory.wood, 2);
     assert.equal(world.harvestedIds.has('0,0:tree:4'), true);
+});
+
+test('starter landmarks connect to routes and distant sites are deterministic', () => {
+    assert.equal(STARTER_SITES.length, 3);
+    assert.ok(STARTER_SITES.every(site => isTrailAt(site.x, site.z)));
+    assert.equal(isTrailAt(0, 0), true);
+    assert.ok(distanceToSegment(0, 2, {x:0,z:0}, {x:10,z:0}) <= 2.00001);
+    const a = landmarkForCell(3, -2);
+    const b = landmarkForCell(3, -2);
+    assert.deepEqual(a, b);
+    assert.ok(a && a.id === 'site:3:-2');
+    assert.equal(landmarkForCell(0, 0), null);
+    const all = landmarksNear(300, -220, 150);
+    assert.ok(all.length >= 1);
+    assert.equal(new Set(all.map(site => site.id)).size, all.length);
+});
+
+test('discovering a camp grants one reward only, even across chunk reloads', () => {
+    const notifications = [];
+    const inventory = {wood:0,berries:0};
+    const game = {
+        inventorySystem: {inventory},
+        uiSystem: {updateInventoryUI() {}, showNotification(msg) {notifications.push(msg);}}
+    };
+    const exploration = new ExplorationSystem(game);
+    const camp = STARTER_SITES[0];
+    assert.equal(exploration.discover(camp), true);
+    assert.equal(exploration.discover(camp), false);
+    assert.deepEqual(inventory, {wood:3,berries:3});
+    assert.equal(exploration.discovered.size, 1);
+    assert.equal(notifications.length, 1);
+});
+
+test('landmarks stay clear of resource props and trails have zero scenery collision', () => {
+    const world = new ExplorationSystem({});
+    assert.equal(world.isClearing(43, 13), true);
+    assert.equal(world.isClearing(0, 0), true);
+    assert.equal(world.isClearing(41, 14), true);
+    assert.equal(world.isClearing(0, 28), false);
 });
