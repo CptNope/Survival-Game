@@ -104,7 +104,7 @@ test('wolves can attack with a cooldown and are capped at three concurrent spawn
   game.playerSystem.takeDamage=n=>{damage+=n};
   game.playerSystem.camera.position=new BABYLON.Vector3(0,4,0);
   game.engine={getDeltaTime:()=>16};
-  game.scene.getEngine=()=>({getDeltaTime:()=>16});
+  // Do not replace Scene.getEngine; Babylon uses it during disposal.
   game.registerModelShadow=()=>{};
   const animals=new AnimalSystem(game);
   for(const a of animals.animals)a.mesh.dispose(false,true);
