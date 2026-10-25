@@ -254,3 +254,35 @@ persistent save/restore.
 
 The weather cycle uses existing saved day/time so it restores
 deterministically without new save migration.
+
+## Phase 5 — Mobile and PWA touch controls
+
+Phones and tablets with a coarse pointer now get a dedicated control surface
+while the existing mouse/keyboard game remains unchanged:
+
+- **Left thumbstick:** analog move/strafe relative to camera direction.
+  Diagonal input is clamped to avoid increased movement speed.
+- **Drag the open world:** turn/tilt the camera. Look is pitch-clamped
+  and ignores non-touch pointer events; Babylon's duplicate native touch
+  camera input is disabled.
+- **HIT:** gather the targeted resource or attack a creature in range.
+- **JUMP:** jump; double-tap while airborne to fly, hold to rise in flight.
+- **RUN:** hold to sprint, **DOWN:** hold to descend when flying.
+- **DRINK:** drink at the shoreline, **SKILL:** existing heavy area attack.
+- **Craft**, **Build**, **Pack**, and **Pause** are reachable by touch.
+  Pack expands/collapses the inventory without pausing the game.
+
+The phone HUD uses compact vital bars, safe-area-aware joystick and action
+placement, and a collapsible inventory to keep most of the 3D world visible.
+Landscape layouts show smaller controls. The initial paused-game screen
+explains touch gestures instead of desktop keyboard shortcuts.
+
+Touch pointers are cancelled when paused; keyboard and mouse controls still
+work on desktop and hybrid devices. There are **no added runtime
+dependencies or external control assets**. Regression tests cover normalized
+stick motion, camera-look limits, framerate compensation, pause resets, and
+dead-player input gating; use `npm test`.
+
+**Note:** GitHub Actions validates gameplay/unit tests, but physical Android
+and iOS browser playtests remain valuable for multitouch behavior, frame
+rate, PWA installation and orientation changes.

@@ -271,3 +271,80 @@ body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.20}}
 .inventory{grid-template-columns:repeat(6,minmax(50px,1fr));max-width:620px}
 @media(max-width:800px){.inventory{max-width:480px}}
 @media(max-width:550px){.inventory{max-width:none}}
+
+
+/* Touch controls: only mounted for coarse-pointer devices. Separate active
+   regions leave the center of the canvas free for drag-to-look. */
+#inventory-toggle,#touch-controls{display:none}
+#touch-controls{position:fixed;inset:0;z-index:6;pointer-events:none}
+.touch-stick{position:absolute;left:12px;bottom:calc(12px + env(safe-area-inset-bottom));
+  width:140px;height:140px;pointer-events:auto;touch-action:none;user-select:none}
+.touch-stick-track{position:absolute;inset:8px;border:2px solid #d6e7b86b;
+  border-radius:50%;background:#15282099;box-shadow:0 2px 22px #0004}
+.touch-stick-knob{position:absolute;left:calc(50% - 25px);top:calc(50% - 25px);
+  width:50px;height:50px;border-radius:50%;background:#c5dd8a8c;
+  border:2px solid #e3f0c4;box-shadow:0 3px 15px #0008}
+.touch-actions{position:absolute;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(2,56px);gap:6px;pointer-events:none}
+.touch-actions button{width:56px;height:48px;padding:0;background:#142820e8;
+  border:1px solid #c5dd8a77;color:#f2f6e9;box-shadow:0 1px 9px #0005;
+  font-size:10px;font-weight:800;letter-spacing:.4px;touch-action:none;
+  pointer-events:auto;user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;border-radius:14px}
+.touch-actions button.pressed{background:#c5dd8a;color:#14241f;transform:scale(.96)}
+.touch-actions [data-action="attack"]{background:#56754d;border-color:#d5f3bd}
+.touch-actions [data-action="jump"]{background:#395f68;border-color:#a0e4ef}
+.modal{z-index:12}
+
+@media (any-pointer:coarse){
+  #touch-controls:not([hidden]){display:block}
+  #renderCanvas{touch-action:none}
+  #inventory-toggle{display:block}
+  .hud-top{min-height:55px;padding:9px 12px;gap:8px;align-items:center}
+  .hud-top strong{font-size:14px;line-height:1.2;margin-top:3px}
+  .hud-top small{font-size:8px}
+  .hud-top #world-clock{font-size:9px;letter-spacing:0}
+  #menu-button{padding:9px 11px;font-size:11px;margin-left:auto}
+  .objective{display:none}
+  .exploration-card{right:8px;top:68px;max-width:160px;padding:8px 10px}
+  .exploration-card small{font-size:8px;letter-spacing:0}
+  .exploration-card strong{font-size:11px;margin:5px 0}
+  .exploration-card span{display:none}
+  #target-hint{top:53%;font-size:11px}
+  .hud-bottom{bottom:calc(164px + env(safe-area-inset-bottom));padding:0 10px;
+    background:none;justify-content:center;align-items:center;
+    width:100%;gap:8px;pointer-events:none}
+  .hud-bottom>button{pointer-events:auto;min-height:38px;border-radius:20px;
+    font-size:11px;flex:1;max-width:130px;padding:8px 11px}
+  .vitals{position:fixed;top:68px;left:8px;width:150px;min-width:0;padding:10px;
+    background:var(--panel);border:1px solid #f2ffcf22;border-radius:10px;
+    gap:3px;pointer-events:none}
+  .vitals label{font-size:9px}
+  .vitals progress{height:4px}
+  #experience{height:2px}
+  .inventory{position:absolute;bottom:45px;left:8px;right:8px;
+    width:calc(100vw - 16px);max-width:400px;max-height:min(235px,37vh);
+    overflow-y:auto;grid-template-columns:repeat(4,minmax(0,1fr));
+    z-index:7;pointer-events:auto;box-shadow:0 8px 28px #0009}
+  .mobile-inventory-closed .inventory{display:none}
+  .inventory div{padding:5px}
+  .inventory strong{font-size:14px}
+  .inventory small{font-size:7px;white-space:normal}
+  #toast{top:55px;padding:9px 12px;font-size:11px;max-width:60vw;text-align:center}
+  .panel{width:min(520px,94vw);max-height:calc(95dvh - env(safe-area-inset-bottom));
+    padding:20px}
+  .panel h1{font-size:29px}
+  .panel p{line-height:1.45}
+}
+@media (any-pointer:coarse) and (max-height:480px){
+  .hud-top{padding:5px 9px;min-height:42px}
+  .vitals{top:48px;padding:6px 8px;gap:1px}
+  .exploration-card{top:48px}
+  .touch-stick{width:112px;height:112px}
+  .touch-actions{grid-template-columns:repeat(3,46px);gap:5px}
+  .touch-actions button{width:46px;height:43px;font-size:9px}
+  .hud-bottom{bottom:calc(105px + env(safe-area-inset-bottom))}
+  .hud-bottom>button{min-height:31px}
+  .panel{padding:14px}
+  .panel h1{font-size:24px}
+}

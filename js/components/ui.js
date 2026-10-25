@@ -6,19 +6,25 @@ export class UISystem {
         this.panel = 'menu';
         const root = document.createElement('div');
         root.id = 'hud';
+        root.classList.add('mobile-inventory-closed');
         root.innerHTML = `
             <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><button id="menu-button">Esc · Pause</button></header>
             <aside class="objective"><small>FIELD NOTES / 01</small><h2>Make your first tool</h2><p>Gather wood and stone. Turn wood into planks, then craft a tool.</p><span id="objective-progress"></span></aside>
             <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / UNEXPLORED</small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span></div>
             <div id="crosshair">+</div><div id="target-hint"></div>
             <div id="toast" role="status" aria-live="polite"></div>
-            <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Craft</button><button id="building-button">B · Build</button></footer>
+            <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Craft</button><button id="building-button">B · Build</button><button id="inventory-toggle" type="button" aria-expanded="false" aria-controls="inventory">Pack</button></footer>
             <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="build-options"></div><div id="controls"><p><kbd>W A S D</kbd> Move · Hold Shift to sprint · Click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · Ctrl to descend</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build shelter · <kbd>E</kbd> Drink at water · <kbd>P</kbd> Save</p><p>Right click uses a tool for an area attack</p></div><button id="save-now">Save expedition (P)</button><button id="resume" class="primary">Enter the wilds →</button></section></div>`;
         document.body.append(root);
         this.$ = id => document.getElementById(id);
         this.$('menu-button').onclick = () => this.toggleMenu();
         this.$('craft-button').onclick = () => this.toggleCrafting();
         this.$('building-button').onclick = () => this.toggleBuilding();
+        this.$('inventory-toggle').onclick = () => {
+            const hidden = root.classList.toggle('mobile-inventory-closed');
+            this.$('inventory-toggle').setAttribute('aria-expanded', String(!hidden));
+            this.$('inventory-toggle').textContent = hidden ? 'Pack' : 'Close pack';
+        };
         this.$('save-now').onclick = () => {
             if (game.saveSystem.save()) this.showNotification('Expedition saved on this device');
             else this.showNotification('Local saving unavailable');
@@ -38,7 +44,8 @@ export class UISystem {
         this.panel = null;
         this.game.setPaused(false);
         this.renderPanel();
-        this.game.engine.getRenderingCanvas().requestPointerLock?.()?.catch(() => {});
+        if (!this.game.touchControls?.enabled)
+            this.game.engine.getRenderingCanvas().requestPointerLock?.()?.catch(() => {});
     }
     toggleMenu() { this.panel === 'menu' ? this.closePanel() : this.openPanel('menu'); }
     toggleCrafting() { this.panel === 'craft' ? this.closePanel() : this.openPanel('craft'); }
@@ -50,6 +57,10 @@ export class UISystem {
         this.$('recipes').hidden = !craft;
         this.$('build-options').hidden = !build;
         this.$('controls').hidden = craft || build;
+        if (!craft && !build) this.$('controls').innerHTML =
+            this.game.touchControls?.enabled
+                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>HIT gathers or attacks · JUMP flies on double tap · RUN sprints · DRINK works at lakes.</p><p>Tap Craft, Build, or Pack to manage supplies. Progress saves automatically.</p>'
+                : '<p><kbd>W A S D</kbd> Move · Hold Shift to sprint · Click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · Ctrl to descend</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>E</kbd> Drink · <kbd>P</kbd> Save</p>';
         this.$('save-now').hidden = craft || build;
         this.$('panel-title').innerHTML = build
             ? 'Make this place<br>your own.'

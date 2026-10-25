@@ -1,6 +1,6 @@
 // Service Worker for Survival Game PWA
 
-const CACHE_NAME = 'survival-game-v8-weather-wolves';
+const CACHE_NAME = 'survival-game-v9-mobile-controls';
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS = [
   './js/components/building.js',
   './js/components/survival.js',
   './js/components/weather.js',
+  './js/components/touch.js',
   './js/components/save.js',
   './js/components/player.js',
   './js/components/ui.js',
