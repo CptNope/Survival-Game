@@ -39,7 +39,8 @@ export class PlayerSystem {
         // Key states
         this.keys = {
             jump: false,  // Space
-            descend: false // Ctrl
+            descend: false, // Ctrl
+            sprint: false // Shift
         };
         
         // Get spawn position from terrain system if available
@@ -132,6 +133,8 @@ export class PlayerSystem {
             this.keys.jump = isPressed;
         } else if (keyCode === 17) { // Ctrl key for descend
             this.keys.descend = isPressed;
+        } else if (keyCode === 16) { // Shift to sprint
+            this.keys.sprint = isPressed;
         }
     }
     
@@ -176,7 +179,7 @@ export class PlayerSystem {
             this.oxygenLevel = Math.min(this.maxOxygen, this.oxygenLevel + this.oxygenRefillRate * deltaTime);
             
             // Reset normal movement speed
-            this.camera.speed = 0.36;
+            this.camera.speed = this.keys.sprint ? 0.58 : 0.36;
         }
         
         if (this.isFlying) {
