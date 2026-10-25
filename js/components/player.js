@@ -14,7 +14,7 @@ export class PlayerSystem {
         // Flying properties
         this.isFlying = false;
         this.canDoubleJump = false;
-        this.flyingSpeed = 0.2;
+        this.flyingSpeed = 0.12; // Height units per normalized frame.
         this.jumpCount = 0;
         this.jumpTimer = 0;
         this.jumpTimerThreshold = 300; // ms to detect double jump
@@ -39,7 +39,8 @@ export class PlayerSystem {
         // Key states
         this.keys = {
             jump: false,  // Space
-            descend: false // Ctrl
+            descend: false, // Ctrl
+            sprint: false // Shift
         };
         
         // Get spawn position from terrain system if available
@@ -54,27 +55,22 @@ export class PlayerSystem {
         }
         
         // Create camera at spawn position
-        this.camera = new BABYLON.FreeCamera("playerCamera", new BABYLON.Vector3(0, 5, -10), this.scene);
+        this.camera = new BABYLON.FreeCamera("playerCamera", new BABYLON.Vector3(spawnX,
+            this.game.terrainSystem ? this.game.terrainSystem.getPerlinHeight(spawnX, spawnZ) + 2 : spawnY, spawnZ), this.scene);
         this.camera.rotation.set(0, 0, 0);
         this.camera.attachControl(this.game.engine.getRenderingCanvas(), true);
         
-        // Set initial position after terrain is generated
-        this.scene.executeWhenReady(() => {
-            // Wait a bit for terrain to be fully generated
-            setTimeout(() => {
-                if (this.game.terrainSystem) {
-                    const spawnY = this.game.terrainSystem.getPerlinHeight(spawnX, spawnZ) + 2;
-                    this.camera.position = new BABYLON.Vector3(spawnX, spawnY, spawnZ);
-                    console.log(`Player positioned at (${spawnX}, ${spawnY}, ${spawnZ})`);
-                }
-            }, 500);
-        });
-        
+        // Spawn immediately: terrain generation is synchronous, so the delayed
+        // camera teleport previously fought mouse movement just after startup.
+
         // Movement settings
         this.camera.ellipsoid = new BABYLON.Vector3(1, 1.8, 1);
         this.camera.checkCollisions = true;
         this.camera.applyGravity = false; // We'll handle gravity manually
-        this.camera.speed = 0.5;
+        this.camera.speed = 0.36;
+        this.camera.inertia = 0.12; // Prevent persistent camera/movement drift.
+        this.camera.angularSensibility = 2200;
+        this.camera.minZ = 0.1;
         this.camera.keysUp = [87]; // W
         this.camera.keysDown = [83]; // S
         this.camera.keysLeft = [65]; // A
@@ -137,11 +133,13 @@ export class PlayerSystem {
             this.keys.jump = isPressed;
         } else if (keyCode === 17) { // Ctrl key for descend
             this.keys.descend = isPressed;
+        } else if (keyCode === 16) { // Shift to sprint
+            this.keys.sprint = isPressed;
         }
     }
     
     update() {
-        const deltaTime = this.game.scene.getAnimationRatio();
+        const deltaTime = Math.min(2.5, this.game.scene.getAnimationRatio());
         
         // Check for death first
         if (this.isDead) {
@@ -181,41 +179,29 @@ export class PlayerSystem {
             this.oxygenLevel = Math.min(this.maxOxygen, this.oxygenLevel + this.oxygenRefillRate * deltaTime);
             
             // Reset normal movement speed
-            this.camera.speed = 0.5;
+            this.camera.speed = this.keys.sprint ? 0.58 : 0.36;
         }
         
         if (this.isFlying) {
             // Handle flying controls
             if (this.keys.jump) {
                 // Fly upward when space is held
-                this.camera.position.y += this.flyingSpeed * deltaTime * 10;
+                this.camera.position.y += this.flyingSpeed * deltaTime;
             }
             
             if (this.keys.descend) {
                 // Descend when ctrl is held
-                this.camera.position.y -= this.flyingSpeed * deltaTime * 10;
+                this.camera.position.y -= this.flyingSpeed * deltaTime;
             }
             
-            // Apply slight hover effect when flying
-            this.camera.position.y += Math.sin(Date.now() / 500) * 0.03;
-            
-            // Check if we've landed while flying (by pressing jump again)
-            if (!this.isFlying && this.game.terrainSystem) {
-                const terrainHeight = this.game.terrainSystem.getPerlinHeight(x, z);
-                if (this.camera.position.y <= terrainHeight + 2 && this.jumpVelocity <= 0) {
-                    this.camera.position.y = terrainHeight + 2;
-                    this.isGrounded = true;
-                    this.isJumping = false;
-                }
-            }
         } else if (this.isSwimming) {
             // Swimming physics
             if (this.keys.jump) {
                 // Swim upward when space is held
-                this.camera.position.y += this.swimSpeed * deltaTime * 5;
+                this.camera.position.y += this.swimSpeed * deltaTime;
             } else {
                 // Gentle sink in water
-                this.camera.position.y -= 0.05 * deltaTime;
+                this.camera.position.y -= 0.025 * deltaTime;
             }
             
             // Keep player above water bottom

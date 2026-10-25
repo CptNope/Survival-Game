@@ -142,3 +142,20 @@ Healing consumes nothing at full health. All new items drop on death and can be
 recovered. Resource depletion is session/chunk-local, like the existing trees.
 Open `resources.html` for an orbitable resource field guide. Run `npm test` for
 gathering gates, crafting costs, healing, death drops, and asset cleanup tests.
+
+## Responsive-world improvements
+
+- Lower camera inertia for precise keyboard/mouse movement; hold **Shift** to sprint.
+- Frame-time-clamped jumping, flight, and swimming without excessive vertical drift.
+- Nearby deer visible from the start; wandering, grazing and water avoidance.
+- Richer hills, deterministic resource placements, and resource depletion retained
+  when crossing chunk boundaries during a session.
+- Thin-instanced grass groundcover: many tufts with a single draw call per chunk.
+- Share terrain/grass/water materials across chunks and cast fewer expensive shadows.
+- Load the immediate 3×3 terrain chunks first and spread the outer ring over
+  subsequent frames to avoid a long blocking startup.
+- Drop unneeded Cannon physics and Babylon add-on downloads from the game page.
+- Lower high-DPI rendering resolution on touch devices for smoother frame rates.
+
+The game is still desktop-controlled and the world state is not saved across reloads.
+No network assets or monetized systems were added by this improvement pass.
