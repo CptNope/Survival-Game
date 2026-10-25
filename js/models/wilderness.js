@@ -238,6 +238,11 @@ export function createLootModel(scene, itemType = 'wood') {
         mesh.scaling.setAll(.4); mesh.checkCollisions = false;
         return mesh;
     }
+    if (itemType === 'rawMeat' || itemType === 'cookedMeat') {
+        const random=seededRandom(73);
+        return finish(scene,[ellipsoid(scene,'meat',V(0,.18,0),
+            V(.42,.21,.28),itemType==='rawMeat'?[.55,.19,.21]:[.45,.28,.14],random)], itemType+'-pickup');
+    }
     if (itemType === 'iron') {
         const random = seededRandom(73);
         return finish(scene, [ellipsoid(scene, 'ingot', V(0,.12,0), V(.35,.14,.20), [.60,.67,.70],random)], 'iron-ingot');
