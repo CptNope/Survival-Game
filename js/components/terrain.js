@@ -13,6 +13,8 @@ export class TerrainSystem {
         this.renderDistance = 2;
         this.terrainScale = 0.015; // Reduced scale for smoother, flatter terrain
         this.chunkMap = new Map();
+        this.pendingChunks = [];
+        this.pendingChunkKeys = new Set();
         this.currentChunkX = 0;
         this.currentChunkZ = 0;
 
@@ -60,13 +62,35 @@ export class TerrainSystem {
         // Create a flat spawn area first
         this.createFlatSpawnArea();
 
-        // Generate chunks around the player
+        // Build the nearby 3x3 synchronously so the player has ground immediately.
+        // The outer ring is queued to avoid blocking the first playable frame.
+        this.generateChunk(0, 0);
+        for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) {
+            if (x !== 0 || z !== 0) this.generateChunk(x, z);
+        }
         for (let x = -this.renderDistance; x <= this.renderDistance; x++) {
             for (let z = -this.renderDistance; z <= this.renderDistance; z++) {
-                const chunkX = this.currentChunkX + x;
-                const chunkZ = this.currentChunkZ + z;
-                this.generateChunk(chunkX, chunkZ);
+                if (Math.max(Math.abs(x), Math.abs(z)) > 1) this.queueChunk(x, z);
             }
+        }
+    }
+
+    queueChunk(x, z) {
+        const key = `${x},${z}`;
+        if (this.chunkMap.has(key) || this.pendingChunkKeys.has(key)) return;
+        this.pendingChunkKeys.add(key);
+        this.pendingChunks.push({x, z, key});
+    }
+
+    processChunkQueue() {
+        // One procedurally meshed chunk per frame, not 16 in one frame.
+        while (this.pendingChunks.length) {
+            const next = this.pendingChunks.shift();
+            this.pendingChunkKeys.delete(next.key);
+            if (Math.max(Math.abs(next.x - this.currentChunkX),
+                    Math.abs(next.z - this.currentChunkZ)) > this.renderDistance) continue;
+            this.generateChunk(next.x, next.z);
+            break;
         }
     }
 
@@ -238,7 +262,7 @@ export class TerrainSystem {
             for (let z = -this.renderDistance; z <= this.renderDistance; z++) {
                 const chunkX = this.currentChunkX + x;
                 const chunkZ = this.currentChunkZ + z;
-                this.generateChunk(chunkX, chunkZ);
+                this.queueChunk(chunkX, chunkZ);
             }
         }
     }
