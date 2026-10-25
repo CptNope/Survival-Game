@@ -7,13 +7,35 @@ export class AnimalSystem {
         // Animal properties
         this.animals = [];
         this.animalSpawnTimer = 0;
-        this.animalSpawnInterval = 10000; // 10 seconds
+        this.animalSpawnInterval = 6500; // Keep wildlife in the player's vicinity.
+        this.maxAnimals = 12;
+        // Establish life in the world immediately rather than waiting
+        // ten seconds for the first deer to appear.
+        this.seedNearbyAnimals();
     }
     
+    seedNearbyAnimals() {
+        const player = this.game.playerSystem.camera.position;
+        for (let i = 0; i < 6; i++) {
+            const angle = i * Math.PI * 2 / 6 + .27;
+            for (let attempt = 0; attempt < 4; attempt++) {
+                const radius = 26 + attempt * 5 + (i % 3) * 4;
+                const x = player.x + Math.sin(angle) * radius;
+                const z = player.z + Math.cos(angle) * radius;
+                if (this.game.terrainSystem.isWaterArea(x, z)) continue;
+                this.spawnAnimal(x, this.game.terrainSystem.getPerlinHeight(x, z), z);
+                break;
+            }
+        }
+    }
+
     update() {
         // Make sure terrain system is initialized
         if (!this.game.terrainSystem) return;
         
+        const dt = Math.min(this.game.engine.getDeltaTime() / 1000, 0.05);
+        const playerPosition = this.game.playerSystem.camera.position;
+
         // Update existing animals
         for (let i = this.animals.length - 1; i >= 0; i--) {
             const animal = this.animals[i];
@@ -24,10 +46,9 @@ export class AnimalSystem {
                 continue;
             }
             
-            const dt = Math.min(this.game.engine.getDeltaTime() / 1000, 0.05);
-            const player = this.game.playerSystem;
-            const offset = player.camera.position.subtract(animal.mesh.position);
-            const distance = offset.length();
+            const dx = playerPosition.x - animal.mesh.position.x;
+            const dz = playerPosition.z - animal.mesh.position.z;
+            const distance = Math.hypot(dx, dz);
             if (distance > 100) {
                 animal.mesh.dispose(false, true);
                 this.animals.splice(i, 1);
@@ -39,11 +60,19 @@ export class AnimalSystem {
                 animal.turnTimer = 2 + Math.random() * 3;
             }
             const threatened = distance < 9;
-            const heading = threatened ? Math.atan2(-offset.x, -offset.z) : animal.heading;
-            const speed = threatened ? 4 : 1;
-            animal.mesh.position.x += Math.sin(heading) * speed * dt;
-            animal.mesh.position.z += Math.cos(heading) * speed * dt;
-            animal.mesh.rotation.y = heading;
+            const heading = threatened ? Math.atan2(-dx, -dz) : animal.heading;
+            // Wander, pause to graze, or bolt away from the player.
+            const speed = threatened ? 4.5 : (Math.sin(animal.gait * .35 + i) > .68 ? .12 : .9);
+            const nextX = animal.mesh.position.x + Math.sin(heading) * speed * dt;
+            const nextZ = animal.mesh.position.z + Math.cos(heading) * speed * dt;
+            if (!this.game.terrainSystem.isWaterArea(nextX, nextZ)) {
+                animal.mesh.position.x = nextX;
+                animal.mesh.position.z = nextZ;
+                animal.mesh.rotation.y = heading;
+            } else {
+                animal.heading = heading + Math.PI * .75;
+                animal.turnTimer = 1;
+            }
 
             // Keep animal on terrain
             const terrainHeight = this.game.terrainSystem.getPerlinHeight(animal.mesh.position.x, animal.mesh.position.z);
@@ -64,7 +93,7 @@ export class AnimalSystem {
         
         // Spawn new animals occasionally
         this.animalSpawnTimer += this.game.scene.getEngine().getDeltaTime();
-        if (this.animalSpawnTimer > this.animalSpawnInterval && this.animals.length < 10) {
+        if (this.animalSpawnTimer > this.animalSpawnInterval && this.animals.length < this.maxAnimals) {
             this.animalSpawnTimer = 0;
             
             // Spawn animal at random position near player
@@ -72,9 +101,10 @@ export class AnimalSystem {
             const spawnAngle = Math.random() * Math.PI * 2;
             const spawnX = this.game.playerSystem.camera.position.x + Math.sin(spawnAngle) * spawnDistance;
             const spawnZ = this.game.playerSystem.camera.position.z + Math.cos(spawnAngle) * spawnDistance;
-            const terrainHeight = this.game.terrainSystem.getPerlinHeight(spawnX, spawnZ);
-            
-            this.spawnAnimal(spawnX, terrainHeight, spawnZ);
+            if (!this.game.terrainSystem.isWaterArea(spawnX, spawnZ)) {
+                const terrainHeight = this.game.terrainSystem.getPerlinHeight(spawnX, spawnZ);
+                this.spawnAnimal(spawnX, terrainHeight, spawnZ);
+            }
         }
     }
     
