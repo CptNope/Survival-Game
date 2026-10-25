@@ -24,8 +24,21 @@ export function landmarkForCell(cx, cz) {
     const seed = (Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ 0x739b) | 0;
     const random = seededRandom(seed);
     const type = SITE_TYPES[Math.floor(random() * SITE_TYPES.length)];
-    const x = cx * SITE_SPACING + SITE_SPACING / 2 + (random() - .5) * 32;
-    const z = cz * SITE_SPACING + SITE_SPACING / 2 + (random() - .5) * 32;
+    let x = cx * SITE_SPACING + SITE_SPACING / 2 + (random() - .5) * 32;
+    let z = cz * SITE_SPACING + SITE_SPACING / 2 + (random() - .5) * 32;
+    // Landmark positions must be on dry ground, even in the large lakes.
+    // Deterministic fallback moves within the same cell or abandons an
+    // unusable site rather than placing its roof underwater.
+    let foundDry = false;
+    for (let attempt = 0; attempt < 8; attempt++) {
+        if (Math.sin(x * .005) * Math.cos(z * .005) <= .7) {
+            foundDry = true;
+            break;
+        }
+        x = cx * SITE_SPACING + 14 + random() * 68;
+        z = cz * SITE_SPACING + 14 + random() * 68;
+    }
+    if (!foundDry) return null;
     return {
         id: 'site:' + cx + ':' + cz, type,
         name: {camp: 'Trail Camp', ruin: 'Forgotten Ruins', shelter: 'Hunter Hide', circle: 'Standing Stones'}[type],
