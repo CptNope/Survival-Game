@@ -186,6 +186,28 @@ export function animateDeer(animal, dt, speed) {
 
 // Small wildlife shares the same procedural geometry/material pipeline as deer,
 // but merges into just one mesh and needs no per-leg draw calls.
+export function createWolfModel(scene, seed = 1) {
+    const random=seededRandom(seed), pieces=[];
+    const coat=[.27,.29,.29], lighter=[.44,.43,.38];
+    pieces.push(ellipsoid(scene,'wolf-body',V(0,1.00,0),V(.45,.43,.87),coat,random));
+    pieces.push(ellipsoid(scene,'wolf-chest',V(0,1.13,.57),V(.47,.48,.43),lighter,random));
+    pieces.push(ellipsoid(scene,'wolf-head',V(0,1.45,.9),V(.38,.34,.42),coat,random));
+    pieces.push(ellipsoid(scene,'wolf-muzzle',V(0,1.30,1.27),V(.22,.17,.37),lighter,random));
+    pieces.push(ellipsoid(scene,'wolf-nose',V(0,1.36,1.63),V(.17,.11,.11),palette.dark,random));
+    pieces.push(branch(scene,V(0,1.1,-.7),V(0,1.5,-1.3),.22,coat,random,.04));
+    for(const side of [-1,1]) {
+        pieces.push(ellipsoid(scene,'wolf-ear',V(side*.29,1.81,.8),V(.16,.30,.14),coat,random));
+        pieces.push(ellipsoid(scene,'wolf-eye',V(side*.29,1.56,1.12),V(.065,.07,.065),[.76,.67,.35],random));
+        for(const z of [-.60,.57]) {
+            pieces.push(branch(scene,V(side*.32, .98,z),V(side*.32,.12,z+.08),.20,coat,random,.13));
+            pieces.push(ellipsoid(scene,'wolf-paw',V(side*.32,.13,z+.15),V(.14,.13,.23),palette.dark,random));
+        }
+    }
+    const mesh=finish(scene,pieces,'wolf');
+    mesh.metadata={model:'wolf'};
+    return {mesh,legs:[]};
+}
+
 export function createRabbitModel(scene, seed = 1) {
     const random = seededRandom(seed);
     const pieces = [
