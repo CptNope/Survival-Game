@@ -129,6 +129,7 @@ export class SurvivalGame {
         const camera = this.playerSystem.camera;
         this.playerSystem.keys.jump = false;
         this.playerSystem.keys.descend = false;
+        this.playerSystem.keys.sprint = false;
         camera.cameraDirection.setAll(0);
         camera.cameraRotation.setAll(0);
         if (value) {
