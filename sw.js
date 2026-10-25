@@ -1,6 +1,6 @@
 // Service Worker for Survival Game PWA
 
-const CACHE_NAME = 'survival-game-v6-discoverable-wilds';
+const CACHE_NAME = 'survival-game-v7-camp-save';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,9 @@ const ASSETS = [
   './js/models/wilderness.js',
   './js/components/terrain.js',
   './js/components/exploration.js',
+  './js/components/building.js',
+  './js/components/survival.js',
+  './js/components/save.js',
   './js/components/player.js',
   './js/components/ui.js',
   './js/components/inventory.js',
