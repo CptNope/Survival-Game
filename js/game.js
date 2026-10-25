@@ -10,6 +10,7 @@ import { SurvivalSystem } from './components/survival.js';
 import { BuildingSystem } from './components/building.js';
 import { SaveSystem } from './components/save.js';
 import { WeatherSystem } from './components/weather.js';
+import { TouchControls } from './components/touch.js';
 
 export class SurvivalGame {
     constructor() {
@@ -29,6 +30,7 @@ export class SurvivalGame {
         this.buildSystem = null;
         this.saveSystem = null;
         this.weatherSystem = null;
+        this.touchControls = null;
         this.explorationSystem = null;
         
         // Day/night cycle properties
@@ -103,6 +105,7 @@ export class SurvivalGame {
             
             // Add keyboard controls
             this.setupControls();
+            this.touchControls = new TouchControls(this);
             
             // Game loop
             this.setupGameLoop();
@@ -156,6 +159,7 @@ export class SurvivalGame {
         this.playerSystem.keys.sprint = false;
         camera.cameraDirection.setAll(0);
         camera.cameraRotation.setAll(0);
+        this.touchControls?.setPaused(value);
         if (value) {
             camera.detachControl();
             document.exitPointerLock?.();
@@ -164,8 +168,8 @@ export class SurvivalGame {
 
     setupControls() {
         const canvas = this.engine.getRenderingCanvas();
-        canvas.addEventListener('click', () => {
-            if (this.paused) return;
+        canvas.addEventListener('click', event => {
+            if (this.paused || (this.touchControls?.enabled && event.pointerType !== 'mouse')) return;
             if (!document.pointerLockElement) {
                 canvas.requestPointerLock?.()?.catch(() => {});
                 return;
@@ -202,6 +206,7 @@ export class SurvivalGame {
             if (this.paused) return;
             // Update player physics
             this.playerSystem.update();
+            this.touchControls?.update();
             
             // Check if we need to update terrain chunks
             this.terrainSystem.checkChunkUpdates();
