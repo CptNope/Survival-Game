@@ -9,6 +9,7 @@ import { InventorySystem } from './components/inventory.js';
 import { SurvivalSystem } from './components/survival.js';
 import { BuildingSystem } from './components/building.js';
 import { SaveSystem } from './components/save.js';
+import { WeatherSystem } from './components/weather.js';
 
 export class SurvivalGame {
     constructor() {
@@ -27,6 +28,7 @@ export class SurvivalGame {
         this.survivalSystem = null;
         this.buildSystem = null;
         this.saveSystem = null;
+        this.weatherSystem = null;
         this.explorationSystem = null;
         
         // Day/night cycle properties
@@ -86,6 +88,7 @@ export class SurvivalGame {
             
             // Resource needs and craftable structures depend on player and terrain.
             this.buildSystem = new BuildingSystem(this);
+            this.weatherSystem = new WeatherSystem(this);
             this.survivalSystem = new SurvivalSystem(this);
             this.saveSystem = new SaveSystem(this);
 
@@ -221,7 +224,10 @@ export class SurvivalGame {
                 this._buildingStreamAccumulator = 0;
             }
             // Update day/night cycle
-            if (!this.paused) this.updateDayNightCycle();
+            if (!this.paused) {
+                this.updateDayNightCycle();
+                this.weatherSystem.update();
+            }
             
             // Update animal spawning and movement
             if (!this.paused) this.animalSystem.update();

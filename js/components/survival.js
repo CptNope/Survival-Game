@@ -54,7 +54,12 @@ export class SurvivalSystem {
         this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09));
         const safe = this.game.buildSystem?.isProtected(player.camera.position) || false;
         const night = this.isNight();
-        this.cold = SurvivalSystem.clamp(this.cold + dt * (night && !safe ? .65 : -1.4), 0);
+        const storm=this.game.weatherSystem?.type === 'storm';
+        const rain=this.game.weatherSystem?.type === 'rain';
+        const exposed=!safe;
+        const coldRate = exposed && (night || storm || rain)
+            ? .65 + (storm ? .85 : rain ? .3 : 0) : -1.4;
+        this.cold = SurvivalSystem.clamp(this.cold + dt * coldRate, 0);
         const damage = (this.hunger <= 0 ? .65 : 0) +
             (this.thirst <= 0 ? 1.2 : 0) + (this.cold >= 90 ? .7 : 0);
         if (damage) player.takeDamage(damage * dt);

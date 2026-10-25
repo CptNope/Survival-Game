@@ -2,7 +2,10 @@
 // around the player, while compact structure records are persisted by SaveSystem.
 export const BUILDINGS = Object.freeze({
     shelter: {name: 'Lean-to shelter', cost: {wood: 6, planks: 2, fiber: 3}},
-    fire: {name: 'Campfire', cost: {wood: 3, stone: 3}}
+    fire: {name: 'Campfire', cost: {wood: 3, stone: 3}},
+    floor: {name: 'Wooden floor', cost: {planks: 2}},
+    wall: {name: 'Log wall', cost: {wood: 4}},
+    roof: {name: 'Wooden roof', cost: {planks: 3, fiber: 2}}
 });
 
 function createModel(scene, type, item, material) {
@@ -31,6 +34,15 @@ function createModel(scene, type, item, material) {
         }
         beam('sloping-roof', 0,2.85,-.05,4.5,.23,4,'roof',-.16);
         beam('sleep-mat', 0,.34,-.5,1.8,.1,1.35,'roof');
+    } else if (type === 'floor') {
+        beam('modular-floor',0,.13,0,4,.26,4,'wood');
+        for(let x of [-1.8,1.8]) beam('foundation-edge',x,.1,0,.25,.36,4,'roof');
+    } else if (type === 'wall') {
+        for(let i=0;i<5;i++) beam('log-wall',0,.4+i*.55,0,4,.48,.42,'wood');
+        for(let x of [-1.8,1.8]) beam('wall-support',x,1.4,0,.2,2.8,.6,'roof');
+    } else if (type === 'roof') {
+        beam('roof-slab',0,3.15,0,4.5,.25,4.5,'roof');
+        for(let x of [-1.8,1.8]) beam('roof-rafter',x,2.97,0,.26,.24,4,'wood');
     } else {
         for (let i=0;i<8;i++) {
             const a=i*Math.PI/4;
@@ -53,7 +65,7 @@ function createModel(scene, type, item, material) {
     mesh.position.set(item.x,item.y,item.z);
     mesh.rotation.y=item.rotation;
     mesh.material=material;
-    mesh.checkCollisions=type==='shelter';
+    mesh.checkCollisions=type==='shelter' || type==='wall';
     mesh.isPickable=false; // Do not block harvesting or targeting behind a structure.
     mesh.receiveShadows=false;
     return mesh;
@@ -65,7 +77,7 @@ export class BuildingSystem {
         this.structures=[];
         this.meshes=new Map();
         this.nextId=1;
-        this.maxStructures=64;
+        this.maxStructures=120;
         this.lastStreamAt=0;
         this.material=new BABYLON.StandardMaterial('built-structure',game.scene);
         this.material.diffuseColor=BABYLON.Color3.White();
@@ -79,13 +91,15 @@ export class BuildingSystem {
             .every(([item,needed])=>(inventory[item] || 0)>=needed));
     }
 
-    candidate() {
+    candidate(type = 'shelter') {
         const player=this.game.playerSystem;
         if (player.isDead || player.isFlying) return null;
         const pos=player.camera.position;
         const heading=player.camera.rotation.y;
-        const x=Math.round((pos.x+Math.sin(heading)*6)/2)*2;
-        const z=Math.round((pos.z+Math.cos(heading)*6)/2)*2;
+        const modular=['floor','wall','roof'].includes(type);
+        const step=modular?4:2;
+        const x=Math.round((pos.x+Math.sin(heading)*6)/step)*step;
+        const z=Math.round((pos.z+Math.cos(heading)*6)/step)*step;
         const terrain=this.game.terrainSystem;
         if (terrain.isWaterArea(x,z)) return null;
         const y=terrain.getPerlinHeight(x,z);
@@ -93,7 +107,13 @@ export class BuildingSystem {
         const heights=[[3,0],[-3,0],[0,3],[0,-3]]
             .map(([dx,dz])=>terrain.getPerlinHeight(x+dx,z+dz));
         if (heights.some(h=>Math.abs(h-y)>1.6)) return null;
-        if (this.structures.some(s=>Math.hypot(s.x-x,s.z-z)<8)) return null;
+        // Modular pieces can share a 4m grid cell with complementary
+        // pieces, but never overlap the same type at that location.
+        if (this.structures.some(s => {
+            const distance=Math.hypot(s.x-x,s.z-z);
+            if(!modular || !['floor','wall','roof'].includes(s.type)) return distance<7;
+            return distance<1 && s.type===type;
+        })) return null;
         if (this.game.inventorySystem.harvestableObjects.some(o =>
             o.mesh && Math.hypot(o.mesh.position.x-x,o.mesh.position.z-z)<3)) return null;
         if (this.game.explorationSystem?.isClearing(x,z) && !terrain.isWithinSpawnArea(x,z)) return null;
@@ -106,7 +126,7 @@ export class BuildingSystem {
             this.game.uiSystem?.showNotification('Not enough resources to build ' + BUILDINGS[type].name);
             return false;
         }
-        const at=this.candidate();
+        const at=this.candidate(type);
         if (!at) {
             this.game.uiSystem?.showNotification('Need clear, dry, fairly level ground ahead');
             return false;
@@ -117,7 +137,7 @@ export class BuildingSystem {
         this.structures.push(record);
         this.createVisible(record);
         this.game.uiSystem?.updateInventoryUI();
-        this.game.uiSystem?.showNotification(BUILDINGS[type].name + ' built · Shelter helps against cold nights');
+        this.game.uiSystem?.showNotification(BUILDINGS[type].name + ' built');
         this.game.saveSystem?.save();
         return true;
     }
@@ -129,8 +149,15 @@ export class BuildingSystem {
     }
 
     isProtected(position) {
-        return this.structures.some(item => Math.hypot(position.x-item.x,position.z-item.z)
-            <=(item.type==='shelter'?8:5));
+        return this.structures.some(item => {
+            const radius=item.type==='shelter'?8:item.type==='fire'?5:item.type==='roof'?3:0;
+            return radius>0 && Math.hypot(position.x-item.x,position.z-item.z)<=radius;
+        });
+    }
+
+    nearFire(position) {
+        return this.structures.some(item => item.type==='fire' &&
+            Math.hypot(position.x-item.x,position.z-item.z)<=6);
     }
 
     update() {

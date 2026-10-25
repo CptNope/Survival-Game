@@ -69,6 +69,7 @@ export class InventorySystem {
         return !!recipe && !player.isDead
             && (!(recipe.heal || recipe.hunger) || player.health < player.maxHealth ||
                 (recipe.hunger && this.game.survivalSystem?.hunger < 100))
+            && (!recipe.requiresFire || this.game.buildSystem?.nearFire(this.game.playerSystem.camera.position))
             && Object.entries(recipe.cost).every(([item, count]) => this.inventory[item] >= count);
     }
     craft(type) {

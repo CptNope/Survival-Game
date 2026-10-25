@@ -2,7 +2,7 @@
 export const ITEMS = {
     wood: 'Wood', stone: 'Stone', planks: 'Planks', tools: 'Stone tools',
     ironOre: 'Iron ore', iron: 'Iron ingots', fiber: 'Fiber', herbs: 'Herbs',
-    berries: 'Berries', ironTools: 'Iron tools'
+    berries: 'Berries', ironTools: 'Iron tools', rawMeat: 'Raw meat', cookedMeat: 'Cooked meat'
 };
 export const RESOURCES = {
     tree: { label: 'wood', yields: { wood: 2 } },
@@ -18,6 +18,8 @@ export const RECIPES = {
     bandage: { name: 'Field dressing', cost: { wood: 3 }, heal: 30 },
     herbalWrap: { name: 'Herbal wrap', cost: { fiber: 2, herbs: 2 }, heal: 50 },
     snack: { name: 'Eat berries', cost: { berries: 2 }, heal: 15, hunger: 28 },
+    cookMeat: { name: 'Roast meat at campfire', cost: { rawMeat: 1 }, output: 'cookedMeat', amount: 1, requiresFire: true },
+    eatMeat: { name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50 },
     iron: { name: 'Smelt iron', cost: { ironOre: 2, wood: 2 }, output: 'iron', amount: 1 },
     ironTools: { name: 'Iron tool', cost: { iron: 2, planks: 1, fiber: 2 }, output: 'ironTools', amount: 1 }
 };

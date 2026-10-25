@@ -7,7 +7,7 @@ export class UISystem {
         const root = document.createElement('div');
         root.id = 'hud';
         root.innerHTML = `
-            <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="save-status" role="status">Autosave · Every 30s</div><button id="menu-button">Esc · Pause</button></header>
+            <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><button id="menu-button">Esc · Pause</button></header>
             <aside class="objective"><small>FIELD NOTES / 01</small><h2>Make your first tool</h2><p>Gather wood and stone. Turn wood into planks, then craft a tool.</p><span id="objective-progress"></span></aside>
             <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / UNEXPLORED</small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span></div>
             <div id="crosshair">+</div><div id="target-hint"></div>
@@ -113,6 +113,9 @@ export class UISystem {
         }
         progress.textContent = discoveredCount + ' locations discovered · Get within 8m to salvage supplies';
     }
+    updateWeatherUI(label) {
+        this.$('weather-status').textContent = label;
+    }
     updateSurvivalUI() {
         const survival = this.game.survivalSystem;
         if (!survival) return;
@@ -135,6 +138,8 @@ export class UISystem {
         this.updateHealthUI(p.health, p.maxHealth);
         this.updateOxygenUI(p.oxygenLevel, p.maxOxygen);
         this.updateSurvivalUI();
+        if (this.game.weatherSystem) this.updateWeatherUI(
+            {clear:'Clear skies',rain:'Rain',storm:'Storm'}[this.game.weatherSystem.type] || 'Clear skies');
         const phase = this.game.dayTime / this.game.dayLength;
         this.$('world-clock').textContent = `DAY ${this.game.dayCount} / ${phase < .5 ? 'DAYLIGHT' : 'NIGHTFALL'}`;
         if (this.game.paused) return;
