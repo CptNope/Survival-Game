@@ -286,3 +286,25 @@ dead-player input gating; use `npm test`.
 **Note:** GitHub Actions validates gameplay/unit tests, but physical Android
 and iOS browser playtests remain valuable for multitouch behavior, frame
 rate, PWA installation and orientation changes.
+
+## Installability and offline reliability
+
+The old 1-byte icon placeholders have been replaced with valid 192px and
+512px PNG app icons, referenced by `manifest.json`. A new deterministic
+128px locally generated grass texture replaces the Babylon asset-CDN
+download, so terrain rendering no longer needs a second host.
+
+The service worker now pre-caches the complete set of local game scripts
+and the real icons, activates new versions promptly, and attempts to cache
+the Babylon engine separately. An unreachable engine CDN does not prevent
+the local app-shell update. The engine must still be successfully loaded
+online at least once to become available offline; an offline-first install
+without previously caching the engine is not supported.
+
+Install-time and offline-asset regression tests verify icon PNG signatures
+and dimensions, game module precaching, and the absence of remote terrain
+texture dependencies. Run the full suite with `npm test`.
+
+On phones, after a new deploy, refresh/relaunch once while online before
+going offline. Existing installed copies should update their cached shell
+when their service worker activates.
