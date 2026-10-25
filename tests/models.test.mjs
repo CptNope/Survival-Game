@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import BABYLON from 'babylonjs';
-import {createTreeModel,createRockModel,createDeerModel,createLootModel,createOreModel,createPlantModel,animateDeer} from '../js/models/wilderness.js';
+import {createTreeModel,createRockModel,createDeerModel,createRabbitModel,createLootModel,createOreModel,createPlantModel,animateDeer} from '../js/models/wilderness.js';
 import {CombatSystem} from '../js/components/combat.js';
 globalThis.BABYLON = BABYLON;
 function fixture() { const engine=new BABYLON.NullEngine();return {engine,scene:new BABYLON.Scene(engine)}; }
 test('all asset variants have finite geometry and fully release resources',()=>{
  const {engine,scene}=fixture();
  try {
-  const factories=[s=>createTreeModel(scene,s,'pine'),s=>createTreeModel(scene,s,'oak'),s=>createRockModel(scene,s),s=>createDeerModel(scene,s).mesh,s=>createOreModel(scene,s),...['fiber','herb','berry'].map(type=>s=>createPlantModel(scene,s,type)),...['wood','stone','planks','tools','ironOre','iron','fiber','herbs','berries','ironTools'].map(type=>()=>createLootModel(scene,type))];
+  const factories=[s=>createTreeModel(scene,s,'pine'),s=>createTreeModel(scene,s,'oak'),s=>createRockModel(scene,s),s=>createDeerModel(scene,s).mesh,s=>createRabbitModel(scene,s).mesh,s=>createOreModel(scene,s),...['fiber','herb','berry'].map(type=>s=>createPlantModel(scene,s,type)),...['wood','stone','planks','tools','ironOre','iron','fiber','herbs','berries','ironTools'].map(type=>()=>createLootModel(scene,type))];
   for(const factory of factories) for(let seed=1;seed<=10;seed++) {
    const root=factory(seed);
    for(const mesh of [root,...root.getChildMeshes()]) {
@@ -54,5 +54,18 @@ test('pine canopy faces outward toward an approaching ray',()=>{
  const ray=new BABYLON.Ray(new BABYLON.Vector3(0,2.8,-10),new BABYLON.Vector3(0,0,1),20);
  const hit=scene.pickWithRay(ray);
  assert.ok(hit.hit);assert.ok(BABYLON.Vector3.Dot(hit.getNormal(true),ray.direction)<0);
+ } finally {engine.dispose();}
+});
+
+test('rabbits render as a single merged low-poly mesh', () => {
+ const {engine,scene}=fixture();try {
+  const rabbit=createRabbitModel(scene,31415);
+  rabbit.mesh.computeWorldMatrix(true);
+  assert.equal(rabbit.mesh.getChildMeshes().length,0);
+  assert.ok(rabbit.mesh.getTotalVertices()>0);
+  assert.equal(scene.meshes.length,1);
+  rabbit.mesh.dispose(false,true);
+  assert.equal(scene.meshes.length,0);
+  assert.equal(scene.materials.length,0);
  } finally {engine.dispose();}
 });
