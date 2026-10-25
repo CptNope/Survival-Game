@@ -40,32 +40,18 @@ export class SurvivalGame {
             
             // Generate the BABYLON 3D engine
             this.engine = new BABYLON.Engine(canvas, true);
+            // Scale GPU workload by screen density, particularly on high-DPI phones.
+            const touch = window.matchMedia('(pointer: coarse)').matches;
+            this.engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / (touch ? 1.5 : 2)));
             
             // Create the scene
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-            this.scene.fogDensity = 0.012;
+            this.scene.fogDensity = 0.007;
             this.scene.clearColor = new BABYLON.Color3(0.5, 0.8, 1.0); // Sky blue background
             
-            // Enable physics engine with error handling
-            try {
-                const gravityVector = new BABYLON.Vector3(0, -9.81, 0);
-                // Check if CannonJSPlugin is available
-                if (typeof BABYLON.CannonJSPlugin === 'function') {
-                    const physicsPlugin = new BABYLON.CannonJSPlugin();
-                    this.scene.enablePhysics(gravityVector, physicsPlugin);
-                    console.log('Physics engine initialized successfully');
-                } else {
-                    console.warn('CannonJSPlugin not available, physics disabled');
-                    // Set a flag to indicate physics is disabled
-                    this.physicsEnabled = false;
-                }
-            } catch (error) {
-                console.warn('Failed to initialize physics engine:', error);
-                // Set a flag to indicate physics is disabled
-                this.physicsEnabled = false;
-            }
-            
+            // Movement and terrain collision use FreeCamera/manual physics; no Cannon world needed.
+
             // Create lighting
             this.setupLighting();
             
@@ -116,7 +102,7 @@ export class SurvivalGame {
         this.sunLight.shadowMinZ = 1;
         this.sunLight.shadowMaxZ = 180;
         this.sunLight.shadowFrustumSize = 85;
-        this.shadowGenerator = new BABYLON.ShadowGenerator(1024, this.sunLight);
+        this.shadowGenerator = new BABYLON.ShadowGenerator(512, this.sunLight);
         this.shadowGenerator.usePercentageCloserFiltering = true;
         this.shadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_LOW;
         this.shadowGenerator.bias = 0.001;
