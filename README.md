@@ -184,3 +184,48 @@ Deer now share the woods with smaller rabbits. Rabbits hop and flee faster,
 take fewer hits to hunt, and provide a little crafting fiber plus experience.
 Both wildlife types are spawned near the player and outside water. Animal
 counts remain capped and distant creatures are released to protect frame rate.
+
+## Camp building, survival needs & saved expeditions
+
+A new survival loop adds three environmental meters:
+
+- **Hunger** falls slowly as you explore. Use the existing *Eat berries*
+  recipe in the crafting menu to restore hunger, even when health is full.
+- **Thirst** falls faster during sprinting. At the edge of lakes, press
+  **E** to drink and replenish it. Look for the shoreline prompt.
+- **Cold** builds at night when exposed outdoors. A nearby lean-to or
+  campfire protects the player and allows the cold meter to recover.
+  Starvation, dehydration, and severe exposure eventually damage health.
+
+**B** opens the build menu. Face clear, dry, relatively flat terrain in
+front of the character and choose a structure. Construction instantly
+uses the required inventory items, and rejected placement consumes nothing.
+
+| Structure | Materials | Benefit |
+| --- | --- | --- |
+| Lean-to shelter | 6 wood, 2 planks, 3 fiber | Nighttime protection within 8 units |
+| Campfire | 3 wood, 3 stone | Warmth within 5 units |
+
+The player can have up to 64 built structures per save. Each uses locally
+generated, low-poly geometry merged into one mesh; distant structures are
+unloaded and reconstructed when the player returns.
+
+**Local saves:** Progress automatically saves about every 30 seconds of
+active play, and on page exit, gathering, crafting, building, and
+discovering a landmark. Press **P** or use **Save expedition** in the
+pause menu for a manual save. A versioned save restores player location
+and facing, health, XP, crafting materials, hunger, thirst, cold,
+discovered locations, depleted resource nodes, placed structures,
+remaining dropped loot, and the day/night clock. Dying respawns at the
+original clearing, resets needs, and saves the updated state. Saved
+structures remain on the map.
+
+Local storage stays **on this browser and this device**—there is no account
+or cloud sync. Clearing site data erases the expedition; an ordinary page
+reload keeps it. Offline play still requires caching external Babylon
+assets on an earlier online visit.
+
+**Developer checks:** Run `npm ci --ignore-scripts && npm test` before
+merging. The added `tests/survival.test.mjs` exercises starvation,
+warming, drinking, ingredient costs, construction boundaries and
+persistent save/restore.
