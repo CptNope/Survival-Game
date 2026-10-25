@@ -332,11 +332,13 @@ export class PlayerSystem {
         this.isSwimming = false;
         this.oxygenLevel = this.maxOxygen;
         
+        this.game.survivalSystem && Object.assign(this.game.survivalSystem, {hunger: 75, thirst: 75, cold: 0});
         console.log('Player respawned');
         
         // Update UI
         if (this.game.uiSystem) {
             this.game.uiSystem.updateHealthUI(this.health, this.maxHealth);
         }
+        this.game.saveSystem?.save();
     }
 }

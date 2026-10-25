@@ -86,3 +86,17 @@ test('death drops every resource type and clears all inventory slots',()=>{
  assert.equal(dropped.length,10);assert.ok(dropped.every(drop=>drop.count===3));
  assert.ok(Object.values(i.inventory).every(count=>count===0));
 });
+
+test('eating berries restores hunger even at full health without bypassing costs',()=>{
+ const g=fixture(),i=g.inventorySystem;
+ g.playerSystem.health=100;
+ g.survivalSystem={hunger:55,eatBerries(n){this.hunger=Math.min(100,this.hunger+n)}};
+ i.inventory.berries=2;
+ assert.equal(i.canCraft('snack'),true);
+ assert.equal(i.craft('snack'),true);
+ assert.equal(g.survivalSystem.hunger,83);
+ assert.equal(i.inventory.berries,0);
+ i.inventory.berries=2;g.survivalSystem.hunger=100;
+ assert.equal(i.canCraft('snack'),false);
+ assert.equal(i.inventory.berries,2);
+});

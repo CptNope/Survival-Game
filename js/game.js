@@ -6,6 +6,9 @@ import { AnimalSystem } from './components/animals.js';
 import { CombatSystem } from './components/combat.js';
 import { PlayerSystem } from './components/player.js';
 import { InventorySystem } from './components/inventory.js';
+import { SurvivalSystem } from './components/survival.js';
+import { BuildingSystem } from './components/building.js';
+import { SaveSystem } from './components/save.js';
 
 export class SurvivalGame {
     constructor() {
@@ -21,6 +24,9 @@ export class SurvivalGame {
         this.combatSystem = null;
         this.playerSystem = null;
         this.inventorySystem = null;
+        this.survivalSystem = null;
+        this.buildSystem = null;
+        this.saveSystem = null;
         this.explorationSystem = null;
         
         // Day/night cycle properties
@@ -78,8 +84,14 @@ export class SurvivalGame {
             // Create animal system which depends on combat
             this.animalSystem = new AnimalSystem(this);
             
-            // Create UI system last as it depends on all other systems
+            // Resource needs and craftable structures depend on player and terrain.
+            this.buildSystem = new BuildingSystem(this);
+            this.survivalSystem = new SurvivalSystem(this);
+            this.saveSystem = new SaveSystem(this);
+
+            // UI is created before restoring state so it can refresh all meters.
             this.uiSystem = new UISystem(this);
+            this.saveSystem.load();
             
             // Update UI once all systems are initialized
             if (this.uiSystem) {
@@ -96,6 +108,8 @@ export class SurvivalGame {
             window.addEventListener("resize", () => {
                 this.engine.resize();
             });
+            // Local persistence never depends on network availability.
+            window.addEventListener("pagehide", () => this.saveSystem.save());
         } catch (e) {
             console.error("Error initializing game:", e);
             throw e;
@@ -164,9 +178,12 @@ export class SurvivalGame {
             if (event.repeat) return;
             if (event.code === 'Escape') this.uiSystem.toggleMenu();
             if (event.code === 'KeyC') this.uiSystem.toggleCrafting();
+            if (event.code === 'KeyB') this.uiSystem.toggleBuilding();
+            if (event.code === 'KeyP') this.saveSystem.save();
             if (this.paused) return;
             this.playerSystem.updateKeyState(event.keyCode, true);
             if (event.code === 'Space') { event.preventDefault(); this.playerSystem.jump(); }
+            if (event.code === 'KeyE') this.survivalSystem.drink();
         });
         window.addEventListener('keyup', event => this.playerSystem.updateKeyState(event.keyCode, false));
         window.addEventListener('blur', () => this.uiSystem.openPanel('menu'));
@@ -189,11 +206,20 @@ export class SurvivalGame {
             // Check for nearby loot and landmark discoveries.
             this.inventorySystem.update();
             this.explorationSystem.update();
+            const dt = Math.min(this.engine.getDeltaTime() / 1000, .05);
+            this.survivalSystem.update(dt);
+            this.saveSystem.update(dt);
         });
 
         // Start render loop
+        this._buildingStreamAccumulator = 0;
         this.engine.runRenderLoop(() => {
             this.terrainSystem.processChunkQueue();
+            this._buildingStreamAccumulator += Math.min(.05,this.engine.getDeltaTime()/1000);
+            if (this._buildingStreamAccumulator > .65) {
+                this.buildSystem.update();
+                this._buildingStreamAccumulator = 0;
+            }
             // Update day/night cycle
             if (!this.paused) this.updateDayNightCycle();
             
