@@ -229,3 +229,28 @@ assets on an earlier online visit.
 merging. The added `tests/survival.test.mjs` exercises starvation,
 warming, drinking, ingredient costs, construction boundaries and
 persistent save/restore.
+
+## Weather, modular construction, cooking and threats
+
+- **Clear, rainy and stormy conditions** cycle with the in-game clock.
+  A CSS-only rain overlay keeps draw-call and download overhead low, and
+  reduced-motion users get a static weather indicator. Rain and especially
+  storms increase cold exposure while outside; fire, lean-tos and roofs warm
+  players back up.
+- **Modular building** expands the B panel with 4-unit grid **floors**
+  (2 planks), **walls** (4 wood) and **roofs** (3 planks, 2 fiber).
+  Matching pieces can occupy the same grid location (no duplicate of the same
+  kind), allowing connected multi-part construction. A roof protects against
+  exposure within 3 world units. Larger structures remain saved locally.
+- **Nighttime wolves** spawn in small, capped numbers. They approach and
+  damage nearby players at controlled intervals. Wolves take more hits and
+  reward extra experience. Deer, rabbits and wolves all yield raw meat when
+  hunted; animals are cleaned up outside the streaming radius.
+- **Campfire cooking**: hunt for raw meat, build a fire, stand within
+  6 units of it, then use **Roast meat at campfire** (1 raw meat yields
+  1 cooked meat). Eating cooked meat restores 50 hunger and up to 10 health.
+  Cooking cannot be performed away from a placed campfire. Meat is carried
+  in the ordinary inventory and saved with the expedition.
+
+The weather cycle uses existing saved day/time so it restores
+deterministically without new save migration.
