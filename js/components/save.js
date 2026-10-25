@@ -110,6 +110,7 @@ export class SaveSystem {
             inventory[key]=Math.floor(finite(saved.inventory?.[key],0,0,9999));
         g.dayCount=Math.floor(finite(saved.dayCount,1,1,999999));
         g.dayTime=finite(saved.dayTime,60,0,g.dayLength-0.001);
+        g.weatherSystem?.refresh?.();
         g.survivalSystem.hunger=finite(saved.hunger,100);
         g.survivalSystem.thirst=finite(saved.thirst,100);
         g.survivalSystem.cold=finite(saved.cold,0);
