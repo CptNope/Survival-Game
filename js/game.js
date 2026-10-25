@@ -184,6 +184,7 @@ export class SurvivalGame {
 
         // Start render loop
         this.engine.runRenderLoop(() => {
+            this.terrainSystem.processChunkQueue();
             // Update day/night cycle
             if (!this.paused) this.updateDayNightCycle();
             
