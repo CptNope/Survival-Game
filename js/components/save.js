@@ -138,7 +138,7 @@ export class SaveSystem {
             const at=readPosition(item?.position);
             if(!at || !Object.hasOwn(ITEMS,item.itemType)) continue;
             const count=Math.floor(finite(item.count,0,0,9999));
-            if(count>0) g.inventorySystem.createLootBag(at,item.itemType,count);
+            if(count>0) g.inventorySystem.createLootBag(at,item.itemType,count,false);
         }
 
         g.terrainSystem.checkChunkUpdates();
