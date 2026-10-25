@@ -183,6 +183,33 @@ export function animateDeer(animal, dt, speed) {
         leg.rotation.x = Math.sin(animal.gait + (i === 0 || i === 3 ? 0 : Math.PI)) * (speed > 2 ? .65 : .28);
     });
 }
+
+// Small wildlife shares the same procedural geometry/material pipeline as deer,
+// but merges into just one mesh and needs no per-leg draw calls.
+export function createRabbitModel(scene, seed = 1) {
+    const random = seededRandom(seed);
+    const pieces = [
+        ellipsoid(scene, 'rabbit-body', V(0, .38, 0), V(.28, .30, .48), [.47,.43,.36], random),
+        ellipsoid(scene, 'rabbit-head', V(0, .65, .37), V(.22, .23, .22), [.52,.47,.39], random),
+        ellipsoid(scene, 'rabbit-muzzle', V(0, .54, .56), V(.15, .12, .11), [.76,.72,.63], random),
+        ellipsoid(scene, 'rabbit-tail', V(0, .44, -.47), V(.16, .17, .14), [.78,.74,.65], random),
+        ellipsoid(scene, 'rabbit-nose', V(0, .60, .66), V(.08, .06, .06), palette.dark, random)
+    ];
+    for (const side of [-1, 1]) {
+        const ear = ellipsoid(scene, 'rabbit-ear', V(side*.13, 1, .32), V(.10, .32, .075), [.52,.47,.39], random);
+        ear.rotation.z = -side * .12; pieces.push(ear);
+        pieces.push(ellipsoid(scene, 'rabbit-eye', V(side*.18, .72, .52), V(.042,.045,.046), palette.dark, random));
+        pieces.push(ellipsoid(scene, 'rabbit-paw', V(side*.20, .10, -.17), V(.14,.11,.19), [.39,.35,.29], random));
+    }
+    const body = finish(scene, pieces, 'rabbit');
+    return {mesh: body, legs: []};
+}
+
+export function animateRabbit(animal, dt, speed) {
+    animal.gait = (animal.gait || 0) + dt * speed * 4.2;
+    animal.mesh.scaling.y = 1 + Math.max(0, Math.sin(animal.gait)) * .065;
+}
+
 export function createLootModel(scene, itemType = 'wood') {
     if (['fiber', 'herbs', 'berries', 'ironOre'].includes(itemType)) {
         const mesh = itemType === 'ironOre' ? createOreModel(scene, 73) : createPlantModel(scene, 73, {fiber: 'fiber', herbs: 'herb', berries: 'berry'}[itemType]);
