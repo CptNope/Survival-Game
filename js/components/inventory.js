@@ -56,6 +56,7 @@ export class InventorySystem {
 
                     // Update UI
                     this.game.uiSystem.updateInventoryUI();
+                    this.game.saveSystem?.save();
                     break;
                 }
             }
@@ -66,23 +67,26 @@ export class InventorySystem {
         const recipe = RECIPES[type];
         const player = this.game.playerSystem;
         return !!recipe && !player.isDead
-            && (!recipe.heal || player.health < player.maxHealth)
+            && (!(recipe.heal || recipe.hunger) || player.health < player.maxHealth ||
+                (recipe.hunger && this.game.survivalSystem?.hunger < 100))
             && Object.entries(recipe.cost).every(([item, count]) => this.inventory[item] >= count);
     }
     craft(type) {
         const recipe = RECIPES[type];
         if (!this.canCraft(type)) return false;
         for (const [item, count] of Object.entries(recipe.cost)) this.inventory[item] -= count;
-        if (recipe.heal) {
+        if (recipe.heal || recipe.hunger) {
             const player = this.game.playerSystem;
-            const healed = Math.min(recipe.heal, player.maxHealth - player.health);
+            const healed = recipe.heal ? Math.min(recipe.heal, player.maxHealth - player.health) : 0;
             player.health += healed;
-            this.game.uiSystem.showNotification(`Recovered ${healed} health`);
+            if (recipe.hunger) this.game.survivalSystem?.eatBerries(recipe.hunger);
+            this.game.uiSystem.showNotification(recipe.hunger ? 'Ate berries · Hunger restored' : `Recovered ${healed} health`);
         } else {
             this.inventory[recipe.output] += recipe.amount;
             this.game.uiSystem.showNotification(`Crafted ${recipe.name.toLowerCase()}`);
         }
         this.game.uiSystem.updateInventoryUI();
+        this.game.saveSystem?.save();
         return true;
     }
     craftPlanks() { return this.craft('planks'); }
