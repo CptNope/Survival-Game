@@ -246,6 +246,7 @@ export class ExplorationSystem {
         for (const [item, amount] of Object.entries(reward)) inventory[item] += amount;
         this.game.uiSystem?.updateInventoryUI?.();
         this.game.uiSystem?.showNotification?.('Discovered ' + site.name + ' · Supplies recovered!');
+        this.game.saveSystem?.save();
         return true;
     }
 }
