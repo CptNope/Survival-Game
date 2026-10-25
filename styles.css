@@ -252,3 +252,22 @@ background:var(--panel);border-right:2px solid #c2a16b;border-radius:8px 0 0 8px
 @media(max-width:650px){.vitals{width:calc(50% - 10px);min-width:145px}
 .hud-bottom>button{flex:1}.inventory{flex-basis:100%;order:4}
 .hud-top strong{font-size:16px}.hud-top{padding:12px}}
+
+/* Weather without new textures: one composited overlay and subtle fog. */
+#renderCanvas{position:relative;z-index:0}
+body.weather-rain::after,body.weather-storm::after{
+content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+background:repeating-linear-gradient(103deg,transparent 0 14px,rgba(172,211,233,.18) 15px 16px,transparent 17px 29px);
+background-size:110px 170px;opacity:.33;animation:wild-rain .6s linear infinite}
+body.weather-storm::after{opacity:.65;animation-duration:.35s}
+@keyframes wild-rain{to{background-position:-35px 170px}}
+#hud{z-index:2}
+#weather-status{font-size:11px;letter-spacing:1px;color:#c9d9d7}
+body.weather-storm #weather-status{color:#d4bbd7}
+@media(max-width:900px){#weather-status{display:none}}
+@media(prefers-reduced-motion:reduce){
+body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.20}}
+/* Twelve items now include raw and cooked meat. */
+.inventory{grid-template-columns:repeat(6,minmax(50px,1fr));max-width:620px}
+@media(max-width:800px){.inventory{max-width:480px}}
+@media(max-width:550px){.inventory{max-width:none}}
