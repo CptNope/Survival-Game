@@ -121,7 +121,7 @@ test('building rejects lake water and steep terrain without charging supplies', 
         assert.equal(inv.wood,3);
         assert.equal(inv.stone,3);
         game.terrainSystem.isWaterArea=()=>false;
-        game.terrainSystem.getPerlinHeight=(x)=>x<0?6:2;
+        game.terrainSystem.getPerlinHeight=(x)=>Math.abs(x+6)<.001?2:7;
         game.playerSystem.camera.rotation.y=-Math.PI/2;
         assert.equal(game.buildSystem.place('fire'),false);
         assert.equal(inv.stone,3);
