@@ -11,7 +11,7 @@ export class UISystem {
             <div id="crosshair">+</div><div id="target-hint"></div>
             <div id="toast" role="status" aria-live="polite"></div>
             <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Field crafting</button></footer>
-            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="controls"><p><kbd>W A S D</kbd> Move · Mouse to look · Click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · Ctrl to descend</p><p><kbd>C</kbd> Craft · Right click uses a tool for an area attack</p></div><button id="resume" class="primary">Enter the wilds →</button></section></div>`;
+            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="controls"><p><kbd>W A S D</kbd> Move · Hold Shift to sprint · Click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · Ctrl to descend</p><p><kbd>C</kbd> Craft · Right click uses a tool for an area attack</p></div><button id="resume" class="primary">Enter the wilds →</button></section></div>`;
         document.body.append(root);
         this.$ = id => document.getElementById(id);
         this.$('menu-button').onclick = () => this.toggleMenu();
@@ -44,7 +44,22 @@ export class UISystem {
     updateInventoryUI() {
         const inv = this.game.inventorySystem.inventory;
         this.$('inventory').innerHTML = Object.entries(inv).map(([name, count], i) => `<div><small>${String(i + 1).padStart(2, '0')} / ${ITEMS[name]}</small><strong>${count}</strong></div>`).join('');
-        this.$('objective-progress').textContent = inv.ironTools ? '✓ Iron tool ready: +1 ore per deposit and +8 attack damage.' : inv.tools ? 'Mine iron ore, gather fiber, and craft an iron tool. Purple flowers make healing wraps.' : `${inv.wood} wood · ${inv.stone} stone · ${inv.planks} planks`;
+        const objective = this.$('hud').querySelector('.objective');
+        const title = objective.querySelector('h2');
+        const description = objective.querySelector('p');
+        if (inv.ironTools) {
+            title.textContent = 'Survive the next night';
+            description.textContent = 'Track deer, explore the hills, and gather herbs for emergency healing.';
+            this.$('objective-progress').textContent = '✓ Iron tool crafted · Hunt, explore, and level up';
+        } else if (inv.tools) {
+            title.textContent = 'Forge an iron tool';
+            description.textContent = 'Mine deposits, gather fiber and wood, then smelt iron and craft stronger equipment.';
+            this.$('objective-progress').textContent = `${inv.ironOre} ore · ${inv.iron} ingots · ${inv.fiber} fiber`;
+        } else {
+            title.textContent = 'Make your first tool';
+            description.textContent = 'Gather wood and stone. Turn wood into planks, then craft a tool.';
+            this.$('objective-progress').textContent = `${inv.wood} wood · ${inv.stone} stone · ${inv.planks} planks`;
+        }
         this.$('recipes').querySelectorAll('button').forEach(button => {
             button.disabled = !this.game.inventorySystem.canCraft(button.dataset.recipe);
         });
