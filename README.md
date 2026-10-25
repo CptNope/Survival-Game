@@ -159,3 +159,21 @@ gathering gates, crafting costs, healing, death drops, and asset cleanup tests.
 
 The game is still desktop-controlled and the world state is not saved across reloads.
 No network assets or monetized systems were added by this improvement pass.
+
+## Discoverable wilderness
+
+Walk the dirt trails leading out of the spawn clearing to three persistent
+landmarks: Ember Camp (east), Old Watch Post (northwest), and Trapper Shelter
+(south). More trail camps, ruins, shelters, and standing stones are seeded
+deterministically as you travel farther. A field compass gives the name,
+distance, and cardinal direction of the nearest undiscovered location.
+
+Coming within 8 world units discovers the site and recovers a small cache of
+materials for crafting. Rewards are granted **once per location per session**
+and the on-screen counter records progress. Landmarks render as a single
+merged, vertex-colored low-poly model each and are released with their chunk.
+Paths are tinted directly in the existing terrain vertices (zero extra
+trail draw calls); trees, rocks, and tall grass avoid paths and site clearings.
+
+Survival progression remains offline-first after initial asset caching.
+World/expedition discoveries still reset upon reloading the game.
