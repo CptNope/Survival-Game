@@ -1,5 +1,6 @@
 // Main game class
 import { TerrainSystem } from './components/terrain.js';
+import { ExplorationSystem } from './components/exploration.js';
 import { UISystem } from './components/ui.js';
 import { AnimalSystem } from './components/animals.js';
 import { CombatSystem } from './components/combat.js';
@@ -20,6 +21,7 @@ export class SurvivalGame {
         this.combatSystem = null;
         this.playerSystem = null;
         this.inventorySystem = null;
+        this.explorationSystem = null;
         
         // Day/night cycle properties
         this.paused = true;
@@ -56,11 +58,16 @@ export class SurvivalGame {
             this.setupLighting();
             
             // Initialize systems in the correct order
-            // First create inventory system as it's needed by terrain for harvestable objects
+            // Create exploration before terrain so procedural paths and clearings
+            // influence vegetation even for the initial 3x3 chunks.
+            this.explorationSystem = new ExplorationSystem(this);
+
+            // Inventory is needed by terrain for gatherable resources.
             this.inventorySystem = new InventorySystem(this);
             
             // Create terrain system next as it's needed by player for height calculations
             this.terrainSystem = new TerrainSystem(this);
+            this.explorationSystem.attachWorld(this.terrainSystem);
             
             // Create player system
             this.playerSystem = new PlayerSystem(this);
@@ -179,8 +186,9 @@ export class SurvivalGame {
             // Check if we need to update terrain chunks
             this.terrainSystem.checkChunkUpdates();
             
-            // Check for nearby loot to pick up
+            // Check for nearby loot and landmark discoveries.
             this.inventorySystem.update();
+            this.explorationSystem.update();
         });
 
         // Start render loop
