@@ -182,6 +182,8 @@ export class ExplorationSystem {
         }
     }
 
+    isTrail(x, z) { return isTrailAt(x, z); }
+
     isClearing(x, z) {
         return landmarksNear(x, z, 16).some(site =>
             Math.hypot(site.x - x, site.z - z) < 8) || isTrailAt(x, z);
