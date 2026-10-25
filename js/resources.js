@@ -17,7 +17,7 @@ export const RECIPES = {
     tools: { name: 'Stone tool', cost: { planks: 1, stone: 2 }, output: 'tools', amount: 1 },
     bandage: { name: 'Field dressing', cost: { wood: 3 }, heal: 30 },
     herbalWrap: { name: 'Herbal wrap', cost: { fiber: 2, herbs: 2 }, heal: 50 },
-    snack: { name: 'Eat berries', cost: { berries: 2 }, heal: 15 },
+    snack: { name: 'Eat berries', cost: { berries: 2 }, heal: 15, hunger: 28 },
     iron: { name: 'Smelt iron', cost: { ironOre: 2, wood: 2 }, output: 'iron', amount: 1 },
     ironTools: { name: 'Iron tool', cost: { iron: 2, planks: 1, fiber: 2 }, output: 'ironTools', amount: 1 }
 };
@@ -27,5 +27,5 @@ export function itemAmount(item, count) {
 }
 export function recipeDescription(recipe) {
     const cost = Object.entries(recipe.cost).map(([item, count]) => itemAmount(item, count)).join(' + ');
-    return `${cost} → ${recipe.heal ? `restore ${recipe.heal} health` : itemAmount(recipe.output, recipe.amount)}`;
+    return `${cost} → ${recipe.heal || recipe.hunger ? [recipe.heal && `${recipe.heal} health`, recipe.hunger && `${recipe.hunger} hunger`].filter(Boolean).join(' + ') : itemAmount(recipe.output, recipe.amount)}`;
 }
