@@ -1,4 +1,4 @@
-import { createDeerModel, createRabbitModel, animateDeer, animateRabbit } from '../models/wilderness.js';
+import { createDeerModel, createRabbitModel, createWolfModel, animateDeer, animateRabbit } from '../models/wilderness.js';
 // Animal system for handling animal spawning and behavior
 export class AnimalSystem {
     constructor(game) {
@@ -9,6 +9,7 @@ export class AnimalSystem {
         this.animalSpawnTimer = 0;
         this.animalSpawnInterval = 6500; // Keep wildlife in the player's vicinity.
         this.maxAnimals = 12;
+        this.maxWolves = 3;
         // Establish life in the world immediately rather than waiting
         // ten seconds for the first deer to appear.
         this.seedNearbyAnimals();
@@ -27,6 +28,10 @@ export class AnimalSystem {
                 break;
             }
         }
+    }
+
+    isNight() {
+        return Math.sin(this.game.dayTime / this.game.dayLength * Math.PI * 2) <= .12;
     }
 
     update() {
@@ -59,10 +64,13 @@ export class AnimalSystem {
                 animal.heading = Math.random() * Math.PI * 2;
                 animal.turnTimer = 2 + Math.random() * 3;
             }
+            const wolf = animal.kind === 'wolf';
             const threatened = distance < (animal.kind === 'rabbit' ? 7 : 9);
-            const heading = threatened ? Math.atan2(-dx, -dz) : animal.heading;
+            const hunting = wolf && distance < 26 && !this.game.playerSystem.isDead;
+            const heading = hunting ? Math.atan2(dx, dz) :
+                threatened && !wolf ? Math.atan2(-dx, -dz) : animal.heading;
             // Wander, pause to graze, or bolt away from the player.
-            const speed = threatened ? (animal.kind === 'rabbit' ? 6.2 : 4.5)
+            const speed = hunting ? 3.8 : threatened && !wolf ? (animal.kind === 'rabbit' ? 6.2 : 4.5)
                 : (Math.sin(animal.gait * .35 + i) > .68 ? .12 : (animal.kind === 'rabbit' ? 1.45 : .9));
             const nextX = animal.mesh.position.x + Math.sin(heading) * speed * dt;
             const nextZ = animal.mesh.position.z + Math.cos(heading) * speed * dt;
@@ -79,7 +87,17 @@ export class AnimalSystem {
             const terrainHeight = this.game.terrainSystem.getPerlinHeight(animal.mesh.position.x, animal.mesh.position.z);
             animal.mesh.position.y = terrainHeight;
             if (animal.kind === 'rabbit') animateRabbit(animal, dt, speed);
-            else animateDeer(animal, dt, speed);
+            else if (animal.kind === 'deer') animateDeer(animal, dt, speed);
+            else animal.gait += dt * speed;
+
+            if (wolf && distance < 2.7 && !this.game.playerSystem.isDead) {
+                animal.attackCooldown = (animal.attackCooldown || 0) - dt;
+                if (animal.attackCooldown <= 0) {
+                    animal.attackCooldown = 2.25;
+                    this.game.playerSystem.takeDamage(8);
+                    this.game.uiSystem?.showNotification?.('Wolf attack! Seek shelter or defend yourself');
+                }
+            }
             
             // Check if animal is dead
             if (animal.health <= 0) {
@@ -88,14 +106,15 @@ export class AnimalSystem {
                 
                 // Give experience for killing animal if combat system exists
                 if (this.game.combatSystem) {
-                    this.game.combatSystem.gainExperience(animal.kind === 'rabbit' ? 10 : 20);
+                    this.game.combatSystem.gainExperience(animal.kind === 'rabbit' ? 10 : animal.kind === 'wolf' ? 35 : 20);
                 }
-                if (animal.kind === 'rabbit' && this.game.inventorySystem) {
-                    // Small animals provide a modest resource without another
-                    // system of persistent item drops.
-                    this.game.inventorySystem.inventory.fiber += 1;
-                    this.game.uiSystem?.showNotification('Recovered 1 fiber from rabbit');
-                    this.game.uiSystem?.updateInventoryUI();
+                if (this.game.inventorySystem) {
+                    const inv=this.game.inventorySystem.inventory;
+                    if (animal.kind === 'rabbit') inv.fiber += 1;
+                    inv.rawMeat += animal.kind === 'deer' ? 2 : 1;
+                    this.game.uiSystem?.showNotification?.('Hunted ' + animal.kind + ' · Raw meat recovered');
+                    this.game.uiSystem?.updateInventoryUI?.();
+                    this.game.saveSystem?.save();
                 }
             }
         }
@@ -112,7 +131,10 @@ export class AnimalSystem {
             const spawnZ = this.game.playerSystem.camera.position.z + Math.cos(spawnAngle) * spawnDistance;
             if (!this.game.terrainSystem.isWaterArea(spawnX, spawnZ)) {
                 const terrainHeight = this.game.terrainSystem.getPerlinHeight(spawnX, spawnZ);
-                this.spawnAnimal(spawnX, terrainHeight, spawnZ, Math.random() < .38 ? 'rabbit' : 'deer');
+                const wolfCount=this.animals.filter(a=>a.kind==='wolf').length;
+                const kind = this.isNight() && wolfCount < this.maxWolves && Math.random() < .45
+                    ? 'wolf' : Math.random() < .38 ? 'rabbit' : 'deer';
+                this.spawnAnimal(spawnX, terrainHeight, spawnZ, kind);
             }
         }
     }
@@ -120,9 +142,10 @@ export class AnimalSystem {
     spawnAnimal(x, y, z, kind = 'deer') {
         const seed = Math.floor(x * 1000 + z * 13);
         const model = kind === 'rabbit'
-            ? createRabbitModel(this.game.scene, seed) : createDeerModel(this.game.scene, seed);
+            ? createRabbitModel(this.game.scene, seed) : kind === 'wolf'
+                ? createWolfModel(this.game.scene, seed) : createDeerModel(this.game.scene, seed);
         model.mesh.position.set(x, y, z);
         if (kind === 'deer') this.game.registerModelShadow(model.mesh);
-        this.animals.push({ ...model, kind, health: kind === 'rabbit' ? 12 : 30, speed: 1, gait: 0 });
+        this.animals.push({ ...model, kind, health: kind === 'rabbit' ? 12 : kind === 'wolf' ? 45 : 30, speed: 1, gait: 0, attackCooldown: 0 });
     }
 }
