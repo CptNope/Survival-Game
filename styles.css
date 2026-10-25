@@ -225,3 +225,14 @@ kbd{color:var(--ink);
 .inventory small{font-size:8px;letter-spacing:.5px}
 @media(max-width:800px){.hud-bottom{align-items:center}.inventory{max-width:400px}.inventory div{padding:7px}.inventory small{font-size:7px}.hud-bottom>button{padding:10px}.objective{top:100px}}
 @media(max-width:550px){.inventory{flex-basis:100%;order:3;max-width:none}.hud-bottom{padding:10px}.vitals{width:150px}.inventory div{padding:5px}.inventory strong{font-size:15px}.objective{width:155px;padding:12px}}
+
+/* Exploration guidance occupies the upper right without blocking the reticle. */
+.exploration-card{position:absolute;right:34px;top:130px;max-width:235px;padding:15px 18px;
+background:var(--panel);border-right:2px solid #c2a16b;border-radius:8px 0 0 8px;text-align:right}
+.exploration-card strong{display:block;font:600 14px/1.4 'Space Grotesk';margin:10px 0 6px}
+.exploration-card span{font-size:10px;line-height:1.5;color:#c3cfc1}
+@media(max-width:800px){.exploration-card{top:110px;right:16px;max-width:180px;padding:12px}
+.exploration-card strong{font-size:12px}}
+@media(max-width:550px){.exploration-card{top:90px;max-width:150px}
+.exploration-card span{font-size:9px}}
+@media(max-height:600px){.exploration-card{display:none}}
