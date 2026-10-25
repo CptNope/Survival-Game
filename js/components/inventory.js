@@ -114,15 +114,15 @@ export class InventorySystem {
     }
 
     // Create a loot bag at the specified position
-    createLootBag(position, itemType, count) {
+    createLootBag(position, itemType, count, scatter = true) {
         // Create a mesh for the loot bag
         const lootBag = createLootModel(this.game.scene, itemType);
         lootBag.name = `loot_${itemType}_${Date.now()}`;
 
         // Position the loot bag
-        lootBag.position.x = position.x + (Math.random() - 0.5) * 2; // Scatter slightly
+        lootBag.position.x = position.x + (scatter ? (Math.random() - 0.5) * 2 : 0); // Scatter on death, not restore.
         lootBag.position.y = position.y;
-        lootBag.position.z = position.z + (Math.random() - 0.5) * 2; // Scatter slightly
+        lootBag.position.z = position.z + (scatter ? (Math.random() - 0.5) * 2 : 0);
 
         const lootMaterial = lootBag.material;
         lootMaterial.emissiveColor = new BABYLON.Color3(0.12, 0.12, 0.08);
