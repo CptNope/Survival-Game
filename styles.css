@@ -236,3 +236,19 @@ background:var(--panel);border-right:2px solid #c2a16b;border-radius:8px 0 0 8px
 @media(max-width:550px){.exploration-card{top:90px;max-width:150px}
 .exploration-card span{font-size:9px}}
 @media(max-height:600px){.exploration-card{display:none}}
+
+/* Additional survival meters and build controls. Compact on laptop screens. */
+#save-status{font-size:10px;color:#b7cbb1;letter-spacing:.3px}
+#hunger::-webkit-progress-value{background:#ddbd69}
+#thirst::-webkit-progress-value{background:#75bdcf}
+#cold::-webkit-progress-value{background:#a7aadd}
+.hud-bottom>button{white-space:nowrap}
+.vitals{min-width:180px;gap:4px}
+#build-options .recipe{border-color:#7f936044}
+#save-now{display:block;width:100%;padding:10px;margin-top:15px;border-color:#a5bd8255}
+@media(max-width:1000px){.hud-top{gap:9px}#save-status{display:none}
+.inventory{max-width:420px}.hud-bottom{gap:10px;padding:14px}
+.hud-bottom>button{padding:10px 11px;font-size:11px}.vitals{min-width:150px}}
+@media(max-width:650px){.vitals{width:calc(50% - 10px);min-width:145px}
+.hud-bottom>button{flex:1}.inventory{flex-basis:100%;order:4}
+.hud-top strong{font-size:16px}.hud-top{padding:12px}}
