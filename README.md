@@ -1,5 +1,8 @@
 # Survival Game
 
+> **Play the live game:** https://cptnope.github.io/Survival-Game/ — the GitHub Pages project path is case-sensitive. The lowercase `/survival-game/` URL is not the deployed project path.
+
+
 A 3D survival game built with Babylon.js featuring procedural terrain generation, resource harvesting, crafting, and combat.
 
 ## Features
