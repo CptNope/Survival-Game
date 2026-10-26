@@ -98,6 +98,12 @@ try {
  if(!touchState?.ready||!touchState?.touch||!touchState?.visible)
   throw Error('Mobile viewport failed to initialize touchscreen controls');
  console.log('PASS: Android-emulated touchscreen game controls were initialized.');
+ await send('Runtime.evaluate',{expression:'window.game.uiSystem.closePanel()'});
+ await sleep(500);
+ const mobilePlaying=await send('Runtime.evaluate',{expression:'({paused:window.game.paused,stickDisplay:getComputedStyle(document.getElementById("touch-controls")).display,stickHidden:document.getElementById("touch-controls").hidden,joystickPointer:getComputedStyle(document.getElementById("touch-stick")).pointerEvents,menuVisible:getComputedStyle(document.getElementById("modal")).display,anyCoarse:matchMedia("(any-pointer: coarse)").matches})',returnByValue:true});
+ console.log('MOBILE_PLAYING '+JSON.stringify(mobilePlaying.result?.value));
+ if(mobilePlaying.result?.value?.paused||mobilePlaying.result?.value?.stickDisplay==='none')
+  throw Error('Touch controls are hidden when mobile gameplay resumes');
 }finally{
  if(socket)socket.close();
  chrome.kill('SIGKILL');server.close();
