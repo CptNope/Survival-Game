@@ -70,12 +70,22 @@ try {
   if(state?.ready&&state?.sceneReady)break;
  }
  await sleep(1200);
- console.log('BROWSER_RESULT '+JSON.stringify({state,failures:failures.slice(0,25)}));
+ const details=await send('Runtime.evaluate',{expression:'({loadingVisible:getComputedStyle(document.getElementById("loadingScreen")).display!=="none",touchEnabled:Boolean(window.game?.touchControls?.enabled),bodyClass:document.body.className,gamePaused:window.game?.paused})',returnByValue:true});
+ console.log('BROWSER_RESULT '+JSON.stringify({state,details:details.result?.value,failures:failures.slice(0,25)}));
+ if(details.result?.value?.loadingVisible)throw Error('Loading screen still visible despite ready scene');
+ // Resume actual gameplay and capture frame-time exceptions.
+ await send('Runtime.evaluate',{expression:'window.game.uiSystem.closePanel()'});
+ await sleep(1300);
+ const started=await send('Runtime.evaluate',{expression:'({paused:window.game.paused, dayTime:window.game.dayTime, health:window.game.playerSystem.health})',returnByValue:true});
+ console.log('PLAYING_RESULT '+JSON.stringify(started.result?.value));
+ if(started.result?.value?.paused)throw Error('Game failed to resume after title menu');
  if(!state?.ready||!state?.sceneReady||failures.some(s=>s.startsWith('EXCEPTION')||s.startsWith('CONSOLE Error initializing')))
   throw Error('Browser startup smoke test failed');
  console.log('PASS: Browser loaded Babylon, generated chunks and initialized game.');
 }finally{
  if(socket)socket.close();
  chrome.kill('SIGKILL');server.close();
- await rm(profile,{recursive:true,force:true});
+ // Chromium briefly keeps profile files open during shutdown.
+ if(chrome.exitCode===null)await new Promise(done=>{chrome.once('exit',done);setTimeout(done,2500).unref()});
+ await rm(profile,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }
