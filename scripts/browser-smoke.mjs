@@ -82,6 +82,22 @@ try {
  if(!state?.ready||!state?.sceneReady||failures.some(s=>s.startsWith('EXCEPTION')||s.startsWith('CONSOLE Error initializing')))
   throw Error('Browser startup smoke test failed');
  console.log('PASS: Browser loaded Babylon, generated chunks and initialized game.');
+ // Simulate an Android-size touchscreen with Chrome's built-in emulation.
+ await send('Emulation.setDeviceMetricsOverride',{width:412,height:915,deviceScaleFactor:2,mobile:true});
+ await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+ await send('Runtime.evaluate',{expression:'window.game=undefined'});
+ await send('Page.navigate',{url:'http://127.0.0.1:8765/survival-game/?mobile=1'});
+ let touchState=null;
+ for(let i=0;i<85;i++){
+  await sleep(160);
+  const result=await send('Runtime.evaluate',{expression:'({ready:Boolean(window.game?.scene?.isReady?.()),touch:Boolean(window.game?.touchControls?.enabled),visible:Boolean(window.game?.touchControls?.controls),coarse:matchMedia("(pointer: coarse)").matches,joystick:getComputedStyle(document.getElementById("touch-controls")||document.body).display})',returnByValue:true});
+  touchState=result.result?.value;
+  if(touchState?.ready&&touchState?.touch)break;
+ }
+ console.log('MOBILE_RESULT '+JSON.stringify(touchState));
+ if(!touchState?.ready||!touchState?.touch||!touchState?.visible)
+  throw Error('Mobile viewport failed to initialize touchscreen controls');
+ console.log('PASS: Android-emulated touchscreen game controls were initialized.');
 }finally{
  if(socket)socket.close();
  chrome.kill('SIGKILL');server.close();
