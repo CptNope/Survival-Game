@@ -311,3 +311,7 @@ texture dependencies. Run the full suite with `npm test`.
 On phones, after a new deploy, refresh/relaunch once while online before
 going offline. Existing installed copies should update their cached shell
 when their service worker activates.
+
+---
+
+Built by [Jeremy Anderson Tech](https://jeremyanderson.tech/), a web development and security practice in Shrewsbury, MA. Read more on the [project page](https://jeremyanderson.tech/project/babylon-js-survival-game/). [Services](https://jeremyanderson.tech/services/)
