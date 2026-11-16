@@ -65,7 +65,7 @@ function createModel(scene, type, item, material) {
     mesh.position.set(item.x,item.y,item.z);
     mesh.rotation.y=item.rotation;
     mesh.material=material;
-    mesh.checkCollisions=type==='shelter' || type==='wall';
+    mesh.checkCollisions=!item.ghost && (type==='shelter' || type==='wall');
     mesh.isPickable=false; // Do not block harvesting or targeting behind a structure.
     mesh.receiveShadows=false;
     return mesh;
@@ -82,6 +82,13 @@ export class BuildingSystem {
         this.material=new BABYLON.StandardMaterial('built-structure',game.scene);
         this.material.diffuseColor=BABYLON.Color3.White();
         this.material.specularColor=BABYLON.Color3.Black();
+        // Placement preview: a translucent copy that turns red where building is blocked.
+        this.ghostMaterial=new BABYLON.StandardMaterial('build-preview',game.scene);
+        this.ghostMaterial.diffuseColor=BABYLON.Color3.White();
+        this.ghostMaterial.specularColor=BABYLON.Color3.Black();
+        this.ghostMaterial.alpha=.55;
+        this.ghostMaterial.backFaceCulling=false;
+        this.placing=null;
     }
 
     canAfford(type) {
@@ -91,7 +98,8 @@ export class BuildingSystem {
             .every(([item,needed])=>(inventory[item] || 0)>=needed));
     }
 
-    candidate(type = 'shelter') {
+    // Where a structure would go: a few metres ahead, snapped to the build grid.
+    target(type = 'shelter', turn = 0) {
         const player=this.game.playerSystem;
         if (player.isDead || player.isFlying) return null;
         const pos=player.camera.position;
@@ -100,37 +108,53 @@ export class BuildingSystem {
         const step=modular?4:2;
         const x=Math.round((pos.x+Math.sin(heading)*6)/step)*step;
         const z=Math.round((pos.z+Math.cos(heading)*6)/step)*step;
+        const y=this.game.terrainSystem.getPerlinHeight(x,z);
+        return {x,y,z,rotation:Math.round(heading/(Math.PI/4))*(Math.PI/4)+turn*(Math.PI/4)};
+    }
+
+    // Why a structure cannot stand at `at`, or '' when the site is good.
+    blockedReason(type, at) {
+        if (!at) return 'Land before building';
         const terrain=this.game.terrainSystem;
-        if (terrain.isWaterArea(x,z)) return null;
-        const y=terrain.getPerlinHeight(x,z);
-        if (!Number.isFinite(y)) return null;
+        const {x,y,z}=at;
+        const modular=['floor','wall','roof'].includes(type);
+        if (terrain.isWaterArea(x,z)) return 'Cannot build in water';
+        if (!Number.isFinite(y)) return 'Need clear, dry, fairly level ground ahead';
         const heights=[[3,0],[-3,0],[0,3],[0,-3]]
             .map(([dx,dz])=>terrain.getPerlinHeight(x+dx,z+dz));
-        if (heights.some(h=>Math.abs(h-y)>1.6)) return null;
+        if (heights.some(h=>Math.abs(h-y)>1.6)) return 'The ground is too steep here';
         // Modular pieces can share a 4m grid cell with complementary
         // pieces, but never overlap the same type at that location.
         if (this.structures.some(s => {
             const distance=Math.hypot(s.x-x,s.z-z);
             if(!modular || !['floor','wall','roof'].includes(s.type)) return distance<7;
             return distance<1 && s.type===type;
-        })) return null;
+        })) return modular ? 'That piece is already built here' : 'Too close to another structure';
         if (this.game.inventorySystem.harvestableObjects.some(o =>
-            o.mesh && Math.hypot(o.mesh.position.x-x,o.mesh.position.z-z)<3)) return null;
-        if (this.game.explorationSystem?.isClearing(x,z) && !terrain.isWithinSpawnArea(x,z)) return null;
-        return {x,y,z,rotation:Math.round(heading/(Math.PI/4))*(Math.PI/4)};
+            o.mesh && Math.hypot(o.mesh.position.x-x,o.mesh.position.z-z)<3)) return 'Clear the trees and rocks first';
+        if (this.game.explorationSystem?.isClearing(x,z) && !terrain.isWithinSpawnArea(x,z)) return 'Keep the trail and landmark clear';
+        return '';
     }
 
-    place(type) {
+    candidate(type = 'shelter', turn = 0) {
+        const at=this.target(type,turn);
+        return at && !this.blockedReason(type,at) ? at : null;
+    }
+
+    place(type, turn = 0) {
         if (!BUILDINGS[type] || this.game.playerSystem.isDead || this.structures.length>=this.maxStructures) return false;
         if (!this.canAfford(type)) {
             this.game.uiSystem?.showNotification('Not enough resources to build ' + BUILDINGS[type].name);
             return false;
         }
-        const at=this.candidate(type);
-        if (!at) {
-            this.game.uiSystem?.showNotification('Need clear, dry, fairly level ground ahead');
+        const target=this.target(type,turn);
+        const blocked=this.blockedReason(type,target);
+        if (blocked) {
+            this.game.uiSystem?.showNotification(blocked);
+            this.game.audio?.play('deny');
             return false;
         }
+        const at=target;
         const inv=this.game.inventorySystem.inventory;
         for (const [item,cost] of Object.entries(BUILDINGS[type].cost)) inv[item]-=cost;
         const record={id:this.nextId++,type,...at};
@@ -138,8 +162,65 @@ export class BuildingSystem {
         this.createVisible(record);
         this.game.uiSystem?.updateInventoryUI();
         this.game.uiSystem?.showNotification(BUILDINGS[type].name + ' built');
+        this.game.audio?.play('build');
+        this.game.effects?.burst?.(new BABYLON.Vector3(at.x,at.y+.6,at.z),'wood',16);
+        this.game.progression?.record('built');
         this.game.saveSystem?.save();
         return true;
+    }
+
+    // --- Placement preview -------------------------------------------------
+    beginPlacement(type) {
+        if (!BUILDINGS[type]) return false;
+        this.cancelPlacement();
+        if (!this.canAfford(type)) {
+            this.game.uiSystem?.showNotification('Not enough resources to build ' + BUILDINGS[type].name);
+            return false;
+        }
+        const ghost=createModel(this.game.scene,type,{id:'preview',x:0,y:0,z:0,rotation:0,ghost:true},this.ghostMaterial);
+        this.placing={type,turn:0,ghost,blocked:''};
+        this.updatePlacement();
+        return true;
+    }
+
+    cancelPlacement() {
+        if (!this.placing) return false;
+        this.placing.ghost?.dispose(false,false);
+        this.placing=null;
+        return true;
+    }
+
+    rotatePlacement(direction = 1) {
+        if (!this.placing) return;
+        this.placing.turn=(this.placing.turn+direction+8)%8;
+        this.game.audio?.play('place');
+    }
+
+    confirmPlacement() {
+        const placing=this.placing;
+        if (!placing) return false;
+        if (!this.place(placing.type,placing.turn)) return false;
+        // Keep laying modular pieces while materials last.
+        if (['floor','wall','roof'].includes(placing.type) && this.canAfford(placing.type)) this.updatePlacement();
+        else this.cancelPlacement();
+        return true;
+    }
+
+    // Each frame while placing: move the preview and tint it by validity.
+    updatePlacement() {
+        const placing=this.placing;
+        if (!placing) return;
+        const at=this.target(placing.type,placing.turn);
+        placing.blocked=this.blockedReason(placing.type,at) ||
+            (this.canAfford(placing.type) ? '' : 'Not enough resources');
+        if (!placing.ghost) return;
+        placing.ghost.setEnabled(Boolean(at));
+        if (!at) return;
+        placing.ghost.position.set(at.x,at.y+.03,at.z);
+        placing.ghost.rotation.y=at.rotation;
+        const ok=!placing.blocked;
+        this.ghostMaterial.emissiveColor.set(ok?.15:.55, ok?.5:.08, ok?.2:.06);
+        this.ghostMaterial.diffuseColor.set(ok?.75:1, ok?1:.45, ok?.75:.4);
     }
 
     createVisible(record) {
@@ -151,6 +232,14 @@ export class BuildingSystem {
     isProtected(position) {
         return this.structures.some(item => {
             const radius=item.type==='shelter'?8:item.type==='fire'?5:item.type==='roof'?3:0;
+            return radius>0 && Math.hypot(position.x-item.x,position.z-item.z)<=radius;
+        });
+    }
+
+    // A lean-to or a roofed spot is somewhere to sleep.
+    nearBed(position) {
+        return this.structures.some(item => {
+            const radius=item.type==='shelter'?6:item.type==='roof'?3:0;
             return radius>0 && Math.hypot(position.x-item.x,position.z-item.z)<=radius;
         });
     }
@@ -174,6 +263,7 @@ export class BuildingSystem {
     }
 
     restore(records) {
+        this.cancelPlacement();
         for(const mesh of this.meshes.values()) mesh.dispose(false,false);
         this.meshes.clear();
         this.structures=[];
@@ -183,7 +273,9 @@ export class BuildingSystem {
             if(!item || !BUILDINGS[item.type] || !Number.isInteger(item.id) || item.id<1 || seen.has(item.id)) continue;
             if(![item.x,item.y,item.z,item.rotation].every(n=>Number.isFinite(n)&&Math.abs(n)<100000)) continue;
             seen.add(item.id);
-            this.structures.push({id:item.id,type:item.type,x:item.x,y:item.y,z:item.z,rotation:item.rotation});
+            // Re-seat on the ground so saves survive changes to the terrain shape.
+            const ground=this.game.terrainSystem?.getPerlinHeight?.(item.x,item.z);
+            this.structures.push({id:item.id,type:item.type,x:item.x,y:Number.isFinite(ground)?ground:item.y,z:item.z,rotation:item.rotation});
             this.nextId=Math.max(this.nextId,item.id+1);
         }
         this.update();

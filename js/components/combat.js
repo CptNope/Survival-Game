@@ -15,73 +15,101 @@ export class CombatSystem {
         this.expToNextLevel = 100;
     }
 
+    // A spear out-reaches a bare hand or a tool.
+    reach() {
+        return this.game.inventorySystem?.inventory?.spear > 0 ? 7 : 5;
+    }
+
+    // The best weapon carried decides the bonus; they do not stack.
+    weaponBonus() {
+        const inventory = this.game.inventorySystem?.inventory || {};
+        return Math.max(inventory.spear > 0 ? 12 : 0, inventory.ironTools > 0 ? 8 : 0);
+    }
+
+    damage() {
+        return this.attackPower + (this.level - 1) * 2 + this.weaponBonus();
+    }
+
+    // Returns true when the blow landed on an animal.
     tryAttack() {
-        if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking) return;
+        if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking) return false;
 
         this.isAttacking = true;
         // Cooldown is a gaming term for a period during which an action cannot be performed again
         // This prevents players from attacking too rapidly and balances gameplay
-        setTimeout(() => { this.isAttacking = false; }, 500); // Attack cooldown of 500ms
+        setTimeout(() => { this.isAttacking = false; }, 450); // Attack cooldown
 
-        const hit = this.game.pickTarget();
+        const hit = this.game.pickTarget(this.reach());
+        this.game.effects?.swing?.(this.game.inventorySystem?.inventory?.spear > 0 ? 'spear' : 'tool');
 
         if (hit && hit.hit) {
             // Check if we hit an animal
             for (let animal of this.game.animalSystem.animals) {
                 if (hit.pickedMesh === animal.mesh || hit.pickedMesh.isDescendantOf(animal.mesh)) {
-                    // Calculate damage based on level and tools
-                    let damage = this.attackPower + (this.level - 1) * 2 + (this.game.inventorySystem.inventory.ironTools > 0 ? 8 : 0);
-
-                    // Apply damage
-                    animal.health -= damage;
-
-                    // Visual feedback
-                    animal.mesh.scaling.y = 0.8; // Squish effect
-                    setTimeout(() => { if (animal.mesh) animal.mesh.scaling.y = 1; }, 200);
-
-                    break;
+                    this.strike(animal, this.damage(), hit.pickedPoint);
+                    return true;
                 }
             }
         }
+        this.game.audio?.play('whoosh');
+        return false;
+    }
+
+    // Shared by normal and heavy attacks: damage, recoil and feedback.
+    strike(animal, damage, point = null, squish = 0.8) {
+        animal.health -= damage;
+        animal.fleeTimer = 5; // Prey bolts when struck, wherever the player stands.
+        animal.staggerTimer = 0.3;
+        const from = this.game.playerSystem.camera?.position;
+        if (from && animal.mesh?.position) {
+            const dx = animal.mesh.position.x - from.x, dz = animal.mesh.position.z - from.z;
+            const length = Math.hypot(dx, dz) || 1;
+            animal.knockX = dx / length * 5;
+            animal.knockZ = dz / length * 5;
+        }
+
+        // Visual feedback
+        animal.mesh.scaling.y = squish; // Squish effect
+        setTimeout(() => { if (animal.mesh && animal.kind !== 'rabbit') animal.mesh.scaling.y = 1; }, 200);
+        this.game.audio?.play('hit');
+        this.game.effects?.hitAnimal?.(animal, damage, point);
     }
 
     specialAttack() {
-        if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking || this.game.inventorySystem.inventory.tools <= 0) return;
+        if (this.game.paused || this.game.playerSystem.isDead || this.isAttacking) return false;
+        if (this.game.inventorySystem.inventory.tools <= 0) {
+            this.game.uiSystem?.showNotification?.('A heavy sweep needs a stone tool');
+            return false;
+        }
 
-        // Use a tool
+        // Attack all animals within range
+        const attackRange = 10;
+        const targets = this.game.animalSystem.animals.filter(animal =>
+            BABYLON.Vector3.Distance(this.game.playerSystem.camera.position, animal.mesh.position) < attackRange);
+        if (!targets.length) {
+            // Nothing to hit: keep the tool rather than wasting it on thin air.
+            this.game.uiSystem?.showNotification?.('Nothing in reach for a heavy sweep');
+            return false;
+        }
+
+        // The sweep breaks the tool.
         this.game.inventorySystem.inventory.tools--;
         this.game.uiSystem.updateInventoryUI();
 
         this.isAttacking = true;
         setTimeout(() => { this.isAttacking = false; }, 1000); // Longer cooldown
-
-        // Attack all animals within range
-        const attackRange = 10;
-        let animalHit = false;
-
-        for (let animal of this.game.animalSystem.animals) {
-            const distance = BABYLON.Vector3.Distance(this.game.playerSystem.camera.position, animal.mesh.position);
-            if (distance < attackRange) {
-                // Apply heavy damage
-                animal.health -= this.attackPower * 3;
-                animalHit = true;
-
-                // Visual feedback
-                animal.mesh.scaling.y = 0.5; // Stronger squish effect
-                setTimeout(() => { if (animal.mesh) animal.mesh.scaling.y = 1; }, 300);
-            }
-        }
+        this.game.effects?.swing?.('tool', true);
+        for (const animal of targets) this.strike(animal, this.attackPower * 3, null, 0.5);
+        this.game.effects?.refreshHeld?.();
 
         // Give some experience for using special attack
-        if (animalHit) {
-            this.gainExperience(10);
-        }
+        this.gainExperience(10);
+        return true;
     }
 
     // Experience and leveling system
     gainExperience(amount) {
         this.experience += amount;
-        console.log(`Gained ${amount} experience. Total: ${this.experience}/${this.expToNextLevel}`);
 
         // Check for level up
         while (this.experience >= this.expToNextLevel) {
@@ -101,8 +129,7 @@ export class CombatSystem {
         this.game.playerSystem.maxHealth += 20;
         this.game.playerSystem.health = this.game.playerSystem.maxHealth; // Heal on level up
         this.attackPower += 5;
-
-        console.log(`Leveled up to ${this.level}! Next level at ${this.expToNextLevel} exp`);
+        this.game.audio?.play('levelup');
 
         // Update UI
         if (this.game.uiSystem) {

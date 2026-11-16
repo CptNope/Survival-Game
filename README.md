@@ -20,6 +20,8 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - Health and experience tracking
 - User interface for inventory and crafting
 - Progressive Web App (PWA) support for offline play
+- Procedural sound, a day/night sky with weather, swimmable lakes, field-note
+  goals, sleeping, and a build preview (see *Expedition overhaul* below)
 
 ## Setup
 
@@ -40,14 +42,18 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 ## Controls
 
 - Mouse: Look around
-- WASD: Move player (W=forward, A=left, S=backward, D=right)
+- WASD: Move player (W=forward, A=left, S=backward, D=right), Shift to sprint
 - Space: Jump (tap twice quickly to activate flying)
 - While Flying:
   - Hold Space: Ascend higher
   - Hold Ctrl: Descend
   - Press Space again: Deactivate flying and fall
-- Left Click: Harvest resources / Attack animals
-- Right Click: Special attack (requires tools)
+- In deep water: you float at the surface; hold Ctrl to dive, Space to rise
+- Left Click (hold): Gather resources / Attack animals / Confirm a build
+- Right Click: Heavy sweep (uses a stone tool) / Cancel a build
+- C: Craft · B: Build · R or mouse wheel: Rotate the build preview
+- E: Drink at a lake or from the waterskin; rest in a shelter at night
+- F: Torch · M: Mute · P: Save · Esc: Pause
 
 ## Codebase Structure
 
@@ -311,6 +317,89 @@ texture dependencies. Run the full suite with `npm test`.
 On phones, after a new deploy, refresh/relaunch once while online before
 going offline. Existing installed copies should update their cached shell
 when their service worker activates.
+
+## Expedition overhaul: feel, world and progression
+
+This pass gives the existing systems weight, atmosphere and a reason to keep
+going. It adds **no downloads**: sound, sky, particles and new models are all
+generated in the browser, so the game stays offline-first.
+
+### Feel
+
+- **Sound.** Every effect is synthesised with the Web Audio API
+  (`js/components/audio.js`): chopping, mining, picking, crafting, building,
+  hits, hurt, footsteps, splashes, wolves, thunder, and ambience beds for wind,
+  rain, night insects, birdsong and a crackling fire. Audio starts on the first
+  click, mutes with **M**, and has a volume slider in the pause menu.
+- **Gathering takes swings.** Trees and rocks take 3 swings by hand, 2 with a
+  stone tool and 1 with an iron tool; ore takes 3 with stone and 2 with iron.
+  Hold the button to keep swinging. Struck nodes shake and throw debris, trees
+  topple, and pips under the reticle show progress. Thin plants no longer need
+  a pixel-perfect aim.
+- **Hits read.** Damage numbers, a recoil and stagger on struck animals, a red
+  vignette and screen shake when you are hurt, a low-health pulse, and a death
+  screen that names what killed you. Struck prey bolts wherever you stand.
+- **A tool in hand.** The axe or spear you carry is drawn in view and swings
+  with each action.
+
+### World
+
+- **Sky.** One procedural dome (a single draw call) with a sun, moon, stars,
+  drifting clouds, warm dawns and dusks, and overcast rain and storm skies with
+  lightning. Moonlight keeps nights readable.
+- **Lakes you swim in.** Shores now slope from a sandy beach into deep water.
+  You wade the shallows, float in the deep, and can dive (which is what the
+  oxygen meter is for). Dry land never dips below the water table, which also
+  removes the square water patches at chunk edges.
+- **Terrain colour.** Meadow, sand, rocky high ground and lake bed are tinted
+  per vertex; highlands add relief to the hills.
+- **Fire and torchlight.** Campfires have flames and a flickering light. A
+  craftable **torch** (F) lights your way and slows the cold.
+
+### Progression
+
+- **Field notes.** Ten ordered goals, each paying experience: first tool,
+  campfire, hot meal, shelter, first dawn, three landmarks, iron tool, a wolf,
+  a cabin, five days. The pause menu keeps an expedition log.
+- **New gear.** *Spear* (2 wood, 1 stone, 1 fiber): +12 damage and longer
+  reach. *Torch* (1 wood, 1 fiber). *Waterskin* (4 fiber): fill it at any lake
+  and carry three drinks inland.
+- **Sleep.** Press **E** in a lean-to or under a roof at night to rest until
+  dawn. You wake healed, warm, hungry and thirsty. Wolves nearby keep you up.
+- **Regrowth.** Plants return after 2 days, trees after 3, rocks after 4 and
+  ore after 5, so a settled camp stays supplied.
+- **Building preview.** Choosing a structure shows a translucent preview that
+  follows your aim, turns red where it cannot stand and says why. Rotate with
+  **R** or the mouse wheel, click to place, Esc or right click to cancel.
+  Floors, walls and roofs keep placing while materials last.
+
+### Fixes
+
+- New expeditions open on a clear morning instead of always starting in rain.
+- The heavy sweep no longer breaks a tool when nothing is in reach.
+- Trees streaming in during the first seconds could be gathered from the spawn
+  point; new meshes now settle their position immediately.
+- Dropped supplies land on the ground instead of hanging at eye height.
+- Esc now pauses reliably while the mouse is captured.
+- The crafting panel opens at the top of the list and explains unavailable recipes.
+- The pack shows only what you carry; the HUD refreshes ten times a second
+  instead of every frame.
+
+### Notes for developers
+
+- New modules: `sky.js`, `audio.js`, `effects.js`, `progression.js` (in
+  `js/components/`) and `js/settings.js`. All are precached by `sw.js`.
+- `effects` and `audio` are cosmetic and called through optional chaining, so
+  gameplay systems run unchanged in tests without them.
+- Saves stay at version 1. New fields (`water`, `progression`,
+  `harvestedDays`) are optional, so existing expeditions load; structures are
+  re-seated on the reshaped ground. Volume, mute and look speed are stored
+  separately and survive **Start a new expedition** in the pause menu.
+- `tests/expedition.test.mjs` covers tool tiers, swing cooldown, aim assist,
+  gear, combat, waterskin, sleep, field notes, lake shape, swimming, regrowth,
+  save compatibility, the build preview, sky state, settings and audio.
+- Not verified here: how the synthesised audio actually sounds, and frame rate
+  on real phones. Both need a listen and a playtest on hardware.
 
 ---
 

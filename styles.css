@@ -348,3 +348,92 @@ body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.20}}
   .panel{padding:14px}
   .panel h1{font-size:24px}
 }
+
+/* ---- Expedition overhaul: feedback layers, compact pack, settings ---- */
+/* The pack lists only what is carried, so it wraps instead of holding a fixed grid. */
+.inventory{display:flex;flex-wrap:wrap;max-width:620px;flex:0 1 auto;align-content:flex-end}
+.inventory div{flex:0 0 auto;min-width:74px;padding:9px 14px;border-bottom:1px solid #ffffff10}
+.inventory small{white-space:nowrap}
+.empty-pack{margin:0;padding:14px 18px;font-size:11px;color:var(--muted);line-height:1.5}
+.objective p{margin:0 0 10px}
+#target-hint{font-weight:600;letter-spacing:.3px;min-height:1.4em}
+#hud.placing #crosshair{color:var(--accent)}
+
+/* Damage, hurt and time-of-day feedback. */
+#effects-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.float-text{position:absolute;left:0;top:0;font:700 20px 'Space Grotesk',sans-serif;color:#ffe9a8;
+  text-shadow:0 2px 6px #000,0 0 2px #000;will-change:transform,opacity;white-space:nowrap}
+#hurt-vignette{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:radial-gradient(ellipse at center,transparent 45%,rgba(150,20,14,.62) 100%)}
+#hurt-vignette.flash{animation:wild-hurt .55s ease-out}
+#hud.low-health #hurt-vignette{opacity:.42;animation:wild-pulse 1.1s ease-in-out infinite}
+#hud.low-health #hurt-vignette.flash{animation:wild-hurt .55s ease-out}
+@keyframes wild-hurt{0%{opacity:.95}100%{opacity:0}}
+@keyframes wild-pulse{0%,100%{opacity:.22}50%{opacity:.5}}
+#renderCanvas.shake{animation:wild-shake .22s linear}
+@keyframes wild-shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,4px)}
+  40%{transform:translate(6px,-5px)}60%{transform:translate(-4px,-3px)}80%{transform:translate(3px,4px)}}
+#hud.need-hunger #hunger-value,#hud.need-thirst #thirst-value,#hud.need-cold #cold-value{
+  color:#ffb38a;font-weight:700}
+#day-banner{position:absolute;top:23%;left:0;right:0;text-align:center;opacity:0;
+  transform:translateY(8px);transition:opacity .7s,transform .7s;pointer-events:none}
+#day-banner.visible{opacity:1;transform:none}
+#day-banner strong{display:block;font:500 58px/1 'Space Grotesk',sans-serif;letter-spacing:-2px;
+  text-shadow:0 3px 24px #000a}
+#day-banner span{display:block;margin-top:12px;font-size:13px;letter-spacing:.6px;
+  color:#dfe6d6;text-shadow:0 1px 8px #000}
+#fade{position:absolute;inset:0;background:#040806;opacity:0;pointer-events:none;transition:opacity 1.5s ease}
+#fade.on{opacity:1}
+#fade.instant{transition:none}
+#death-screen{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+  background:radial-gradient(ellipse at center,#1a0c0acc,#060303f2);pointer-events:auto;z-index:11;
+  animation:wild-fade-in .8s ease-out}
+#death-screen h1{font:500 46px/1.1 'Space Grotesk',sans-serif;letter-spacing:-1.5px;margin:18px 0 14px}
+#death-screen p{color:#cdbfb6;font-size:14px;line-height:1.7;margin:4px 0}
+#death-cause{color:#f0d9c9!important;font-weight:600}
+@keyframes wild-fade-in{from{opacity:0}to{opacity:1}}
+
+/* Crafting groups, settings and the expedition log in the pause panel. */
+#recipes h3{font:700 10px 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);margin:22px 0 2px}
+#recipes h3:first-child{margin-top:8px}
+#settings{display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;align-items:center;
+  margin:18px 0 6px;padding:16px;border:1px solid #6d806433;border-radius:8px;font-size:12px;color:#c4cebf}
+#settings input[type=range]{width:100%;accent-color:var(--accent);pointer-events:auto}
+#settings button{padding:6px 12px;font-size:11px}
+#sensitivity-value{font-size:11px;color:var(--muted);text-align:right}
+#stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin:14px 0 4px}
+#stats div{padding:9px 11px;background:#ffffff08;border-radius:6px}
+#stats dt{font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+#stats dd{margin:4px 0 0;font:600 18px 'Space Grotesk',sans-serif}
+#new-game{display:block;width:100%;padding:9px;margin-top:8px;font-size:11px;color:var(--muted);
+  border-color:#6d806433;background:transparent}
+#new-game.confirm{color:#ffb9a4;border-color:#c96f5a}
+
+/* A seventh touch action (TORCH) fits by widening the pad to three columns. */
+.touch-actions{grid-template-columns:repeat(3,54px)}
+.touch-actions button{width:54px}
+.touch-actions [data-action="drink"]{background:#3d5a66;border-color:#9fd0e0}
+@media (any-pointer:coarse){
+  .inventory{display:flex;max-width:400px}
+  .inventory div{min-width:64px;padding:6px 9px}
+  .mobile-inventory-closed .inventory{display:none}
+  #day-banner strong{font-size:40px}
+  #death-screen h1{font-size:32px;padding:0 16px}
+  #settings{padding:10px;gap:8px 10px}
+  #stats{grid-template-columns:repeat(3,1fr)}
+}
+@media (any-pointer:coarse) and (max-height:480px){
+  .touch-actions{grid-template-columns:repeat(4,46px)}
+  .touch-actions button{width:46px}
+}
+@media(prefers-reduced-motion:reduce){
+  #renderCanvas.shake,#hud.low-health #hurt-vignette{animation:none}
+  #day-banner,#fade{transition:none}
+}
+
+/* Underwater: no rain on the lens, just a wash of lake water. */
+body.underwater::after{display:none}
+body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(#0d4a5a55,#06222e88)}
+#oxygen-row{display:grid;gap:4px}

@@ -31,6 +31,9 @@ test('PWA core asset list includes every imported game system',()=>{
   const imports=[...game.matchAll(/from '\.\/components\/([^']+)'/g)]
     .map(match=>"'./js/components/"+match[1]+"'");
   for(const script of imports)assert.ok(cache.includes(script),script+' is not precached');
+  // Modules pulled in indirectly must be available offline as well.
+  for(const script of ["'./js/settings.js'","'./js/resources.js'","'./js/models/wilderness.js'"])
+    assert.ok(cache.includes(script),script+' is not precached');
   for(const png of ['icon-192x192.png','icon-512x512.png'])
     assert.ok(cache.includes(png));
   assert.ok(cache.includes("cache.add(REMOTE_ENGINE)"),'cache the online engine when possible');

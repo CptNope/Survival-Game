@@ -1,6 +1,15 @@
 // Terrain generation and management system
 import { seededRandom } from '../models/wilderness.js';
 import { createTreeModel, createRockModel, createOreModel, createPlantModel } from '../models/wilderness.js';
+import { REGROW_DAYS } from '../resources.js';
+
+const smooth = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+const mix = (a, b, t) => a + (b - a) * t;
+// Lakes cover the area where this field exceeds LAKE_EDGE; the band just
+// below it is beach that slopes down to the waterline.
+export const LAKE_EDGE = 0.7;
+export const SHORE_START = 0.58;
+export const LAKE_DEPTH = 3.4;
 
 export class TerrainSystem {
     constructor(game) {
@@ -26,6 +35,7 @@ export class TerrainSystem {
         this.waterHeight = 1.0; // Height of water surface
         this.waterMeshes = []; // Store water meshes for updates
         this.harvestedIds = new Set(); // Resource depletion persists when revisiting a chunk.
+        this.harvestedOn = new Map(); // Day each node was gathered, so it can grow back.
         this.setupSharedMaterials();
 
         // Initialize noise generator
@@ -45,10 +55,12 @@ export class TerrainSystem {
         // generated locally so offline play never waits on another asset host.
         const grass = new BABYLON.DynamicTexture('local-grass', {width: 128, height: 128}, this.scene, false);
         const context = grass.getContext();
-        context.fillStyle = '#59764a';
+        // Near-neutral detail: the biome colour itself is painted per vertex,
+        // so one texture serves grass, sand, rock and lake bed alike.
+        context.fillStyle = '#e3e6da';
         context.fillRect(0, 0, 128, 128);
         const scatter = seededRandom(4172026);
-        const shades = ['#415d36', '#6b8051', '#718a57', '#4e7040', '#829363'];
+        const shades = ['#c3c9b2', '#f4f5ec', '#d2d8c2', '#b9c0a6', '#eceedf'];
         for (let i = 0; i < 1100; i++) {
             const px = Math.floor(scatter() * 128);
             const py = Math.floor(scatter() * 128);
@@ -61,9 +73,10 @@ export class TerrainSystem {
         this.terrainMaterial.specularColor = BABYLON.Color3.Black();
 
         this.waterMaterial = new BABYLON.StandardMaterial('world-water', this.scene);
-        this.waterMaterial.diffuseColor = new BABYLON.Color3(.13, .36, .56);
-        this.waterMaterial.alpha = .73;
-        this.waterMaterial.specularColor = new BABYLON.Color3(.10, .13, .13);
+        this.waterMaterial.diffuseColor = new BABYLON.Color3(.11, .33, .47);
+        this.waterMaterial.alpha = .72;
+        this.waterMaterial.specularColor = new BABYLON.Color3(.32, .36, .36);
+        this.waterMaterial.specularPower = 48;
         this.waterMaterial.backFaceCulling = false;
 
         this.grassMaterial = new BABYLON.StandardMaterial('groundcover', this.scene);
@@ -120,7 +133,6 @@ export class TerrainSystem {
         // Store the spawn height for later use
         this.spawnHeight = baseHeight;
 
-        console.log(`Created flat spawn area at (${this.spawnPosition.x}, ${this.spawnPosition.y}, ${this.spawnPosition.z}) with radius ${this.spawnAreaRadius}`);
     }
 
     // Generate a terrain chunk at the specified coordinates
@@ -166,6 +178,7 @@ export class TerrainSystem {
         const waterBefore = this.waterMeshes.length;
         this.populateChunk(chunkX, chunkZ);
         const chunk = this.chunkMap.get(key);
+        chunk.x = chunkX; chunk.z = chunkZ;
         chunk.objects = this.game.inventorySystem.harvestableObjects.slice(before);
         chunk.water = this.waterMeshes.slice(waterBefore);
         chunk.groundCover = this.createGroundCover(chunkX, chunkZ);
@@ -192,10 +205,11 @@ export class TerrainSystem {
             const z = positions[i + 2] + mesh.position.z;
 
             // Set the height based on our height function
-            positions[i + 1] = this.getPerlinHeight(x, z);
-            const onTrail = this.game.explorationSystem?.isTrail(x, z) || false;
-            if (onTrail) vertexColors.push(.61, .44, .28, 1);
-            else vertexColors.push(1, 1, 1, 1);
+            const height = this.getPerlinHeight(x, z);
+            positions[i + 1] = height;
+            const onTrail = (this.game.explorationSystem?.isTrail(x, z) || false) && !this.isWaterArea(x, z);
+            const [r, g, b] = onTrail ? [.47, .37, .25] : this.terrainColor(x, z, height);
+            vertexColors.push(r, g, b, 1);
         }
 
         // Update the mesh with the new heights
@@ -206,7 +220,6 @@ export class TerrainSystem {
         mesh.updateVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
         mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, vertexColors);
 
-        console.log(`Applied height map to terrain chunk at (${mesh.position.x}, ${mesh.position.z})`);
     }
 
     // Use the one shared material: disposing a chunk must not dispose this.
@@ -219,24 +232,65 @@ export class TerrainSystem {
         const dx = x - this.spawnPosition.x, dz = z - this.spawnPosition.z;
         const distance = Math.hypot(dx, dz);
         // Rolling hills with small-scale variation, deterministic on every visit.
-        const hills = 2.1 + Math.sin(x * .022) * 1.35
+        let hills = 2.1 + Math.sin(x * .022) * 1.35
             + Math.cos(z * .018) * 1.05
             + Math.sin((x + z) * .012) * .7
-            + Math.sin((x - z) * .054) * .23;
-        const height = this.isWaterArea(x, z) ? this.waterHeight - .55 : hills;
+            + Math.sin((x - z) * .054) * .23
+            // Broad highlands and fine ripples break up the regular swell.
+            + Math.sin(x * .0071 + 1.3) * Math.cos(z * .0063 - .4) * 2.3
+            + Math.sin(x * .09) * Math.cos(z * .085) * .16;
+        // Only lakes hold water: dry land never dips under the water table.
+        hills = Math.max(hills, this.waterHeight + .4);
+        const lake = this.waterNoise(x, z);
+        let height = hills;
+        if (lake > LAKE_EDGE) {
+            // The bed falls away smoothly from the shoreline to swimming depth.
+            height = this.waterHeight - .04 - smooth((lake - LAKE_EDGE) / .16) * LAKE_DEPTH;
+        } else if (lake > SHORE_START) {
+            // A beach eases the hills down to meet the waterline.
+            height = mix(hills, this.waterHeight + .02, smooth((lake - SHORE_START) / (LAKE_EDGE - SHORE_START)));
+        }
         // Blend rather than snap between a flat spawn clearing and hillside.
         const t = Math.max(0, Math.min(1, (distance - this.spawnAreaRadius) / 10));
         const blend = t * t * (3 - 2 * t);
         return this.spawnHeight + (height - this.spawnHeight) * blend;
     }
 
+    // Low-frequency field whose peaks are the lakes.
+    waterNoise(x, z) {
+        return Math.sin(x * 0.005) * Math.cos(z * 0.005);
+    }
+
     // Check if a position should be water
     isWaterArea(x, z) {
-        // Create large water bodies using a different noise pattern
-        const waterNoise = Math.sin(x * 0.005) * Math.cos(z * 0.005);
+        return this.waterNoise(x, z) > LAKE_EDGE;
+    }
 
-        // Water in low-lying areas and certain noise patterns
-        return waterNoise > 0.7;
+    // Sand and shallows: kept clear of trees, rocks and tall grass.
+    isShore(x, z) {
+        return this.waterNoise(x, z) > SHORE_START + .03;
+    }
+
+    // Metres of water above the lake bed (0 on dry land).
+    waterDepthAt(x, z) {
+        return this.isWaterArea(x, z) ? Math.max(0, this.waterHeight - this.getPerlinHeight(x, z)) : 0;
+    }
+
+    // Per-vertex biome tint: meadow greens, sandy shores, rocky heights and a
+    // dim lake bed. Multiplied with the neutral detail texture.
+    terrainColor(x, z, height) {
+        const patch = .5 + .5 * Math.sin(x * .031 + 1.7) * Math.cos(z * .027 - .6);
+        let r = mix(.30, .43, patch), g = mix(.44, .53, patch), b = mix(.23, .27, patch);
+        const dry = smooth((height - 4.9) / 2.4) * .65;
+        r = mix(r, .50, dry); g = mix(g, .50, dry); b = mix(b, .44, dry);
+        const lake = this.waterNoise(x, z);
+        const sand = smooth((lake - (SHORE_START - .03)) / .09);
+        r = mix(r, .77, sand); g = mix(g, .70, sand); b = mix(b, .50, sand);
+        if (lake > LAKE_EDGE) {
+            const deep = smooth((this.waterHeight - height) / LAKE_DEPTH);
+            r = mix(r, .20, deep); g = mix(g, .34, deep); b = mix(b, .33, deep);
+        }
+        return [r, g, b];
     }
 
     // Check if we need to update chunks based on player position
@@ -289,27 +343,33 @@ export class TerrainSystem {
     }
 
     // Populate a chunk with trees, rocks, water, and other objects
-    populateChunk(chunkX, chunkZ) {
+    // `only` (a set of resource ids) replays the same deterministic placement
+    // but recreates just those nodes: this is how gathered resources regrow.
+    populateChunk(chunkX, chunkZ, only = null) {
+        this._only = only;
+        try { this.placeChunkObjects(chunkX, chunkZ, only); }
+        finally { this._only = null; }
+    }
+
+    placeChunkObjects(chunkX, chunkZ, only) {
         const random = seededRandom((Math.imul(chunkX, 73856093) ^ Math.imul(chunkZ, 19349663) ^ 0x4b1d) | 0);
         const key = `${chunkX},${chunkZ}`;
         // Calculate world position of chunk
         const worldX = chunkX * this.chunkSize - this.chunkSize / 2;
         const worldZ = chunkZ * this.chunkSize - this.chunkSize / 2;
 
-        // Check if this chunk should have water
+        // A chunk needs a water surface when any part of it reaches a lake.
+        // Sampling includes the far edges so no sliver of shoreline is missed.
         let hasWater = false;
-        for (let x = worldX; x < worldX + this.chunkSize; x += this.chunkSize / 4) {
-            for (let z = worldZ; z < worldZ + this.chunkSize; z += this.chunkSize / 4) {
-                if (this.isWaterArea(x, z)) {
+        for (let i = 0; i <= 4 && !hasWater; i++) {
+            for (let j = 0; j <= 4; j++) {
+                if (this.waterNoise(worldX + i * this.chunkSize / 4, worldZ + j * this.chunkSize / 4) > LAKE_EDGE - .012) {
                     hasWater = true;
                     break;
                 }
             }
-            if (hasWater) break;
         }
-
-        // Create water if needed
-        if (hasWater) {
+        if (hasWater && !only) {
             this.createWater(worldX, worldZ);
         }
 
@@ -321,7 +381,7 @@ export class TerrainSystem {
             const z = worldZ + random() * this.chunkSize;
 
             // Skip if in spawn area or water area
-            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) {
+            if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) {
                 continue;
             }
 
@@ -337,7 +397,7 @@ export class TerrainSystem {
             const z = worldZ + random() * this.chunkSize;
 
             // Skip if in spawn area or water area
-            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) {
+            if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) {
                 continue;
             }
 
@@ -356,7 +416,7 @@ export class TerrainSystem {
             for (let attempt = 0; attempt < 5; attempt++) {
                 const x = worldX + random() * this.chunkSize;
                 const z = worldZ + random() * this.chunkSize;
-                if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
+                if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
                 this.createResource(type, x, this.getPerlinHeight(x, z), z, `${key}:${type}:${index}`);
                 break;
             }
@@ -399,36 +459,80 @@ export class TerrainSystem {
     }
 
     createResource(type, x, y, z, resourceId) {
-        if (this.harvestedIds.has(resourceId)) return;
+        if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 73856093) ^ Math.floor(z * 19349663);
         const mesh = type === 'ore' ? createOreModel(this.scene, seed) : createPlantModel(this.scene, seed, type);
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
         mesh.receiveShadows = true;
+        // Settle the transform now: until its first render a new mesh would
+        // otherwise still sit at the world origin for picking.
+        mesh.computeWorldMatrix(true);
         this.game.inventorySystem.harvestableObjects.push({mesh, type, resourceId});
     }
 
     // One merged mesh per asset keeps picking, disposal, and draw calls simple.
     createTree(x, y, z, resourceId) {
-        if (this.harvestedIds.has(resourceId)) return;
+        if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 73856093) ^ Math.floor(z * 19349663);
         const mesh = createTreeModel(this.scene, seed, Math.abs(seed % 4) === 0 ? 'oak' : 'pine');
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
         mesh.receiveShadows = true;
+        // Settle the transform now: until its first render a new mesh would
+        // otherwise still sit at the world origin for picking.
+        mesh.computeWorldMatrix(true);
         if ((seed & 3) === 0) this.game.registerModelShadow(mesh);
         this.game.inventorySystem.harvestableObjects.push({ mesh, type: 'tree', resourceId });
     }
 
     createRock(x, y, z, resourceId) {
-        if (this.harvestedIds.has(resourceId)) return;
+        if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 83492791) ^ Math.floor(z * 2971215073);
         const mesh = createRockModel(this.scene, seed);
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
         mesh.receiveShadows = true;
+        // Settle the transform now: until its first render a new mesh would
+        // otherwise still sit at the world origin for picking.
+        mesh.computeWorldMatrix(true);
         this.game.inventorySystem.harvestableObjects.push({ mesh, type: 'rock', resourceId });
     }
+    // Forget nodes whose regrowth time has passed. Returns the ids that grew back.
+    expireRegrown(day) {
+        const grown = [];
+        for (const id of this.harvestedIds) {
+            const wait = REGROW_DAYS[String(id).split(':')[1]] ?? 3;
+            if (day - (this.harvestedOn.get(id) ?? 1) >= wait) grown.push(id);
+        }
+        for (const id of grown) { this.harvestedIds.delete(id); this.harvestedOn.delete(id); }
+        return grown;
+    }
+
+    // Called at dawn: regrown nodes in loaded chunks reappear immediately,
+    // the rest simply return the next time their chunk streams in.
+    regrow(day) {
+        const byChunk = new Map();
+        for (const id of this.expireRegrown(day)) {
+            const key = String(id).split(':')[0];
+            if (!byChunk.has(key)) byChunk.set(key, new Set());
+            byChunk.get(key).add(id);
+        }
+        let restored = 0;
+        for (const [key, ids] of byChunk) {
+            const chunk = this.chunkMap.get(key);
+            if (!chunk) continue;
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            const harvestables = this.game.inventorySystem.harvestableObjects;
+            const before = harvestables.length;
+            this.populateChunk(chunkX, chunkZ, ids);
+            const added = harvestables.slice(before);
+            chunk.objects = (chunk.objects || []).concat(added);
+            restored += added.length;
+        }
+        return restored;
+    }
+
     // Hundreds of grass tufts rendered as ONE thin-instanced draw call per
     // chunk. Pure scenery: no collision, picking, or costly individual models.
     createGroundCover(chunkX, chunkZ) {
@@ -461,7 +565,7 @@ export class TerrainSystem {
         for (let i = 0; i < 95; i++) {
             const x = x0 + random() * this.chunkSize;
             const z = z0 + random() * this.chunkSize;
-            if (this.isWithinSpawnArea(x, z) || this.isWaterArea(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
+            if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
             const size = .65 + random() * 1.2;
             scale.set(size, size, size);
             pos.set(x, this.getPerlinHeight(x, z) + .04, z);

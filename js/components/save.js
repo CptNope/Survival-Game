@@ -41,6 +41,10 @@ export class SaveSystem {
             combat:{level:c.level,experience:c.experience,expToNextLevel:c.expToNextLevel,attackPower:c.attackPower},
             dayCount:g.dayCount,dayTime:g.dayTime,
             hunger:g.survivalSystem.hunger,thirst:g.survivalSystem.thirst,cold:g.survivalSystem.cold,
+            water:g.survivalSystem.water || 0,
+            progression:g.progression?.capture?.() || null,
+            // Day each depleted node was gathered, so it can regrow on schedule.
+            harvestedDays:Object.fromEntries([...(g.terrainSystem.harvestedOn || [])].slice(-20000)),
             discovered:[...g.explorationSystem.discovered].slice(-5000),
             harvestedIds:[...g.terrainSystem.harvestedIds].slice(-20000),
             structures:g.buildSystem.structures.map(({id,type,x,y,z,rotation})=>({id,type,x,y,z,rotation})),
@@ -53,7 +57,7 @@ export class SaveSystem {
 
     save() {
         const g=this.game;
-        if (!g.playerSystem || g.playerSystem.isDead) return false;
+        if (!g.playerSystem || g.playerSystem.isDead || this.cleared) return false;
         try {
             const storage=this.getStorage();
             if (!storage) return false;
@@ -114,10 +118,20 @@ export class SaveSystem {
         g.survivalSystem.hunger=finite(saved.hunger,100);
         g.survivalSystem.thirst=finite(saved.thirst,100);
         g.survivalSystem.cold=finite(saved.cold,0);
+        g.survivalSystem.water=inventory.waterskin>0 ? Math.floor(finite(saved.water,0,0,3)) : 0;
+        g.progression?.restore?.(saved.progression);
         g.explorationSystem.discovered=new Set((Array.isArray(saved.discovered)?saved.discovered:[])
             .filter(id=>typeof id==='string' && id.length<128).slice(0,5000));
         g.terrainSystem.harvestedIds=new Set((Array.isArray(saved.harvestedIds)?saved.harvestedIds:[])
             .filter(id=>typeof id==='string' && id.length<128).slice(0,20000));
+
+        if (g.terrainSystem.harvestedOn) {
+            const days=saved.harvestedDays && typeof saved.harvestedDays==='object' ? saved.harvestedDays : {};
+            g.terrainSystem.harvestedOn=new Map([...g.terrainSystem.harvestedIds]
+                .map(id=>[id,Math.floor(finite(days[id],1,1,999999))]));
+            // Anything due to grow back while the game was closed is back already.
+            g.terrainSystem.expireRegrown?.(g.dayCount);
+        }
 
         // Initial chunks are generated before load; remove the previously
         // harvested meshes so restored depletion agrees with the saved world.
@@ -143,10 +157,17 @@ export class SaveSystem {
         }
 
         g.terrainSystem.checkChunkUpdates();
+        g.effects?.refreshHeld?.();
         g.uiSystem?.updateInventoryUI();
         g.uiSystem?.updateExperienceUI();
         g.uiSystem?.setSaveStatus?.('Expedition restored');
         return true;
+    }
+
+    // Erase the expedition so the next load starts fresh.
+    clear() {
+        try { this.getStorage()?.removeItem?.(SAVE_KEY); this.cleared=true; return true; }
+        catch { return false; }
     }
 
     update(dt) {
