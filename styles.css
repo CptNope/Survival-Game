@@ -437,3 +437,44 @@ body.underwater::after{display:none}
 body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(#0d4a5a55,#06222e88)}
 #oxygen-row{display:grid;gap:4px}
+
+/* ---- Depths and loot: gear panel, minimap, boss bar ---- */
+body.underground::after{display:none} /* No rain falls underground. */
+#dungeon-next{display:block;margin-top:6px;color:#e9d9a8;font-size:10px;letter-spacing:.3px}
+#dungeon-next:empty{display:none}
+#minimap{position:absolute;top:130px;right:34px;width:186px;height:186px;border:1px solid #9fb08f55;
+  border-radius:8px;box-shadow:0 8px 30px #0008;image-rendering:pixelated}
+#boss-bar{position:absolute;top:158px;left:50%;transform:translateX(-50%);width:min(440px,60vw);text-align:center}
+#boss-bar small{display:block;font:700 11px 'DM Sans',sans-serif;letter-spacing:3px;color:#ffd9a0;
+  text-shadow:0 1px 6px #000;margin-bottom:6px}
+#boss-bar progress{width:100%;height:9px;accent-color:#e2572b}
+#boss-bar progress::-webkit-progress-value{background:linear-gradient(90deg,#b6321d,#f08a3c)}
+#boss-bar progress::-webkit-progress-bar{background:#1a0f0ccc}
+.float-text.crit{color:#ffb23e;font-size:28px}
+#gear-button.has-upgrade{border-color:#ffb23e;color:#ffe2ad}
+#toast b{font-weight:700}
+.gear-slots{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+.gear-slots h3,.gear-bag-head h3{font:700 10px 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);margin:0 0 6px}
+.gear-card{border:1px solid color-mix(in srgb,var(--rarity) 55%,transparent);border-left:3px solid var(--rarity);
+  border-radius:8px;padding:11px 13px;background:#ffffff07}
+.gear-card header{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.gear-card strong{color:var(--rarity);font:600 15px 'Space Grotesk',sans-serif}
+.gear-card em{font:700 9px 'DM Sans',sans-serif;letter-spacing:1px;text-transform:uppercase;color:#10180f;
+  background:#9be07c;border-radius:10px;padding:2px 8px;font-style:normal;white-space:nowrap}
+.gear-card small{display:block;margin:3px 0 7px;font-size:10px;letter-spacing:.4px;color:var(--muted)}
+.gear-card ul{list-style:none;margin:0;padding:0;font-size:12px;line-height:1.65;color:#dbe3d4}
+.gear-card i{font-style:normal;font-size:10px;margin-left:4px}
+.gear-card .up{color:#8fe07a}.gear-card .down,.gear-card .lost{color:#ff9a86}
+.gear-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.gear-actions button,.gear-bag-head button{padding:6px 12px;font-size:11px}
+.gear-empty{margin:0;padding:14px;border:1px dashed #6d806444;border-radius:8px;font-size:12px;color:var(--muted)}
+.gear-totals{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+.gear-totals span{font-size:11px;padding:4px 10px;border-radius:12px;background:#ffffff0d;color:#dfe8d6}
+.gear-bag-head{display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px}
+.gear-bag{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (max-width:700px),(any-pointer:coarse){
+  .gear-slots,.gear-bag{grid-template-columns:1fr}
+  #minimap{top:136px;right:10px;width:124px;height:124px}
+  #boss-bar{top:150px;width:56vw}
+}

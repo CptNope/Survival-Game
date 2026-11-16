@@ -59,6 +59,24 @@ export const QUESTS = Object.freeze([
         progress: g => ['floor', 'wall', 'roof'].map(type => (has(g, type) ? '✓ ' : '○ ') + type).join(' · ')
     },
     {
+        id: 'delve', xp: 80, title: 'Go underground',
+        text: 'Find a stone doorway in the hills (the Old Barrow lies south-west of the clearing) and descend. Take a torch.',
+        done: g => g.progression.stats.delves > 0,
+        progress: g => g.dungeonSystem?.nearest ? `${g.dungeonSystem.nearest.name} · ${Math.round(g.dungeonSystem.nearest.distance)}m away` : 'Follow the trails'
+    },
+    {
+        id: 'relic', xp: 100, title: 'Wear something rare',
+        text: 'Chests and monsters drop gear graded by its bonuses. Open Gear and equip a Rare or better piece.',
+        done: g => Object.values(g.gear?.equipped || {}).some(item => item && ['rare', 'epic', 'legendary'].includes(item.rarity)),
+        progress: g => `${g.progression.stats.gearFound} pieces found · ${g.progression.stats.chests} chests opened`
+    },
+    {
+        id: 'warden', xp: 200, title: 'Break the Stone Warden',
+        text: 'The third floor of every dungeon is guarded. Step out of reach when it rears back, then strike.',
+        done: g => g.progression.stats.bosses > 0,
+        progress: g => `${g.progression.stats.monsters} monsters slain`
+    },
+    {
         id: 'veteran', xp: 150, title: 'Outlast the wilds',
         text: 'Keep the expedition alive through five full days.',
         done: g => g.dayCount >= 6,
@@ -69,7 +87,9 @@ export const QUESTS = Object.freeze([
 export const STAT_LABELS = Object.freeze({
     gathered: 'Resources gathered', crafted: 'Items crafted', built: 'Structures built',
     hunted: 'Animals hunted', wolves: 'Wolves defeated', meals: 'Hot meals eaten',
-    nights: 'Nights survived', slept: 'Nights slept', deaths: 'Deaths'
+    nights: 'Nights survived', slept: 'Nights slept', deaths: 'Deaths',
+    delves: 'Dungeons entered', monsters: 'Monsters slain', bosses: 'Wardens defeated',
+    chests: 'Chests opened', gearFound: 'Gear found'
 });
 
 export class ProgressionSystem {

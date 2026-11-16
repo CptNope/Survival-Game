@@ -171,6 +171,24 @@ export class SkySystem {
         const sun = game.sunLight, ambient = game.ambientLight;
         const camera = game.playerSystem?.camera;
 
+        // Underground: no sky at all, only a faint cold glow and whatever
+        // light the player carries or the braziers throw.
+        if (game.dungeonSystem?.active) {
+            s.dayAmount = 0; // Torch and firelight burn at full strength.
+            if (this.dome?.isEnabled()) this.dome.setEnabled(false);
+            if (sun) sun.intensity = 0;
+            if (ambient) {
+                ambient.intensity = .46;
+                ambient.diffuse.set(.5, .54, .68);
+                ambient.groundColor.set(.2, .2, .27);
+            }
+            this.scene.clearColor = new BABYLON.Color4(.012, .012, .02, 1);
+            this.scene.fogColor = new BABYLON.Color3(.012, .012, .02);
+            this.scene.fogDensity = .028;
+            return;
+        }
+        if (this.dome && !this.dome.isEnabled() && !game.playerSystem?.isUnderwater) this.dome.setEnabled(true);
+
         // One directional light serves as the sun by day and the moon by night.
         const night = s.moonIntensity > s.sunIntensity;
         const sign = night ? -1 : 1;

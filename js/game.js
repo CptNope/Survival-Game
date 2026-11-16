@@ -15,6 +15,8 @@ import { SkySystem } from './components/sky.js';
 import { AudioSystem } from './components/audio.js';
 import { EffectsSystem } from './components/effects.js';
 import { ProgressionSystem } from './components/progression.js';
+import { DungeonSystem } from './components/dungeon.js';
+import { GearSystem } from './components/equipment.js';
 import { loadSettings, saveSettings } from './settings.js';
 
 export class SurvivalGame {
@@ -41,6 +43,8 @@ export class SurvivalGame {
         this.audio = null;
         this.effects = null;
         this.progression = null;
+        this.dungeonSystem = null;
+        this.gear = null;
         this.settings = loadSettings();
 
         // Day/night cycle properties
@@ -113,6 +117,9 @@ export class SurvivalGame {
             this.weatherSystem = new WeatherSystem(this);
             this.survivalSystem = new SurvivalSystem(this);
             this.saveSystem = new SaveSystem(this);
+            // Found equipment, and the dungeons it is found in.
+            this.gear = new GearSystem(this);
+            this.dungeonSystem = new DungeonSystem(this);
 
             // UI is created before restoring state so it can refresh all meters.
             this.uiSystem = new UISystem(this);
@@ -122,6 +129,7 @@ export class SurvivalGame {
             this.saveSystem.load();
             this.progression.check();
             this.effects.refreshHeld();
+            this.dungeonSystem.scanEntrances();
             this.skySystem.update(0);
 
             // Update UI once all systems are initialized
@@ -285,6 +293,7 @@ export class SurvivalGame {
                 this.uiSystem.toggleMenu();
             }
             if (event.code === 'KeyC') this.uiSystem.toggleCrafting();
+            if (event.code === 'KeyG') this.uiSystem.toggleGear();
             if (event.code === 'KeyB') {
                 if (!this.paused && this.buildSystem.cancelPlacement()) return;
                 this.uiSystem.toggleBuilding();
@@ -334,13 +343,16 @@ export class SurvivalGame {
             if (this.primaryHeld) this.primaryAction(false);
             this.buildSystem.updatePlacement();
 
-            // Check if we need to update terrain chunks
-            this.terrainSystem.checkChunkUpdates();
+            const dt = Math.min(this.engine.getDeltaTime() / 1000, .05);
+            const underground = this.dungeonSystem.active;
+            // Check if we need to update terrain chunks (the surface waits while underground)
+            if (!underground) this.terrainSystem.checkChunkUpdates();
 
             // Check for nearby loot and landmark discoveries.
             this.inventorySystem.update();
-            this.explorationSystem.update();
-            const dt = Math.min(this.engine.getDeltaTime() / 1000, .05);
+            if (!underground) this.explorationSystem.update();
+            this.dungeonSystem.update(dt);
+            this.gear.update(dt);
             this.survivalSystem.update(dt);
             this.saveSystem.update(dt);
             this.updateAmbience(dt);
@@ -376,7 +388,8 @@ export class SurvivalGame {
         const player = this.playerSystem;
         const position = player.camera.position;
         const terrain = this.terrainSystem;
-        const wading = terrain.isWaterArea(position.x, position.z);
+        const underground = this.dungeonSystem.active;
+        const wading = !underground && terrain.isWaterArea(position.x, position.z);
         this.audio.footsteps(position, player.isGrounded && !player.isSwimming, wading);
         this.ambienceTimer -= dt;
         if (this.ambienceTimer > 0) return;
@@ -385,6 +398,7 @@ export class SurvivalGame {
             weather: this.weatherSystem.type,
             night: this.survivalSystem.isNight(),
             underwater: player.isUnderwater,
+            underground,
             flying: player.isFlying,
             fireDistance: this.effects.nearestFireDistance
         });

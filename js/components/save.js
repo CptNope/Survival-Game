@@ -34,9 +34,15 @@ export class SaveSystem {
         const items=g.inventorySystem.inventory;
         return {
             version:SAVE_VERSION,savedAt:Date.now(),
-            position:{x:pos.x,y:pos.y,z:pos.z},
+            // A save made underground resumes outside, beside the entrance.
+            position:g.dungeonSystem?.active && g.dungeonSystem.returnPosition
+                ? {x:g.dungeonSystem.returnPosition.x,y:g.terrainSystem.getPerlinHeight(g.dungeonSystem.returnPosition.x,g.dungeonSystem.returnPosition.z)+2,z:g.dungeonSystem.returnPosition.z}
+                : {x:pos.x,y:pos.y,z:pos.z},
             rotation:{x:rotation.x,y:rotation.y,z:rotation.z},
-            health:p.health, maxHealth:p.maxHealth,
+            // Health from gear is re-applied on load, so store the player's own maximum.
+            health:p.health, maxHealth:p.maxHealth-(g.gear?.appliedVitality || 0),
+            gear:g.gear?.capture?.() || null,
+            dungeons:g.dungeonSystem?.capture?.() || null,
             inventory:Object.fromEntries(Object.keys(ITEMS).map(key=>[key,items[key] || 0])),
             combat:{level:c.level,experience:c.experience,expToNextLevel:c.expToNextLevel,attackPower:c.attackPower},
             dayCount:g.dayCount,dayTime:g.dayTime,
@@ -120,6 +126,12 @@ export class SaveSystem {
         g.survivalSystem.cold=finite(saved.cold,0);
         g.survivalSystem.water=inventory.waterskin>0 ? Math.floor(finite(saved.water,0,0,3)) : 0;
         g.progression?.restore?.(saved.progression);
+        g.dungeonSystem?.restore?.(saved.dungeons);
+        if (g.gear) {
+            // Gear adds its health on top of the player's own maximum.
+            g.gear.restore(saved.gear);
+            p.health=finite(saved.health,p.maxHealth,1,p.maxHealth);
+        }
         g.explorationSystem.discovered=new Set((Array.isArray(saved.discovered)?saved.discovered:[])
             .filter(id=>typeof id==='string' && id.length<128).slice(0,5000));
         g.terrainSystem.harvestedIds=new Set((Array.isArray(saved.harvestedIds)?saved.harvestedIds:[])

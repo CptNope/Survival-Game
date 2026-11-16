@@ -1,4 +1,7 @@
 // Player system for handling player controls and physics
+// Harm that armour cannot turn aside.
+const ENVIRONMENTAL = new Set(['drowning', 'starvation', 'thirst', 'the cold', 'a long fall']);
+
 export class PlayerSystem {
     constructor(game) {
         this.game = game;
@@ -109,7 +112,9 @@ export class PlayerSystem {
             this.canDoubleJump = true;
         } else if (this.canDoubleJump && !this.isFlying) {
             // Check for double jump (second jump while in air)
-            if (now - this.jumpTimer < this.jumpTimerThreshold) {
+            if (this.game.dungeonSystem?.active) {
+                this.canDoubleJump = false; // No room to take flight under a stone ceiling.
+            } else if (now - this.jumpTimer < this.jumpTimerThreshold) {
                 // Double jump detected, activate flying
                 this.isFlying = true;
                 this.jumpVelocity = this.jumpHeight * 0.5; // Initial upward boost
@@ -153,11 +158,14 @@ export class PlayerSystem {
         const y = this.camera.position.y;
         const z = this.camera.position.z;
         const terrain = this.game.terrainSystem;
-        const terrainHeight = terrain ? terrain.getPerlinHeight(x, z) : 0;
+        // Underground the floor is flat stone: no lakes, no sky to fly in.
+        const dungeon = this.game.dungeonSystem?.active ? this.game.dungeonSystem : null;
+        if (dungeon) this.isFlying = false;
+        const terrainHeight = dungeon ? dungeon.floorY : terrain ? terrain.getPerlinHeight(x, z) : 0;
         const waterLevel = terrain?.waterHeight;
 
         // Deep water floats the player; shallows are simply waded through.
-        const depth = terrain && terrain.isWaterArea(x, z) && Number.isFinite(waterLevel)
+        const depth = !dungeon && terrain && terrain.isWaterArea(x, z) && Number.isFinite(waterLevel)
             ? waterLevel - terrainHeight : 0;
         const surface = waterLevel + this.surfaceOffset;
         const deep = depth > this.swimDepth;
@@ -179,9 +187,14 @@ export class PlayerSystem {
             // Refill oxygen above water
             this.oxygenLevel = Math.min(this.maxOxygen, this.oxygenLevel + this.oxygenRefillRate * deltaTime);
         }
-        this.camera.speed = this.isSwimming ? this.swimSpeed
+        this.camera.speed = (this.isSwimming ? this.swimSpeed
             : depth > 0.35 ? 0.27 // Wading through the shallows is slow going.
-            : this.keys.sprint ? 0.58 : 0.36;
+            : this.keys.sprint ? 0.58 : 0.36) * (1 + (this.game.gear?.stat('swiftness') || 0) / 100);
+        // A jump cannot carry the player through a dungeon ceiling.
+        if (dungeon && this.camera.position.y > dungeon.floorY + dungeon.ceiling - .5) {
+            this.camera.position.y = dungeon.floorY + dungeon.ceiling - .5;
+            this.jumpVelocity = Math.min(0, this.jumpVelocity);
+        }
 
         if (this.isFlying) {
             // Handle flying controls
@@ -260,6 +273,8 @@ export class PlayerSystem {
     // shown on the death screen.
     takeDamage(amount, cause = 'the wilds') {
         if (this.isDead || !(amount > 0)) return;
+        // Armour turns blows, but does nothing against hunger, cold or water.
+        if (!ENVIRONMENTAL.has(cause)) amount *= 1 - (this.game.gear?.stat('armor') || 0) / 100;
         this.health -= amount;
         this.lastDamageCause = cause;
 
@@ -312,7 +327,8 @@ export class PlayerSystem {
     dropLoot() {
         // If inventory system exists, drop items
         if (this.game.inventorySystem) {
-            const dropPosition = {
+            // Falling underground leaves the pack outside, by the entrance.
+            const dropPosition = this.game.dungeonSystem?.deathDropPosition?.() || {
                 x: this.camera.position.x,
                 y: this.camera.position.y,
                 z: this.camera.position.z
@@ -326,6 +342,8 @@ export class PlayerSystem {
     // This method resets the player's state and returns them to the spawn point
     // Part of the death/respawn cycle in survival games that allows players to continue after dying
     respawn() {
+        // Dying underground ends the run: wake at camp, not in the dark.
+        this.game.dungeonSystem?.leave?.(false);
         // Reset health
         this.health = this.maxHealth;
         this.isDead = false;

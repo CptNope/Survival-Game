@@ -357,3 +357,6 @@ export function createAxeModel(scene, iron = false) {
         branch(scene, V(0, .2, 0), V(0, .4, 0), .1, palette.cream, random, .1)
     ], iron ? 'iron-axe' : 'stone-axe');
 }
+
+// Building blocks shared with the creature and dungeon prop models.
+export { V, palette, ellipsoid, branch, finish, colorMesh };

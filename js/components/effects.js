@@ -126,10 +126,10 @@ export class EffectsSystem {
         }, release);
     }
 
-    hitAnimal(animal, damage, point) {
+    hitAnimal(animal, damage, point, critical = false) {
         const position = point || animal.mesh.position.add(new BABYLON.Vector3(0, animal.kind === 'rabbit' ? .4 : 1.2, 0));
-        this.burst(position, 'fur', 8);
-        this.damageNumber(position, '-' + Math.round(damage));
+        this.burst(position, animal.dungeon ? 'stone' : 'fur', critical ? 16 : 8);
+        this.damageNumber(position, '-' + Math.round(damage) + (critical ? '!' : ''), critical ? 'damage crit' : 'damage');
     }
 
     // Floating text anchored to a point in the world.
@@ -275,7 +275,10 @@ export class EffectsSystem {
         const build = this.game.buildSystem, camera = this.game.playerSystem?.camera;
         if (!build || !camera) return;
         const position = camera.position;
-        const near = build.structures.filter(item => item.type === 'fire')
+        // Underground the fires are the braziers; above, the player's campfires.
+        const dungeon = this.game.dungeonSystem;
+        const fires = dungeon?.active ? dungeon.braziers : build.structures.filter(item => item.type === 'fire');
+        const near = fires
             .map(item => ({item, distance: Math.hypot(item.x - position.x, item.z - position.z)}))
             .filter(entry => entry.distance < 55)
             .sort((a, b) => a.distance - b.distance).slice(0, 3);

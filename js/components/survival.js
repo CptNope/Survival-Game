@@ -26,7 +26,7 @@ export class SurvivalSystem {
         const terrain = this.game.terrainSystem;
         const pos = this.game.playerSystem.camera.position;
         // Can collect water at the edge without stepping underwater.
-        if (pos.y > terrain.waterHeight + 4) return false;
+        if (pos.y > terrain.waterHeight + 4 || this.game.dungeonSystem?.active) return false;
         return [[0,0],[3,0],[-3,0],[0,3],[0,-3]].some(([dx,dz]) =>
             terrain.isWaterArea(pos.x + dx, pos.z + dz));
     }
@@ -67,6 +67,7 @@ export class SurvivalSystem {
     // Whether the player can rest until dawn, and the reason when they cannot.
     sleepStatus() {
         const game = this.game, player = game.playerSystem;
+        if (game.dungeonSystem?.active) return {near: false, ok: false, reason: ''};
         if (!game.buildSystem?.nearBed?.(player.camera.position)) return {near: false, ok: false, reason: ''};
         if (!this.isNight()) return {near: true, ok: false, reason: 'You can rest here once night falls'};
         if (player.isFlying || player.isSwimming) return {near: true, ok: false, reason: ''};
@@ -99,6 +100,13 @@ export class SurvivalSystem {
     // E / USE: rest when a bed is ready, otherwise drink.
     interact() {
         if (this.game.paused || this.game.playerSystem.isDead) return false;
+        // Doors, stairs and chests come first: they are what you walked up to.
+        const special = this.game.dungeonSystem?.interaction?.();
+        if (special) {
+            if (special.act) return special.act() !== false;
+            this.game.uiSystem?.showNotification(special.label);
+            return false;
+        }
         const sleep = this.sleepStatus();
         const thirsty = this.thirst < 60 && (this.nearWater() || (this.hasWaterskin() && this.water > 0));
         if (sleep.ok && !thirsty) return this.sleep();
@@ -126,17 +134,21 @@ export class SurvivalSystem {
         dt = Math.min(Math.max(Number.isFinite(dt) ? dt : 0, 0), .05);
         if (dt <= 0) return;
         const sprinting = Boolean(player.keys?.sprint && !player.isFlying);
-        this.hunger = Math.max(0, this.hunger - dt * (sprinting ? .065 : .045));
-        this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09));
-        const safe = this.game.buildSystem?.isProtected(player.camera.position) || false;
+        const gear = this.game.gear;
+        const appetite = 1 - (gear?.stat('endurance') || 0) / 100;
+        this.hunger = Math.max(0, this.hunger - dt * (sprinting ? .065 : .045) * appetite);
+        this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09) * appetite);
+        // Underground there is no weather: the cold neither bites nor lifts.
+        const underground = Boolean(this.game.dungeonSystem?.active);
+        const safe = !underground && (this.game.buildSystem?.isProtected(player.camera.position) || false);
         const night = this.isNight();
         const storm=this.game.weatherSystem?.type === 'storm';
         const rain=this.game.weatherSystem?.type === 'rain';
-        const exposed=!safe;
+        const exposed=!safe && !underground;
         // A lit torch takes the edge off the chill but is no substitute for a fire.
         const torch = this.game.effects?.torchLit ? .7 : 1;
-        const coldRate = exposed && (night || storm || rain)
-            ? (.65 + (storm ? .85 : rain ? .3 : 0)) * torch : -1.4;
+        const coldRate = underground ? -.25 : exposed && (night || storm || rain)
+            ? (.65 + (storm ? .85 : rain ? .3 : 0)) * torch * (1 - (gear?.stat('warmth') || 0) / 100) : -1.4;
         this.cold = SurvivalSystem.clamp(this.cold + dt * coldRate, 0);
         if (this.hunger <= 0) player.takeDamage(.65 * dt, 'starvation');
         if (this.thirst <= 0) player.takeDamage(1.2 * dt, 'thirst');

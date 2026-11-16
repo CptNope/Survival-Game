@@ -1,4 +1,7 @@
 import { createDeerModel, createRabbitModel, createWolfModel, animateDeer, animateRabbit } from '../models/wilderness.js';
+import { createCreatureModel } from '../models/creatures.js';
+import { CREATURES, scaleFor } from '../creatures.js';
+import { CreatureAI } from './creatures.js';
 // Animal system for handling animal spawning and behavior
 export class AnimalSystem {
     constructor(game) {
@@ -10,6 +13,7 @@ export class AnimalSystem {
         this.animalSpawnInterval = 6500; // Keep wildlife in the player's vicinity.
         this.maxAnimals = 12;
         this.maxWolves = 3;
+        this.ai = new CreatureAI(game); // Drives boars, bears and everything underground.
         // Establish life in the world immediately rather than waiting
         // ten seconds for the first deer to appear.
         this.seedNearbyAnimals();
@@ -40,6 +44,9 @@ export class AnimalSystem {
         
         const dt = Math.min(this.game.engine.getDeltaTime() / 1000, 0.05);
         const playerPosition = this.game.playerSystem.camera.position;
+        // While the player is underground the surface stands still, and the reverse.
+        const underground = Boolean(this.game.dungeonSystem?.active);
+        this.ai.updateBolts(dt);
 
         // Update existing animals
         for (let i = this.animals.length - 1; i >= 0; i--) {
@@ -51,12 +58,18 @@ export class AnimalSystem {
                 continue;
             }
             
+            if (Boolean(animal.dungeon) !== underground) continue;
             const dx = playerPosition.x - animal.mesh.position.x;
             const dz = playerPosition.z - animal.mesh.position.z;
             const distance = Math.hypot(dx, dz);
-            if (distance > 100) {
+            if (distance > 100 && !underground) {
                 animal.mesh.dispose(false, true);
                 this.animals.splice(i, 1);
+                continue;
+            }
+            if (CREATURES[animal.kind]?.brain) {
+                this.ai.update(animal, dt);
+                if (animal.health <= 0) this.finish(animal, i);
                 continue;
             }
             animal.turnTimer = (animal.turnTimer || 0) - dt;
@@ -112,27 +125,10 @@ export class AnimalSystem {
             }
             
             // Check if animal is dead
-            if (animal.health <= 0) {
-                this.game.effects?.burst?.(animal.mesh.position.add(new BABYLON.Vector3(0, .7, 0)), 'fur', 16);
-                this.game.progression?.record(wolf ? 'wolves' : 'hunted');
-                animal.mesh.dispose(false, true);
-                this.animals.splice(i, 1);
-                
-                // Give experience for killing animal if combat system exists
-                if (this.game.combatSystem) {
-                    this.game.combatSystem.gainExperience(animal.kind === 'rabbit' ? 10 : animal.kind === 'wolf' ? 35 : 20);
-                }
-                if (this.game.inventorySystem) {
-                    const inv=this.game.inventorySystem.inventory;
-                    if (animal.kind === 'rabbit') inv.fiber += 1;
-                    inv.rawMeat += animal.kind === 'deer' ? 2 : 1;
-                    this.game.uiSystem?.showNotification?.('Hunted ' + animal.kind + ' · Raw meat recovered');
-                    this.game.uiSystem?.updateInventoryUI?.();
-                    this.game.saveSystem?.save();
-                }
-            }
+            if (animal.health <= 0) this.finish(animal, i);
         }
-        
+        if (underground) return; // Nothing new wanders in from the surface.
+
         // Spawn new animals occasionally
         this.animalSpawnTimer += this.game.scene.getEngine().getDeltaTime();
         if (this.animalSpawnTimer > this.animalSpawnInterval && this.animals.length < this.maxAnimals) {
@@ -145,23 +141,75 @@ export class AnimalSystem {
             const spawnZ = this.game.playerSystem.camera.position.z + Math.cos(spawnAngle) * spawnDistance;
             if (!this.game.terrainSystem.isWaterArea(spawnX, spawnZ)) {
                 const terrainHeight = this.game.terrainSystem.getPerlinHeight(spawnX, spawnZ);
-                const wolfCount=this.animals.filter(a=>a.kind==='wolf').length;
-                const kind = this.isNight() && wolfCount < this.maxWolves && Math.random() < .45
-                    ? 'wolf' : Math.random() < .38 ? 'rabbit' : 'deer';
+                const count=kind=>this.animals.filter(a=>a.kind===kind).length;
+                const wolfCount=count('wolf');
+                const fromHome=Math.hypot(spawnX, spawnZ);
+                const roll=Math.random();
+                // Boars root about by day; bears keep to the country well away from camp.
+                const kind = this.isNight() && wolfCount < this.maxWolves && roll < .45 ? 'wolf'
+                    : !this.isNight() && fromHome > 110 && count('bear') < 1 && roll < .07 ? 'bear'
+                    : !this.isNight() && fromHome > 45 && count('boar') < 2 && roll < .24 ? 'boar'
+                    : Math.random() < .38 ? 'rabbit' : 'deer';
                 this.spawnAnimal(spawnX, terrainHeight, spawnZ, kind);
             }
         }
     }
     
-    spawnAnimal(x, y, z, kind = 'deer') {
+    // Death: effects, experience, meat and (sometimes) a piece of gear.
+    finish(animal, i) {
+        const game = this.game, def = CREATURES[animal.kind] || {};
+        const position = animal.mesh.position.clone();
+        game.effects?.burst?.(position.add(new BABYLON.Vector3(0, .7, 0)), animal.dungeon ? 'stone' : 'fur', def.boss ? 40 : 16);
+        game.progression?.record(def.stat || 'hunted');
+        animal.mesh.dispose(false, true);
+        this.animals.splice(i, 1);
+
+        // Give experience for killing animal if combat system exists
+        game.combatSystem?.gainExperience(Math.round((def.xp || 20) * (animal.xpScale || 1)));
+        if (game.inventorySystem && def.loot) {
+            const inv = game.inventorySystem.inventory;
+            for (const [item, amount] of Object.entries(def.loot)) inv[item] += amount;
+            game.uiSystem?.showNotification?.('Hunted ' + animal.kind + ' · Raw meat recovered');
+        } else if (def.brain) {
+            game.uiSystem?.showNotification?.('Defeated ' + def.label.toLowerCase());
+        }
+        if (def.gear && Math.random() < def.gear.chance) {
+            game.gear?.dropRoll?.(position, {level: animal.level || 1, luck: def.gear.luck});
+        }
+        if (def.boss) game.dungeonSystem?.onBossDefeated?.(animal, position);
+        game.uiSystem?.updateInventoryUI?.();
+        if (!animal.dungeon) game.saveSystem?.save();
+    }
+
+    // `options` scales dungeon creatures: {dungeon, tier, floor, level}.
+    spawnAnimal(x, y, z, kind = 'deer', options = {}) {
         const seed = Math.floor(x * 1000 + z * 13);
-        const model = kind === 'rabbit'
+        const def = CREATURES[kind] || CREATURES.deer;
+        const model = def.brain ? createCreatureModel(this.game.scene, kind, seed)
+            : kind === 'rabbit'
             ? createRabbitModel(this.game.scene, seed) : kind === 'wolf'
                 ? createWolfModel(this.game.scene, seed) : createDeerModel(this.game.scene, seed);
         model.mesh.position.set(x, y, z);
+        model.mesh.computeWorldMatrix(true);
         if (kind === 'deer') this.game.registerModelShadow(model.mesh);
-        this.animals.push({ ...model, kind, health: kind === 'rabbit' ? 12 : kind === 'wolf' ? 45 : 30, speed: 1, gait: 0, attackCooldown: 0 });
+        const scale = def.brain ? scaleFor(options.tier, options.floor) : {health: 1, damage: 1, xp: 1};
+        const health = Math.round(def.health * scale.health);
+        const animal = { ...model, kind, health, maxHealth: health, speed: 1, gait: 0, attackCooldown: 0,
+            seed: Math.abs(seed % 97), damageScale: scale.damage, xpScale: scale.xp,
+            level: options.level || 1, dungeon: Boolean(options.dungeon) };
+        this.animals.push(animal);
         if (kind === 'wolf') this.game.audio?.play('howl', {volume: .8});
+        return animal;
+    }
+
+    // Remove everything that belongs underground (leaving or rebuilding a floor).
+    clearDungeon() {
+        this.ai.clearBolts();
+        for (let i = this.animals.length - 1; i >= 0; i--) {
+            if (!this.animals[i].dungeon) continue;
+            this.animals[i].mesh?.dispose(false, true);
+            this.animals.splice(i, 1);
+        }
     }
 
     // Wolves slink away at sunrise (and whenever the player sleeps the night out).
