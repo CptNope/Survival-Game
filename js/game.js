@@ -53,6 +53,7 @@ export class SurvivalGame {
 
         // Input state
         this.primaryHeld = false;
+        this.pointerLockRefusals = 0;
         this.ambienceTimer = 0;
 
         // Initialize the game
@@ -255,8 +256,10 @@ export class SurvivalGame {
         canvas.addEventListener('pointerdown', event => {
             if (event.pointerType !== 'mouse' || event.button !== 0 || this.paused) return;
             this.audio?.unlock();
-            if (!document.pointerLockElement && canvas.requestPointerLock) {
-                canvas.requestPointerLock()?.catch?.(() => {});
+            // Capture the mouse first. Where the browser keeps refusing (some
+            // embedded frames), play on without it: drag to look, click to act.
+            if (!document.pointerLockElement && canvas.requestPointerLock && this.pointerLockRefusals < 3) {
+                canvas.requestPointerLock()?.catch?.(() => { this.pointerLockRefusals++; });
                 return;
             }
             this.primaryHeld = true;
@@ -302,7 +305,9 @@ export class SurvivalGame {
         window.addEventListener('keyup', event => this.playerSystem.updateKeyState(event.keyCode, false));
         // Browsers swallow the Esc press that releases the mouse, so losing the
         // pointer lock is treated as that Esc: cancel a build, otherwise pause.
+        document.addEventListener('pointerlockerror', () => { this.pointerLockRefusals++; });
         document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement) this.pointerLockRefusals = 0;
             if (document.pointerLockElement || this.paused || this.touchControls?.enabled) return;
             if (performance.now() - (this.lastEscapeAt || -1e9) < 300) return;
             if (this.buildSystem.cancelPlacement()) {

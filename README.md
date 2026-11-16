@@ -381,6 +381,10 @@ generated in the browser, so the game stays offline-first.
   point; new meshes now settle their position immediately.
 - Dropped supplies land on the ground instead of hanging at eye height.
 - Esc now pauses reliably while the mouse is captured.
+- W A S D work straight after closing a menu; before, the keyboard stayed
+  dead until the canvas was clicked.
+- Where a browser refuses to capture the mouse, clicks still gather and
+  attack instead of being swallowed.
 - The crafting panel opens at the top of the list and explains unavailable recipes.
 - The pack shows only what you carry; the HUD refreshes ten times a second
   instead of every frame.

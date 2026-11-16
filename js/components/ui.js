@@ -105,8 +105,13 @@ export class UISystem {
         this.started = true;
         this.game.setPaused(false);
         this.renderPanel();
+        // Movement keys are read from the canvas, so hand it the keyboard
+        // back: otherwise W A S D stay dead after using a panel button.
+        const canvas = this.game.engine.getRenderingCanvas();
+        if (!canvas.hasAttribute('tabindex')) canvas.setAttribute('tabindex', '0');
+        canvas.focus({preventScroll: true});
         if (!this.game.touchControls?.enabled)
-            this.game.engine.getRenderingCanvas().requestPointerLock?.()?.catch?.(() => {});
+            canvas.requestPointerLock?.()?.catch?.(() => {});
     }
     toggleMenu() { this.panel === 'menu' ? this.closePanel() : this.openPanel('menu'); }
     toggleCrafting() { this.panel === 'craft' ? this.closePanel() : this.openPanel('craft'); }
