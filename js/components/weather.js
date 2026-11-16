@@ -6,6 +6,8 @@ export const WEATHER = Object.freeze({
     storm: {label:'Storm',cold:.7}
 });
 export function weatherAt(day, time, length=300) {
+    // Every expedition opens on a dry first morning before the weather turns.
+    if (day <= 1 && time < length / 2) return 'clear';
     const segment=Math.floor((Math.max(1,day)-1)*length/75 + Math.max(0,time)/75);
     const step=((segment * 1103515245 + 12345)>>>0) % 7;
     return step<=2 ? 'clear' : step<=4 ? 'rain' : 'storm';

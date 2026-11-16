@@ -28,6 +28,9 @@ export class PlayerSystem {
         this.maxOxygen = 100;
         this.oxygenDepletionRate = 0.2; // How fast oxygen depletes underwater
         this.oxygenRefillRate = 0.5; // How fast oxygen refills above water
+        this.isUnderwater = false; // Eyes below the surface: oxygen is draining.
+        this.swimDepth = 1.25; // Deeper than this and the player floats instead of wading.
+        this.surfaceOffset = 0.35; // Eye height above the water while treading.
         
         // Health and respawn properties
         this.health = 100;
@@ -35,6 +38,8 @@ export class PlayerSystem {
         this.isDead = false;
         this.respawnPoint = { x: 0, y: 0, z: 0 }; // Default to origin
         this.lootDropped = false; // Track if loot was dropped on death
+        this.lastDamageCause = 'the wilds';
+        this.slowDamage = 0; // Accumulates gradual harm so feedback is not spammed.
         
         // Key states
         this.keys = {
@@ -49,9 +54,6 @@ export class PlayerSystem {
             spawnX = this.game.terrainSystem.spawnPosition.x;
             spawnY = this.game.terrainSystem.spawnPosition.y + 2; // Add player height
             spawnZ = this.game.terrainSystem.spawnPosition.z;
-            console.log(`Spawning player at terrain system spawn point: (${spawnX}, ${spawnY}, ${spawnZ})`);
-        } else {
-            console.log('No terrain spawn point found, using default spawn position');
         }
         
         // Create camera at spawn position
@@ -112,7 +114,7 @@ export class PlayerSystem {
                 this.isFlying = true;
                 this.jumpVelocity = this.jumpHeight * 0.5; // Initial upward boost
                 this.flyingHeight = this.camera.position.y; // Set current height as base flying height
-                console.log('Flying activated!');
+                this.game.audio?.play('whoosh');
             } else {
                 // Reset timer for potential double jump
                 this.jumpTimer = now;
@@ -123,7 +125,6 @@ export class PlayerSystem {
             // While flying, jump again to deactivate flying and fall
             this.isFlying = false;
             this.jumpVelocity = 0; // Start falling
-            console.log('Flying deactivated!');
         }
     }
     
@@ -140,93 +141,96 @@ export class PlayerSystem {
     
     update() {
         const deltaTime = Math.min(2.5, this.game.scene.getAnimationRatio());
-        
+
         // Check for death first
         if (this.isDead) {
             this.handleDeath();
             return; // Skip other updates if dead
         }
-        
+
         // Get current position info
         const x = this.camera.position.x;
         const y = this.camera.position.y;
         const z = this.camera.position.z;
-        
-        // Check if in water
-        let inWater = false;
-        if (this.game.terrainSystem) {
-            inWater = this.game.terrainSystem.isWaterArea(x, z) && y <= this.game.terrainSystem.waterHeight + 1;
-        }
-        
-        // Update swimming state
-        this.isSwimming = inWater;
-        
+        const terrain = this.game.terrainSystem;
+        const terrainHeight = terrain ? terrain.getPerlinHeight(x, z) : 0;
+        const waterLevel = terrain?.waterHeight;
+
+        // Deep water floats the player; shallows are simply waded through.
+        const depth = terrain && terrain.isWaterArea(x, z) && Number.isFinite(waterLevel)
+            ? waterLevel - terrainHeight : 0;
+        const surface = waterLevel + this.surfaceOffset;
+        const deep = depth > this.swimDepth;
+        const wasSwimming = this.isSwimming;
+        this.isSwimming = deep && !this.isFlying && y <= surface + 0.45;
+        this.isUnderwater = this.isSwimming && y < waterLevel - 0.05;
+        if (this.isSwimming && !wasSwimming) this.game.audio?.play('splash');
+
         // Handle oxygen and drowning
-        if (this.isSwimming) {
-            // Deplete oxygen underwater
+        if (this.isUnderwater) {
             this.oxygenLevel -= this.oxygenDepletionRate * deltaTime;
-            
+
             // Damage player if out of oxygen
             if (this.oxygenLevel <= 0) {
                 this.oxygenLevel = 0;
-                this.takeDamage(0.5 * deltaTime); // Drowning damage
+                this.takeDamage(0.5 * deltaTime, 'drowning'); // Drowning damage
             }
-            
-            // Adjust movement speed underwater
-            this.camera.speed = this.swimSpeed * this.underwaterDrag;
         } else {
             // Refill oxygen above water
             this.oxygenLevel = Math.min(this.maxOxygen, this.oxygenLevel + this.oxygenRefillRate * deltaTime);
-            
-            // Reset normal movement speed
-            this.camera.speed = this.keys.sprint ? 0.58 : 0.36;
         }
-        
+        this.camera.speed = this.isSwimming ? this.swimSpeed
+            : depth > 0.35 ? 0.27 // Wading through the shallows is slow going.
+            : this.keys.sprint ? 0.58 : 0.36;
+
         if (this.isFlying) {
             // Handle flying controls
             if (this.keys.jump) {
                 // Fly upward when space is held
                 this.camera.position.y += this.flyingSpeed * deltaTime;
             }
-            
+
             if (this.keys.descend) {
                 // Descend when ctrl is held
                 this.camera.position.y -= this.flyingSpeed * deltaTime;
             }
-            
+            // Never sink through the ground or the lake bed.
+            if (terrain) this.camera.position.y = Math.max(this.camera.position.y, terrainHeight + 2);
+
         } else if (this.isSwimming) {
-            // Swimming physics
-            if (this.keys.jump) {
-                // Swim upward when space is held
-                this.camera.position.y += this.swimSpeed * deltaTime;
+            // Tread water at the surface; hold descend to dive, jump to rise.
+            if (this.keys.descend) {
+                this.camera.position.y -= this.swimSpeed * deltaTime;
+            } else if (this.keys.jump || y < surface) {
+                this.camera.position.y = Math.min(surface,
+                    y + (this.keys.jump ? this.swimSpeed : 0.05) * deltaTime);
             } else {
-                // Gentle sink in water
-                this.camera.position.y -= 0.025 * deltaTime;
+                this.camera.position.y = Math.max(surface, y - 0.06 * deltaTime);
             }
-            
-            // Keep player above water bottom
-            if (this.game.terrainSystem) {
-                const terrainHeight = this.game.terrainSystem.getPerlinHeight(x, z);
-                if (y <= terrainHeight + 1) {
-                    this.camera.position.y = terrainHeight + 1;
-                }
-            }
-            
+            // Keep the player above the lake bed.
+            this.camera.position.y = Math.max(this.camera.position.y, terrainHeight + 0.7);
+
             // Reset jump parameters while swimming
             this.isGrounded = false;
             this.isJumping = false;
             this.jumpCount = 0;
+            this.jumpVelocity = 0;
             this.canDoubleJump = false;
-            
+
+        } else if (wasSwimming) {
+            // Feet found the bottom again: walk out of the lake.
+            this.isGrounded = true;
+            this.jumpVelocity = 0;
+            if (terrain) this.camera.position.y = terrainHeight + 2;
+
         } else if (!this.isGrounded) {
             // Normal jumping and gravity when not flying or swimming
             this.jumpVelocity -= this.gravity * deltaTime;
             this.camera.position.y += this.jumpVelocity * deltaTime;
-            
+
             // Check if we've landed
             // Make sure terrainSystem is initialized before trying to get height
-            if (this.game.terrainSystem) {
-                const terrainHeight = this.game.terrainSystem.getPerlinHeight(x, z);
+            if (terrain) {
                 if (this.camera.position.y <= terrainHeight + 2 && this.jumpVelocity <= 0) {
                     this.camera.position.y = terrainHeight + 2;
                     this.isGrounded = true;
@@ -235,35 +239,44 @@ export class PlayerSystem {
                     this.canDoubleJump = false;
                 }
             }
-            
+
             // Check for fall damage
             if (this.isGrounded && this.jumpVelocity < -0.6) {
                 // Calculate fall damage based on velocity
                 const fallDamage = (Math.abs(this.jumpVelocity) - 0.6) * 50;
                 if (fallDamage > 0) {
-                    this.takeDamage(fallDamage);
+                    this.takeDamage(fallDamage, 'a long fall');
                 }
             }
         } else {
             // Keep camera at terrain height when grounded
-            if (this.game.terrainSystem) {
-                const terrainHeight = this.game.terrainSystem.getPerlinHeight(x, z);
+            if (terrain) {
                 this.camera.position.y = terrainHeight + 2;
             }
         }
     }
-    
-    // Handle player taking damage
-    takeDamage(amount) {
-        if (this.isDead) return;
+
+    // Handle player taking damage. `cause` names what hurt the player and is
+    // shown on the death screen.
+    takeDamage(amount, cause = 'the wilds') {
+        if (this.isDead || !(amount > 0)) return;
         this.health -= amount;
-        
+        this.lastDamageCause = cause;
+
+        // Sudden blows land at once; gradual harm pulses every few points.
+        if (amount >= 3) this.game.effects?.hurt?.(amount);
+        else {
+            this.slowDamage += amount;
+            if (this.slowDamage >= 4) { this.slowDamage = 0; this.game.effects?.hurt?.(1); }
+        }
+
         // Check for death
         if (this.health <= 0) {
             this.health = 0;
             this.isDead = true;
-            console.log('Player died!');
-            
+            this.game.progression?.record('deaths');
+            this.game.audio?.play('death');
+
             // Save respawn position
             this.respawnPoint = {
                 x: this.camera.position.x,
@@ -271,13 +284,13 @@ export class PlayerSystem {
                 z: this.camera.position.z
             };
         }
-        
+
         // Update UI if available
         if (this.game.uiSystem) {
             this.game.uiSystem.updateHealthUI(this.health, this.maxHealth);
         }
     }
-    
+
     // Handle death and respawning
     // Respawning is a gaming term for bringing a character back to life after death
     // This process typically involves a delay and returning to a designated spawn point
@@ -287,8 +300,11 @@ export class PlayerSystem {
             this.dropLoot();
             this.lootDropped = true;
             
-            // Set timer for respawn (3 seconds delay before player returns to game)
-            setTimeout(() => this.respawn(), 3000);
+            this.game.buildSystem?.cancelPlacement?.();
+            this.game.uiSystem?.showDeath?.(this.lastDamageCause);
+
+            // Set timer for respawn (a pause to read the summary before returning)
+            setTimeout(() => this.respawn(), 4500);
         }
     }
     
@@ -330,10 +346,12 @@ export class PlayerSystem {
         this.isJumping = false;
         this.isFlying = false;
         this.isSwimming = false;
+        this.isUnderwater = false;
+        this.slowDamage = 0;
         this.oxygenLevel = this.maxOxygen;
         
         this.game.survivalSystem && Object.assign(this.game.survivalSystem, {hunger: 75, thirst: 75, cold: 0});
-        console.log('Player respawned');
+        this.game.uiSystem?.hideDeath?.();
         
         // Update UI
         if (this.game.uiSystem) {

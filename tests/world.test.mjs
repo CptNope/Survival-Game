@@ -71,7 +71,8 @@ test('harvested resource IDs stay depleted if a terrain chunk unloads', () => {
     const inventory = new InventorySystem(game);
     game.inventorySystem = inventory;
     inventory.harvestableObjects.push({mesh, type: 'tree', resourceId: '0,0:tree:4'});
-    inventory.tryHarvest();
+    // Bare hands take three swings to bring a tree down.
+    for (let n = 0; n < 3; n++) { inventory.nextSwingAt = 0; inventory.tryHarvest(); }
     assert.equal(inventory.inventory.wood, 2);
     assert.equal(world.harvestedIds.has('0,0:tree:4'), true);
 });

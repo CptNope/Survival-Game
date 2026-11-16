@@ -247,6 +247,19 @@ export function createLootModel(scene, itemType = 'wood') {
         const random = seededRandom(73);
         return finish(scene, [ellipsoid(scene, 'ingot', V(0,.12,0), V(.35,.14,.20), [.60,.67,.70],random)], 'iron-ingot');
     }
+    if (itemType === 'spear' || itemType === 'torch') {
+        const mesh = itemType === 'spear' ? createSpearModel(scene) : createTorchModel(scene);
+        mesh.scaling.setAll(itemType === 'spear' ? .45 : .8);
+        mesh.position.y = .25;
+        return mesh;
+    }
+    if (itemType === 'waterskin') {
+        const random = seededRandom(73);
+        return finish(scene, [
+            ellipsoid(scene, 'waterskin', V(0, .2, 0), V(.24, .2, .32), [.47, .33, .2], random),
+            branch(scene, V(0, .3, .26), V(0, .42, .36), .09, palette.cream, random, .07)
+        ], 'waterskin-pickup');
+    }
     if (itemType === 'ironTools') {
         const random = seededRandom(73);
         return finish(scene, [branch(scene,V(0,.08,-.32),V(0,.15,.35),.09,palette.barkLight,random,.07),ellipsoid(scene,'iron-axe-head',V(.05,.17,.28),V(.32,.08,.18),[.68,.74,.78],random)], 'iron-tool');
@@ -311,4 +324,36 @@ export function createPlantModel(scene, seed = 1, kind = 'fiber') {
         }
     }
     return finish(scene, pieces, `${kind}-plant`);
+}
+
+// Held and dropped gear added with the expedition overhaul.
+export function createSpearModel(scene) {
+    const random = seededRandom(91);
+    return finish(scene, [
+        branch(scene, V(0, 0, -1.25), V(0, 0, 1.05), .075, palette.barkLight, random, .06),
+        branch(scene, V(0, 0, 1.0), V(0, 0, 1.55), .16, palette.stone, random, .005),
+        branch(scene, V(0, 0, .92), V(0, 0, 1.06), .11, palette.cream, random, .11)
+    ], 'spear');
+}
+
+export function createTorchModel(scene) {
+    const random = seededRandom(47);
+    return finish(scene, [
+        branch(scene, V(0, -.42, 0), V(0, .2, 0), .075, palette.bark, random, .06),
+        branch(scene, V(0, .16, 0), V(0, .34, 0), .13, palette.cream, random, .12),
+        ellipsoid(scene, 'torch-flame', V(0, .46, 0), V(.09, .17, .09), [1, .62, .2], random)
+    ], 'torch');
+}
+
+// The tool shown in the player's hand: an upright haft with a wedge head.
+export function createAxeModel(scene, iron = false) {
+    const random = seededRandom(iron ? 29 : 17);
+    const head = iron ? [.66, .72, .76] : palette.stone;
+    const blade = ellipsoid(scene, 'axe-blade', V(0, .3, .13), V(.045, .15, .2), head, random);
+    return finish(scene, [
+        branch(scene, V(0, -.5, 0), V(0, .42, 0), .075, palette.barkLight, random, .06),
+        blade,
+        ellipsoid(scene, 'axe-poll', V(0, .3, -.05), V(.06, .1, .08), head, random),
+        branch(scene, V(0, .2, 0), V(0, .4, 0), .1, palette.cream, random, .1)
+    ], iron ? 'iron-axe' : 'stone-axe');
 }

@@ -60,9 +60,10 @@ export class TouchControls {
             '  <button type="button" data-action="attack" aria-label="Gather or attack">HIT</button>',
             '  <button type="button" data-action="jump" aria-label="Jump or fly">JUMP</button>',
             '  <button type="button" data-action="sprint" aria-label="Hold to sprint">RUN</button>',
-            '  <button type="button" data-action="drink" aria-label="Drink water">DRINK</button>',
-            '  <button type="button" data-action="special" aria-label="Special attack">SKILL</button>',
-            '  <button type="button" data-action="descend" aria-label="Descend while flying">DOWN</button>',
+            '  <button type="button" data-action="drink" aria-label="Drink water or rest in a shelter">USE</button>',
+            '  <button type="button" data-action="special" aria-label="Heavy sweep, or cancel building">SKILL</button>',
+            '  <button type="button" data-action="descend" aria-label="Descend while flying or dive">DOWN</button>',
+            '  <button type="button" data-action="torch" aria-label="Light or put away the torch">TORCH</button>',
             '</div>'
         ].join('');
         document.getElementById('hud').append(root);
@@ -139,13 +140,17 @@ export class TouchControls {
         const player = this.game.playerSystem;
         const action = name => {
             if (this.game.paused || player.isDead) return;
+            this.game.audio?.unlock?.();
             if (name === 'attack') {
-                this.game.inventorySystem.tryHarvest();
-                this.game.combatSystem.tryAttack();
+                // Holding HIT keeps swinging, exactly like holding the mouse button.
+                this.game.primaryHeld = true;
+                this.game.primaryAction?.(true);
             } else if (name === 'special') {
-                this.game.combatSystem.specialAttack();
+                this.game.secondaryAction?.();
             } else if (name === 'drink') {
-                this.game.survivalSystem.drink();
+                this.game.survivalSystem.interact();
+            } else if (name === 'torch') {
+                this.game.effects?.toggleTorch?.();
             }
         };
         for (const button of this.controls.querySelectorAll('[data-action]')) {
@@ -171,6 +176,7 @@ export class TouchControls {
                 if (name === 'jump') player.keys.jump = false;
                 else if (name === 'sprint') player.keys.sprint = false;
                 else if (name === 'descend') player.keys.descend = false;
+                else if (name === 'attack') this.game.primaryHeld = false;
             };
             for (const type of ['pointerup','pointercancel','lostpointercapture'])
                 button.addEventListener(type, release);
@@ -189,6 +195,7 @@ export class TouchControls {
         this.lookPointer = null;
         this.lastLook = null;
         if (this.knob) this.knob.style.transform = 'translate(0, 0)';
+        this.game.primaryHeld = false;
         const keys = this.game.playerSystem.keys;
         keys.jump = false;
         keys.sprint = false;

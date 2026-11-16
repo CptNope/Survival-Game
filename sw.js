@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v10-installable-offline';
+const CACHE_NAME = 'survival-game-v11-expedition-overhaul';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/game.js',
   './js/utils.js',
   './js/resources.js',
+  './js/settings.js',
   './js/models/wilderness.js',
   './js/components/terrain.js',
   './js/components/exploration.js',
@@ -23,6 +24,10 @@ const ASSETS = [
   './js/components/inventory.js',
   './js/components/animals.js',
   './js/components/combat.js',
+  './js/components/sky.js',
+  './js/components/audio.js',
+  './js/components/effects.js',
+  './js/components/progression.js',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png'
 ];

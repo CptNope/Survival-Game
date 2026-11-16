@@ -11,6 +11,11 @@ import { BuildingSystem } from './components/building.js';
 import { SaveSystem } from './components/save.js';
 import { WeatherSystem } from './components/weather.js';
 import { TouchControls } from './components/touch.js';
+import { SkySystem } from './components/sky.js';
+import { AudioSystem } from './components/audio.js';
+import { EffectsSystem } from './components/effects.js';
+import { ProgressionSystem } from './components/progression.js';
+import { loadSettings, saveSettings } from './settings.js';
 
 export class SurvivalGame {
     constructor() {
@@ -18,7 +23,7 @@ export class SurvivalGame {
         this.engine = null;
         this.scene = null;
         this.camera = null;
-        
+
         // Game systems
         this.terrainSystem = null;
         this.uiSystem = null;
@@ -32,7 +37,12 @@ export class SurvivalGame {
         this.weatherSystem = null;
         this.touchControls = null;
         this.explorationSystem = null;
-        
+        this.skySystem = null;
+        this.audio = null;
+        this.effects = null;
+        this.progression = null;
+        this.settings = loadSettings();
+
         // Day/night cycle properties
         this.paused = true;
         this.dayCount = 1;
@@ -40,7 +50,12 @@ export class SurvivalGame {
         this.dayLength = 300; // seconds
         this.sunLight = null;
         this.ambientLight = null;
-        
+
+        // Input state
+        this.primaryHeld = false;
+        this.pointerLockRefusals = 0;
+        this.ambienceTimer = 0;
+
         // Initialize the game
         this.init();
     }
@@ -49,24 +64,28 @@ export class SurvivalGame {
         try {
             // Get the canvas element
             const canvas = document.getElementById("renderCanvas");
-            
+
             // Generate the BABYLON 3D engine
             this.engine = new BABYLON.Engine(canvas, true);
             // Scale GPU workload by screen density, particularly on high-DPI phones.
             const touch = window.matchMedia('(pointer: coarse)').matches;
             this.engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / (touch ? 1.5 : 2)));
-            
+
             // Create the scene
             this.scene = new BABYLON.Scene(this.engine);
             this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
             this.scene.fogDensity = 0.007;
             this.scene.clearColor = new BABYLON.Color3(0.5, 0.8, 1.0); // Sky blue background
-            
+
             // Movement and terrain collision use FreeCamera/manual physics; no Cannon world needed.
 
             // Create lighting
             this.setupLighting();
-            
+
+            // Sound is synthesised on the fly and stays silent until the first click.
+            this.audio = new AudioSystem(this, this.settings);
+            this.progression = new ProgressionSystem(this);
+
             // Initialize systems in the correct order
             // Create exploration before terrain so procedural paths and clearings
             // influence vegetation even for the initial 3x3 chunks.
@@ -74,20 +93,21 @@ export class SurvivalGame {
 
             // Inventory is needed by terrain for gatherable resources.
             this.inventorySystem = new InventorySystem(this);
-            
+
             // Create terrain system next as it's needed by player for height calculations
             this.terrainSystem = new TerrainSystem(this);
             this.explorationSystem.attachWorld(this.terrainSystem);
-            
+
             // Create player system
             this.playerSystem = new PlayerSystem(this);
-            
+            this.applySettings();
+
             // Create combat system
             this.combatSystem = new CombatSystem(this);
-            
+
             // Create animal system which depends on combat
             this.animalSystem = new AnimalSystem(this);
-            
+
             // Resource needs and craftable structures depend on player and terrain.
             this.buildSystem = new BuildingSystem(this);
             this.weatherSystem = new WeatherSystem(this);
@@ -96,20 +116,27 @@ export class SurvivalGame {
 
             // UI is created before restoring state so it can refresh all meters.
             this.uiSystem = new UISystem(this);
+            // Cosmetic feedback needs the HUD overlay layers and the camera.
+            this.effects = new EffectsSystem(this);
+            this.skySystem = new SkySystem(this);
             this.saveSystem.load();
-            
+            this.progression.check();
+            this.effects.refreshHeld();
+            this.skySystem.update(0);
+
             // Update UI once all systems are initialized
             if (this.uiSystem) {
                 this.uiSystem.updateInventoryUI();
             }
-            
+
             // Add keyboard controls
             this.setupControls();
             this.touchControls = new TouchControls(this);
-            
+            this.uiSystem.renderPanel(); // Now that the input method is known.
+
             // Game loop
             this.setupGameLoop();
-            
+
             // Watch for browser/canvas resize events
             window.addEventListener("resize", () => {
                 this.engine.resize();
@@ -121,9 +148,9 @@ export class SurvivalGame {
             throw e;
         }
     }
-    
+
     setupLighting() {
-        // Create sun and moon for day/night cycle
+        // One directional light is the sun by day and the moon by night.
         this.sunLight = new BABYLON.DirectionalLight("sunLight", new BABYLON.Vector3(0, -1, 0), this.scene);
         this.sunLight.intensity = 1.0;
         this.sunLight.shadowMinZ = 1;
@@ -136,23 +163,38 @@ export class SurvivalGame {
         this.shadowGenerator.normalBias = 0.03;
         this.shadowGenerator.darkness = 0.3;
         this.sunLight.diffuse = new BABYLON.Color3(1, 1, 0.8);
-        
-        // Ambient light for night time
+
+        // Sky light; the SkySystem tints it through the day.
         this.ambientLight = new BABYLON.HemisphericLight("ambientLight", new BABYLON.Vector3(0, 1, 0), this.scene);
         this.ambientLight.intensity = 0.2;
+        this.ambientLight.specular = BABYLON.Color3.Black();
     }
-    
+
     registerModelShadow(mesh) {
         this.shadowGenerator.addShadowCaster(mesh, true);
         mesh.onDisposeObservable.add(() => this.shadowGenerator.removeShadowCaster(mesh, true));
     }
 
-    pickTarget() {
-        return this.scene.pickWithRay(this.playerSystem.camera.getForwardRay(5));
+    pickTarget(range = 5) {
+        return this.scene.pickWithRay(this.playerSystem.camera.getForwardRay(range));
+    }
+
+    applySettings() {
+        const camera = this.playerSystem?.camera;
+        if (camera) camera.angularSensibility = 2200 / this.settings.sensitivity;
+        this.audio?.setVolume(this.settings.volume);
+        this.audio?.setMuted(this.settings.muted);
+    }
+
+    updateSettings(changes) {
+        Object.assign(this.settings, changes);
+        this.applySettings();
+        saveSettings(this.settings);
     }
 
     setPaused(value) {
         this.paused = value;
+        this.primaryHeld = false;
         const camera = this.playerSystem.camera;
         this.playerSystem.keys.jump = false;
         this.playerSystem.keys.descend = false;
@@ -163,39 +205,121 @@ export class SurvivalGame {
         if (value) {
             camera.detachControl();
             document.exitPointerLock?.();
-        } else camera.attachControl(this.engine.getRenderingCanvas(), true);
+        } else {
+            camera.attachControl(this.engine.getRenderingCanvas(), true);
+            this.audio?.unlock();
+        }
+    }
+
+    // Left click / HIT: confirm a build, swing at what is targeted, or attack.
+    // `fresh` is true for the press itself and false for held-button repeats.
+    primaryAction(fresh = true) {
+        if (this.paused || this.playerSystem.isDead) return;
+        if (this.buildSystem.placing) {
+            if (fresh) this.buildSystem.confirmPlacement();
+            return;
+        }
+        // A held button only needs to look again once the last swing has recovered.
+        if (!fresh && (this.inventorySystem.swinging() || this.combatSystem.isAttacking)) return;
+        if (this.inventorySystem.findTarget()) this.inventorySystem.tryHarvest();
+        else this.combatSystem.tryAttack();
+    }
+
+    secondaryAction() {
+        if (this.paused) return;
+        if (this.buildSystem.cancelPlacement()) {
+            this.uiSystem.showNotification('Building cancelled');
+            return;
+        }
+        this.combatSystem.specialAttack();
+    }
+
+    // Sunrise, reached by waiting it out or by sleeping. Nights survived,
+    // regrowth and the wolves' retreat all hang off this moment.
+    advanceToDawn(message) {
+        this.dayTime = 8;
+        this.dayCount++;
+        this.onNewDay(message, true);
+    }
+
+    onNewDay(message, slept = false) {
+        if (!this.playerSystem.isDead) this.progression.record('nights');
+        this.animalSystem.clearWolves(slept ? 0 : 30);
+        const regrown = this.terrainSystem.regrow(this.dayCount);
+        this.weatherSystem.refresh();
+        this.uiSystem.showDayBanner(this.dayCount, message || (regrown ? 'The forest has grown back in places' : 'You made it through the night'), slept);
+        this.saveSystem.save();
     }
 
     setupControls() {
         const canvas = this.engine.getRenderingCanvas();
-        canvas.addEventListener('click', event => {
-            if (this.paused || (this.touchControls?.enabled && event.pointerType !== 'mouse')) return;
-            if (!document.pointerLockElement) {
-                canvas.requestPointerLock?.()?.catch(() => {});
+        canvas.addEventListener('pointerdown', event => {
+            if (event.pointerType !== 'mouse' || event.button !== 0 || this.paused) return;
+            this.audio?.unlock();
+            // Capture the mouse first. Where the browser keeps refusing (some
+            // embedded frames), play on without it: drag to look, click to act.
+            if (!document.pointerLockElement && canvas.requestPointerLock && this.pointerLockRefusals < 3) {
+                canvas.requestPointerLock()?.catch?.(() => { this.pointerLockRefusals++; });
                 return;
             }
-            this.inventorySystem.tryHarvest();
-            this.combatSystem.tryAttack();
+            this.primaryHeld = true;
+            this.primaryAction(true);
+        });
+        window.addEventListener('pointerup', event => {
+            if (event.pointerType === 'mouse' && event.button === 0) this.primaryHeld = false;
         });
         canvas.addEventListener('contextmenu', event => {
             event.preventDefault();
-            if (!this.paused) this.combatSystem.specialAttack();
+            this.secondaryAction();
         });
+        canvas.addEventListener('wheel', event => {
+            if (!this.paused && this.buildSystem.placing) this.buildSystem.rotatePlacement(event.deltaY > 0 ? 1 : -1);
+        }, {passive: true});
         window.addEventListener('keydown', event => {
             if (event.repeat) return;
-            if (event.code === 'Escape') this.uiSystem.toggleMenu();
+            // Typing in a settings field must never move the player.
+            if (event.target instanceof HTMLInputElement && event.target.type !== 'range') return;
+            if (event.code === 'Escape') {
+                this.lastEscapeAt = performance.now();
+                if (!this.paused && this.buildSystem.cancelPlacement()) return;
+                this.uiSystem.toggleMenu();
+            }
             if (event.code === 'KeyC') this.uiSystem.toggleCrafting();
-            if (event.code === 'KeyB') this.uiSystem.toggleBuilding();
+            if (event.code === 'KeyB') {
+                if (!this.paused && this.buildSystem.cancelPlacement()) return;
+                this.uiSystem.toggleBuilding();
+            }
             if (event.code === 'KeyP') this.saveSystem.save();
+            if (event.code === 'KeyM') {
+                this.updateSettings({muted: !this.settings.muted});
+                this.uiSystem.showNotification(this.settings.muted ? 'Sound off' : 'Sound on');
+                this.uiSystem.syncSettings();
+            }
             if (this.paused) return;
             this.playerSystem.updateKeyState(event.keyCode, true);
             if (event.code === 'Space') { event.preventDefault(); this.playerSystem.jump(); }
-            if (event.code === 'KeyE') this.survivalSystem.drink();
+            if (event.code === 'KeyE') this.survivalSystem.interact();
+            if (event.code === 'KeyF') this.effects.toggleTorch();
+            if (event.code === 'KeyR') this.buildSystem.rotatePlacement(1);
         });
         window.addEventListener('keyup', event => this.playerSystem.updateKeyState(event.keyCode, false));
+        // Browsers swallow the Esc press that releases the mouse, so losing the
+        // pointer lock is treated as that Esc: cancel a build, otherwise pause.
+        document.addEventListener('pointerlockerror', () => { this.pointerLockRefusals++; });
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement) this.pointerLockRefusals = 0;
+            if (document.pointerLockElement || this.paused || this.touchControls?.enabled) return;
+            if (performance.now() - (this.lastEscapeAt || -1e9) < 300) return;
+            if (this.buildSystem.cancelPlacement()) {
+                this.uiSystem.showNotification('Building cancelled');
+                return;
+            }
+            this.uiSystem.openPanel('menu');
+        });
         window.addEventListener('blur', () => this.uiSystem.openPanel('menu'));
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) this.uiSystem.openPanel('menu');
+            if (document.hidden) { this.uiSystem.openPanel('menu'); this.audio?.suspend(); }
+            else this.audio?.resume();
         });
         this.setPaused(true);
     }
@@ -207,16 +331,19 @@ export class SurvivalGame {
             // Update player physics
             this.playerSystem.update();
             this.touchControls?.update();
-            
+            if (this.primaryHeld) this.primaryAction(false);
+            this.buildSystem.updatePlacement();
+
             // Check if we need to update terrain chunks
             this.terrainSystem.checkChunkUpdates();
-            
+
             // Check for nearby loot and landmark discoveries.
             this.inventorySystem.update();
             this.explorationSystem.update();
             const dt = Math.min(this.engine.getDeltaTime() / 1000, .05);
             this.survivalSystem.update(dt);
             this.saveSystem.update(dt);
+            this.updateAmbience(dt);
         });
 
         // Start render loop
@@ -226,6 +353,7 @@ export class SurvivalGame {
             this._buildingStreamAccumulator += Math.min(.05,this.engine.getDeltaTime()/1000);
             if (this._buildingStreamAccumulator > .65) {
                 this.buildSystem.update();
+                this.effects.updateFires();
                 this._buildingStreamAccumulator = 0;
             }
             // Update day/night cycle
@@ -233,29 +361,44 @@ export class SurvivalGame {
                 this.updateDayNightCycle();
                 this.weatherSystem.update();
             }
-            
+
             // Update animal spawning and movement
             if (!this.paused) this.animalSystem.update();
             this.uiSystem.update();
-            
+
             // Scene rendering
             this.scene.render();
         });
     }
-    
+
+    // Footsteps every frame; the ambience mix a few times a second.
+    updateAmbience(dt) {
+        const player = this.playerSystem;
+        const position = player.camera.position;
+        const terrain = this.terrainSystem;
+        const wading = terrain.isWaterArea(position.x, position.z);
+        this.audio.footsteps(position, player.isGrounded && !player.isSwimming, wading);
+        this.ambienceTimer -= dt;
+        if (this.ambienceTimer > 0) return;
+        this.ambienceTimer = .3;
+        this.audio.update(.3, {
+            weather: this.weatherSystem.type,
+            night: this.survivalSystem.isNight(),
+            underwater: player.isUnderwater,
+            flying: player.isFlying,
+            fireDistance: this.effects.nearestFireDistance
+        });
+    }
+
     // Day/night cycle
     updateDayNightCycle() {
-        this.dayTime += Math.min(this.engine.getDeltaTime() / 1000, 0.05);
-        if (this.dayTime >= this.dayLength) { this.dayTime -= this.dayLength; this.dayCount++; }
-        const angle = this.dayTime / this.dayLength * Math.PI * 2;
-        const daylight = Math.max(0, Math.sin(angle));
-        this.sunLight.direction.set(Math.cos(angle), -Math.sin(angle), 0.25);
-        this.sunLight.position.copyFrom(this.playerSystem.camera.position.subtract(this.sunLight.direction.scale(65)));
-        this.sunLight.intensity = daylight * 1.15;
-        this.ambientLight.intensity = 0.22 + daylight * 0.45;
-        const night = new BABYLON.Color3(0.035, 0.065, 0.12);
-        const day = new BABYLON.Color3(0.55, 0.72, 0.77);
-        this.scene.clearColor = BABYLON.Color3.Lerp(night, day, daylight);
-        this.scene.fogColor = this.scene.clearColor;
+        const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.05);
+        this.dayTime += dt;
+        if (this.dayTime >= this.dayLength) {
+            this.dayTime -= this.dayLength;
+            this.dayCount++;
+            this.onNewDay();
+        }
+        this.skySystem.update(dt);
     }
 }

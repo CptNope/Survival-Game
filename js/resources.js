@@ -2,26 +2,46 @@
 export const ITEMS = {
     wood: 'Wood', stone: 'Stone', planks: 'Planks', tools: 'Stone tools',
     ironOre: 'Iron ore', iron: 'Iron ingots', fiber: 'Fiber', herbs: 'Herbs',
-    berries: 'Berries', ironTools: 'Iron tools', rawMeat: 'Raw meat', cookedMeat: 'Cooked meat'
+    berries: 'Berries', ironTools: 'Iron tools', rawMeat: 'Raw meat', cookedMeat: 'Cooked meat',
+    spear: 'Spear', torch: 'Torch', waterskin: 'Waterskin'
 };
+// `hits` is the number of swings a node takes by tool tier. A missing tier
+// means that tier cannot gather the node at all (bare hands on ore).
 export const RESOURCES = {
-    tree: { label: 'wood', yields: { wood: 2 } },
-    rock: { label: 'stone', yields: { stone: 2 } },
-    ore: { label: 'iron ore', yields: { ironOre: 2 }, requiresTool: true },
-    fiber: { label: 'fiber', yields: { fiber: 3 } },
-    herb: { label: 'medicinal herbs', yields: { herbs: 2 } },
-    berry: { label: 'berries', yields: { berries: 3 } }
+    tree: { label: 'wood', verb: 'chop', sound: 'chop', debris: 'wood', yields: { wood: 2 }, hits: { hand: 3, stone: 2, iron: 1 } },
+    rock: { label: 'stone', verb: 'break', sound: 'mine', debris: 'stone', yields: { stone: 2 }, hits: { hand: 3, stone: 2, iron: 1 } },
+    ore: { label: 'iron ore', verb: 'mine', sound: 'mine', debris: 'ore', yields: { ironOre: 2 }, requiresTool: true, hits: { stone: 3, iron: 2 } },
+    fiber: { label: 'fiber', verb: 'gather', sound: 'pluck', debris: 'leaf', yields: { fiber: 3 }, hits: { hand: 1, stone: 1, iron: 1 } },
+    herb: { label: 'medicinal herbs', verb: 'gather', sound: 'pluck', debris: 'leaf', yields: { herbs: 2 }, hits: { hand: 1, stone: 1, iron: 1 } },
+    berry: { label: 'berries', verb: 'pick', sound: 'pluck', debris: 'leaf', yields: { berries: 3 }, hits: { hand: 1, stone: 1, iron: 1 } }
 };
+// Days until a gathered node grows back, so a settled camp stays supplied.
+export const REGROW_DAYS = { tree: 3, rock: 4, ore: 5, fiber: 2, herb: 2, berry: 2 };
+
+export function toolTier(inventory) {
+    return inventory?.ironTools > 0 ? 'iron' : inventory?.tools > 0 ? 'stone' : 'hand';
+}
+// Swings required with the player's best tool; Infinity when it cannot be gathered yet.
+export function hitsNeeded(type, inventory) {
+    const hits = RESOURCES[type]?.hits;
+    if (!hits) return 1;
+    return hits[toolTier(inventory)] ?? Infinity;
+}
+
+export const RECIPE_GROUPS = { gear: 'Tools & gear', food: 'Food & healing', materials: 'Materials' };
 export const RECIPES = {
-    planks: { name: 'Wooden planks', cost: { wood: 2 }, output: 'planks', amount: 1 },
-    tools: { name: 'Stone tool', cost: { planks: 1, stone: 2 }, output: 'tools', amount: 1 },
-    bandage: { name: 'Field dressing', cost: { wood: 3 }, heal: 30 },
-    herbalWrap: { name: 'Herbal wrap', cost: { fiber: 2, herbs: 2 }, heal: 50 },
-    snack: { name: 'Eat berries', cost: { berries: 2 }, heal: 15, hunger: 28 },
-    cookMeat: { name: 'Roast meat at campfire', cost: { rawMeat: 1 }, output: 'cookedMeat', amount: 1, requiresFire: true },
-    eatMeat: { name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50 },
-    iron: { name: 'Smelt iron', cost: { ironOre: 2, wood: 2 }, output: 'iron', amount: 1 },
-    ironTools: { name: 'Iron tool', cost: { iron: 2, planks: 1, fiber: 2 }, output: 'ironTools', amount: 1 }
+    planks: { group: 'materials', name: 'Wooden planks', cost: { wood: 2 }, output: 'planks', amount: 1 },
+    iron: { group: 'materials', name: 'Smelt iron', cost: { ironOre: 2, wood: 2 }, output: 'iron', amount: 1 },
+    tools: { group: 'gear', name: 'Stone tool', note: 'Gathers faster · mines ore', cost: { planks: 1, stone: 2 }, output: 'tools', amount: 1 },
+    spear: { group: 'gear', name: 'Spear', note: '+12 damage · longer reach', cost: { wood: 2, stone: 1, fiber: 1 }, output: 'spear', amount: 1, unique: true },
+    torch: { group: 'gear', name: 'Torch', note: 'Light and a little warmth at night', cost: { wood: 1, fiber: 1 }, output: 'torch', amount: 1, unique: true },
+    waterskin: { group: 'gear', name: 'Waterskin', note: 'Carries three drinks from any lake', cost: { fiber: 4 }, output: 'waterskin', amount: 1, unique: true },
+    ironTools: { group: 'gear', name: 'Iron tool', note: 'Fastest gathering · +8 damage', cost: { iron: 2, planks: 1, fiber: 2 }, output: 'ironTools', amount: 1 },
+    bandage: { group: 'food', name: 'Field dressing', cost: { wood: 3 }, heal: 30 },
+    herbalWrap: { group: 'food', name: 'Herbal wrap', cost: { fiber: 2, herbs: 2 }, heal: 50 },
+    snack: { group: 'food', name: 'Eat berries', cost: { berries: 2 }, heal: 15, hunger: 28 },
+    cookMeat: { group: 'food', name: 'Roast meat at campfire', cost: { rawMeat: 1 }, output: 'cookedMeat', amount: 1, requiresFire: true },
+    eatMeat: { group: 'food', name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50, meal: true }
 };
 export function itemAmount(item, count) {
     const singular = {planks: 'plank', tools: 'stone tool', iron: 'iron ingot', herbs: 'herb', berries: 'berry', ironTools: 'iron tool'};

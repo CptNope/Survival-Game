@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { InventorySystem } from '../js/components/inventory.js';
 import { CombatSystem } from '../js/components/combat.js';
 import { PlayerSystem } from '../js/components/player.js';
+// Land `times` gathering swings back to back, skipping the swing cooldown.
+function swing(inventory, times = 1) {
+ let last = false;
+ for (let n = 0; n < times; n++) { inventory.nextSwingAt = 0; last = inventory.tryHarvest(); }
+ return last;
+}
 function fixture() {
  const game = {paused:false, playerSystem:{health:50,maxHealth:100,isDead:false},uiSystem:{showNotification(){},updateInventoryUI(){},updateExperienceUI(){},updateHealthUI(){},showLevelUpMessage(){}}};
  game.inventorySystem=new InventorySystem(game);return game;
@@ -12,7 +18,7 @@ test('crafting fails atomically and follows the displayed recipe',()=>{
  assert.equal(i.craft('tools'),false);assert.equal(i.inventory.tools,0);
  i.inventory.wood=2;i.inventory.stone=2;
  assert.equal(i.craft('planks'),true);assert.equal(i.craft('tools'),true);
- assert.deepEqual(i.inventory,{wood:0,stone:0,planks:0,tools:1,ironOre:0,iron:0,fiber:0,herbs:0,berries:0,ironTools:0,rawMeat:0,cookedMeat:0});
+ assert.deepEqual(i.inventory,{wood:0,stone:0,planks:0,tools:1,ironOre:0,iron:0,fiber:0,herbs:0,berries:0,ironTools:0,rawMeat:0,cookedMeat:0,spear:0,torch:0,waterskin:0});
  assert.equal(i.craft('unknown'),false);
 });
 test('dressing caps health and consumes nothing at full health',()=>{
@@ -51,15 +57,17 @@ test('ore requires a tool; iron tools improve yield without consuming the tool',
  const g=fixture(),i=g.inventorySystem;
  let disposed=false; const mesh={dispose(){disposed=true;}};
  i.harvestableObjects=[{mesh,type:'ore'}];g.pickTarget=()=>({hit:true,pickedMesh:mesh});
- i.tryHarvest();assert.equal(disposed,false);assert.equal(i.inventory.ironOre,0);
- i.inventory.tools=1;i.tryHarvest();assert.equal(disposed,true);assert.equal(i.inventory.ironOre,2);assert.equal(i.inventory.tools,1);
- i.harvestableObjects=[{mesh,type:'ore'}];i.inventory.ironTools=1;i.tryHarvest();assert.equal(i.inventory.ironOre,5);
+ assert.equal(swing(i,5),false);assert.equal(disposed,false);assert.equal(i.inventory.ironOre,0);
+ // A stone tool needs three swings at a deposit; an iron tool only two.
+ i.inventory.tools=1;swing(i,2);assert.equal(disposed,false);assert.equal(i.inventory.ironOre,0);
+ swing(i);assert.equal(disposed,true);assert.equal(i.inventory.ironOre,2);assert.equal(i.inventory.tools,1);
+ i.harvestableObjects=[{mesh,type:'ore'}];i.inventory.ironTools=1;swing(i,2);assert.equal(i.inventory.ironOre,5);
 });
 test('plants harvest by hand and yield their own resource',()=>{
  for(const [type,item,count] of [['fiber','fiber',3],['herb','herbs',2],['berry','berries',3]]) {
   const g=fixture(),i=g.inventorySystem;const mesh={dispose(){}};
   i.harvestableObjects=[{mesh,type}];g.pickTarget=()=>({hit:true,pickedMesh:mesh});
-  i.tryHarvest();assert.equal(i.inventory[item],count);assert.equal(i.harvestableObjects.length,0);
+  swing(i);assert.equal(i.inventory[item],count);assert.equal(i.harvestableObjects.length,0);
  }
 });
 test('ore-to-iron-tool progression charges all ingredients exactly',()=>{
@@ -83,7 +91,7 @@ test('death drops every resource type and clears all inventory slots',()=>{
  for(const item of Object.keys(i.inventory))i.inventory[item]=3;
  i.createLootBag=(position,item,count)=>dropped.push({item,count});
  i.dropAllItems({x:1,y:2,z:3});
- assert.equal(dropped.length,12);assert.ok(dropped.every(drop=>drop.count===3));
+ assert.equal(dropped.length,15);assert.ok(dropped.every(drop=>drop.count===3));
  assert.ok(Object.values(i.inventory).every(count=>count===0));
 });
 
