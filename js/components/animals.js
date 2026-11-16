@@ -1,6 +1,6 @@
 import { createDeerModel, createRabbitModel, createWolfModel, animateDeer, animateRabbit } from '../models/wilderness.js';
 import { createCreatureModel } from '../models/creatures.js';
-import { CREATURES, scaleFor } from '../creatures.js';
+import { CREATURES, ELITE, scaleFor } from '../creatures.js';
 import { CreatureAI } from './creatures.js';
 // Animal system for handling animal spawning and behavior
 export class AnimalSystem {
@@ -171,11 +171,16 @@ export class AnimalSystem {
             for (const [item, amount] of Object.entries(def.loot)) inv[item] += amount;
             game.uiSystem?.showNotification?.('Hunted ' + animal.kind + ' · Raw meat recovered');
         } else if (def.brain) {
-            game.uiSystem?.showNotification?.('Defeated ' + def.label.toLowerCase());
+            game.uiSystem?.showNotification?.('Defeated ' + (animal.elite ? 'an elite ' : '') + def.label.toLowerCase());
         }
-        if (def.gear && Math.random() < def.gear.chance) {
+        if (animal.elite) {
+            // Elites always carry something, and it tends to be good.
+            game.gear?.dropRoll?.(position, {level: (animal.level || 1) + 1, luck: (def.gear?.luck || 0) + ELITE.luck});
+        } else if (def.gear && Math.random() < def.gear.chance) {
             game.gear?.dropRoll?.(position, {level: animal.level || 1, luck: def.gear.luck});
         }
+        // Some creatures come apart into smaller ones.
+        if (def.split && animal.dungeon) game.dungeonSystem?.summonAround?.(position, def.split.kind, def.split.count, 1.3);
         if (def.boss) game.dungeonSystem?.onBossDefeated?.(animal, position);
         game.uiSystem?.updateInventoryUI?.();
         if (!animal.dungeon) game.saveSystem?.save();
@@ -192,11 +197,17 @@ export class AnimalSystem {
         model.mesh.position.set(x, y, z);
         model.mesh.computeWorldMatrix(true);
         if (kind === 'deer') this.game.registerModelShadow(model.mesh);
-        const scale = def.brain ? scaleFor(options.tier, options.floor) : {health: 1, damage: 1, xp: 1};
+        const scale = def.brain ? {...scaleFor(options.tier, options.floor)} : {health: 1, damage: 1, xp: 1};
+        const elite = Boolean(options.elite && def.brain && !def.boss);
+        if (elite) {
+            scale.health *= ELITE.health; scale.damage *= ELITE.damage; scale.xp *= ELITE.xp;
+            model.mesh.scaling.setAll(ELITE.size);
+            if (model.mesh.material) model.mesh.material.emissiveColor = new BABYLON.Color3(.42, .3, .06);
+        }
         const health = Math.round(def.health * scale.health);
         const animal = { ...model, kind, health, maxHealth: health, speed: 1, gait: 0, attackCooldown: 0,
             seed: Math.abs(seed % 97), damageScale: scale.damage, xpScale: scale.xp,
-            level: options.level || 1, dungeon: Boolean(options.dungeon) };
+            level: options.level || 1, dungeon: Boolean(options.dungeon), elite };
         this.animals.push(animal);
         if (kind === 'wolf') this.game.audio?.play('howl', {volume: .8});
         return animal;

@@ -147,7 +147,9 @@ export class SurvivalSystem {
         const exposed=!safe && !underground;
         // A lit torch takes the edge off the chill but is no substitute for a fire.
         const torch = this.game.effects?.torchLit ? .7 : 1;
-        const coldRate = underground ? -.25 : exposed && (night || storm || rain)
+        // Most dungeons are merely cool; a frozen vault chills unless a torch is lit.
+        const chill = this.game.dungeonSystem?.theme?.chill ?? -.25;
+        const coldRate = underground ? (chill > 0 ? chill * (torch < 1 ? .15 : 1) * (1 - (gear?.stat('warmth') || 0) / 100) : chill) : exposed && (night || storm || rain)
             ? (.65 + (storm ? .85 : rain ? .3 : 0)) * torch * (1 - (gear?.stat('warmth') || 0) / 100) : -1.4;
         this.cold = SurvivalSystem.clamp(this.cold + dt * coldRate, 0);
         if (this.hunger <= 0) player.takeDamage(.65 * dt, 'starvation');

@@ -27,12 +27,13 @@ export class CombatSystem {
     }
 
     damage() {
-        return this.attackPower + (this.level - 1) * 2 + this.weaponBonus() + (this.game.gear?.stat('power') || 0);
+        return (this.attackPower + (this.level - 1) * 2 + this.weaponBonus() + (this.game.gear?.stat('power') || 0))
+            * (this.game.buffs?.factor('damage') || 1);
     }
 
     // Swing-speed bonuses from gear shorten every cooldown.
     cooldown(ms) {
-        return ms / (1 + (this.game.gear?.stat('haste') || 0) / 100);
+        return ms / (1 + (this.game.gear?.stat('haste') || 0) / 100) / (this.game.buffs?.factor('speed') || 1);
     }
 
     // The creature under the reticle, for the HUD.

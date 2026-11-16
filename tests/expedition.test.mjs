@@ -555,12 +555,12 @@ test('every expedition opens on a dry first morning', () => {
 
 test('settings are clamped, persisted and never throw on bad storage', () => {
     assert.deepEqual(normalizeSettings(null), {...DEFAULT_SETTINGS});
-    assert.deepEqual(normalizeSettings({volume: 9, muted: 'yes', sensitivity: -3}), {volume: 1, muted: false, sensitivity: .3});
+    assert.deepEqual(normalizeSettings({volume: 9, muted: 'yes', sensitivity: -3, view: 'sideways'}), {volume: 1, muted: false, sensitivity: .3, view: 'first'});
     const items = new Map();
     const storage = {setItem(key, value) { items.set(key, value); }, getItem(key) { return items.get(key) ?? null; }};
-    assert.equal(saveSettings({volume: .25, muted: true, sensitivity: 1.8}, storage), true);
+    assert.equal(saveSettings({volume: .25, muted: true, sensitivity: 1.8, view: 'overhead'}, storage), true);
     assert.ok(items.has(SETTINGS_KEY));
-    assert.deepEqual(loadSettings(storage), {volume: .25, muted: true, sensitivity: 1.8});
+    assert.deepEqual(loadSettings(storage), {volume: .25, muted: true, sensitivity: 1.8, view: 'overhead'});
     assert.deepEqual(loadSettings({getItem() { throw new Error('blocked'); }}), {...DEFAULT_SETTINGS});
     assert.deepEqual(loadSettings({getItem: () => '{not json'}), {...DEFAULT_SETTINGS});
     assert.equal(saveSettings({}, {setItem() { throw new Error('full'); }}), false);

@@ -424,7 +424,8 @@ body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.20}}
   #stats{grid-template-columns:repeat(3,1fr)}
 }
 @media (any-pointer:coarse) and (max-height:480px){
-  .touch-actions{grid-template-columns:repeat(4,46px)}
+  /* Nine actions in two rows, so the grid stays below the Craft / Build bar. */
+  .touch-actions{grid-template-columns:repeat(5,46px)}
   .touch-actions button{width:46px}
 }
 @media(prefers-reduced-motion:reduce){
@@ -477,4 +478,20 @@ body.underground::after{display:none} /* No rain falls underground. */
   .gear-slots,.gear-bag{grid-template-columns:1fr}
   #minimap{top:136px;right:10px;width:124px;height:124px}
   #boss-bar{top:150px;width:56vw}
+}
+
+/* ---- Camera views, boons ---- */
+body.view-overhead #crosshair{display:none} /* From above, a ring marks the target instead. */
+.hud-buttons{display:flex;gap:10px;align-items:center}
+#view-button{pointer-events:auto;padding:10px 16px;font-size:12px}
+/* With the player on screen, prompts sit clear of them, above the pack. */
+body.view-third #target-hint,body.view-overhead #target-hint{top:auto;bottom:112px}
+#buffs{position:absolute;left:34px;bottom:178px;font:700 11px 'DM Sans',sans-serif;letter-spacing:.6px;
+  color:#9af3df;text-shadow:0 1px 6px #000}
+#buffs:empty{display:none}
+@media (any-pointer:coarse){
+  #view-button{padding:9px 12px;font-size:13px}
+  .hud-buttons{gap:6px}
+  body.view-third #target-hint,body.view-overhead #target-hint{bottom:230px}
+  #buffs{left:18px;bottom:auto;top:430px}
 }

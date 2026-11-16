@@ -25,6 +25,7 @@ export class EffectsSystem {
         this.swingStart = -1e9;
         this.swingHeavy = false;
         this.torchLit = false;
+        this.firstPerson = true;
         this.layer = document.getElementById('effects-layer');
         this.vignette = document.getElementById('hurt-vignette');
         this.reducedMotion = Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -172,6 +173,7 @@ export class EffectsSystem {
         this.held = null;
         this.heldKind = kind;
         const camera = this.game.playerSystem?.camera;
+        this.game.viewSystem?.refreshHeld?.(); // The avatar carries the same tool.
         if (!kind || !camera) return;
         const mesh = kind === 'spear' ? createSpearModel(this.scene) : createAxeModel(this.scene, kind === 'ironTools');
         mesh.name = 'held-' + kind;
@@ -182,7 +184,15 @@ export class EffectsSystem {
         mesh.material.fogEnabled = false;
         this.heldScale = kind === 'spear' ? .34 : .62;
         this.held = mesh;
+        mesh.setEnabled(this.firstPerson);
         this.poseHeld(0);
+    }
+
+    // The tool and torch drawn in front of the camera only belong in first person.
+    setFirstPerson(first) {
+        this.firstPerson = Boolean(first);
+        this.held?.setEnabled(this.firstPerson);
+        this.torchMesh?.setEnabled(this.firstPerson && this.torchLit);
     }
 
     poseHeld(t) {
@@ -236,7 +246,8 @@ export class EffectsSystem {
             mesh.rotation.set(.25, 0, .18);
             this.torchMesh = mesh;
         }
-        this.torchMesh?.setEnabled(lit);
+        this.torchMesh?.setEnabled(lit && this.firstPerson);
+        this.game.viewSystem?.refreshHeld?.();
         return lit;
     }
 

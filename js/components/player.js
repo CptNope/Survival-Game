@@ -1,4 +1,7 @@
 // Player system for handling player controls and physics
+// Dodge timings (ms) and speed (m/s).
+export const DODGE = Object.freeze({distance: 3.4, invulnerable: 340, cooldown: 1100, speed: 14});
+
 // Harm that armour cannot turn aside.
 const ENVIRONMENTAL = new Set(['drowning', 'starvation', 'thirst', 'the cold', 'a long fall']);
 
@@ -144,6 +147,23 @@ export class PlayerSystem {
         }
     }
     
+    // A quick sidestep along the way the player is moving (a hop backwards
+    // when standing still). Blows that land during it miss.
+    dodge() {
+        const now = performance.now();
+        if (this.game.paused || this.isDead || this.isSwimming || this.isFlying || now < (this.dodgeReadyAt || 0)) return false;
+        const yaw = this.camera.rotation.y;
+        let dx = this.moveX || 0, dz = this.moveZ || 0;
+        const length = Math.hypot(dx, dz);
+        if (length > .015) { dx /= length; dz /= length; } else { dx = -Math.sin(yaw); dz = -Math.cos(yaw); }
+        this.dodgeX = dx; this.dodgeZ = dz;
+        this.dodgeLeft = DODGE.distance;
+        this.invulnerableUntil = now + DODGE.invulnerable;
+        this.dodgeReadyAt = now + DODGE.cooldown;
+        this.game.audio?.play('dodge');
+        return true;
+    }
+
     update() {
         const deltaTime = Math.min(2.5, this.game.scene.getAnimationRatio());
 
@@ -151,6 +171,25 @@ export class PlayerSystem {
         if (this.isDead) {
             this.handleDeath();
             return; // Skip other updates if dead
+        }
+
+        // Remember which way the player is travelling, for the dodge.
+        const here = this.camera.position;
+        if (this.previous) {
+            const stepX = here.x - this.previous.x, stepZ = here.z - this.previous.z;
+            if (Math.hypot(stepX, stepZ) < 2) { this.moveX = stepX; this.moveZ = stepZ; }
+            this.previous.x = here.x; this.previous.z = here.z;
+        } else this.previous = {x: here.x, z: here.z};
+        // Mid-dodge: push through the camera's own movement so walls and trees still stop it.
+        // The dodge covers a fixed distance however fast frames are arriving.
+        if (this.dodgeLeft > 0 && this.camera.cameraDirection) {
+            const seconds = Math.min(.05, (this.game.engine?.getDeltaTime?.() ?? 16) / 1000);
+            const step = Math.min(this.dodgeLeft, DODGE.speed * seconds);
+            this.dodgeLeft -= step;
+            // The camera carries a little of each push into the next frame.
+            const push = step * (1 - (this.camera.inertia || 0));
+            this.camera.cameraDirection.x += this.dodgeX * push;
+            this.camera.cameraDirection.z += this.dodgeZ * push;
         }
 
         // Get current position info
@@ -189,7 +228,8 @@ export class PlayerSystem {
         }
         this.camera.speed = (this.isSwimming ? this.swimSpeed
             : depth > 0.35 ? 0.27 // Wading through the shallows is slow going.
-            : this.keys.sprint ? 0.58 : 0.36) * (1 + (this.game.gear?.stat('swiftness') || 0) / 100);
+            : this.keys.sprint ? 0.58 : 0.36) * (1 + (this.game.gear?.stat('swiftness') || 0) / 100)
+            * (this.game.buffs?.factor('speed') || 1);
         // A jump cannot carry the player through a dungeon ceiling.
         if (dungeon && this.camera.position.y > dungeon.floorY + dungeon.ceiling - .5) {
             this.camera.position.y = dungeon.floorY + dungeon.ceiling - .5;
@@ -274,7 +314,10 @@ export class PlayerSystem {
     takeDamage(amount, cause = 'the wilds') {
         if (this.isDead || !(amount > 0)) return;
         // Armour turns blows, but does nothing against hunger, cold or water.
-        if (!ENVIRONMENTAL.has(cause)) amount *= 1 - (this.game.gear?.stat('armor') || 0) / 100;
+        if (!ENVIRONMENTAL.has(cause)) {
+            if (performance.now() < (this.invulnerableUntil || 0)) return; // Dodged.
+            amount *= (1 - (this.game.gear?.stat('armor') || 0) / 100) * (this.game.buffs?.factor('defence') || 1);
+        }
         this.health -= amount;
         this.lastDamageCause = cause;
 

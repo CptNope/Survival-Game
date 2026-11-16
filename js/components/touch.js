@@ -30,6 +30,12 @@ export function applyJoystick(camera, axes, dtScale = 1) {
     camera.cameraDirection.z += (rightZ * axes.x - forwardZ * axes.y) * speed;
 }
 
+// How far a pinch moves the camera: 40 pixels of spread is one wheel notch.
+export function pinchSteps(before, after) {
+    if (!Number.isFinite(before) || !Number.isFinite(after)) return 0;
+    return Math.max(-3, Math.min(3, (before - after) / 40));
+}
+
 export class TouchControls {
     constructor(game) {
         this.game = game;
@@ -64,6 +70,8 @@ export class TouchControls {
             '  <button type="button" data-action="special" aria-label="Heavy sweep, or cancel building">SKILL</button>',
             '  <button type="button" data-action="descend" aria-label="Descend while flying or dive">DOWN</button>',
             '  <button type="button" data-action="torch" aria-label="Light or put away the torch">TORCH</button>',
+            '  <button type="button" data-action="dodge" aria-label="Dodge out of the way">DODGE</button>',
+            '  <button type="button" data-action="heal" aria-label="Use the best healing item">HEAL</button>',
             '</div>'
         ].join('');
         document.getElementById('hud').append(root);
@@ -113,14 +121,35 @@ export class TouchControls {
 
     bindLook(canvas) {
         canvas.addEventListener('pointerdown', event => {
-            if (this.game.paused || event.pointerType !== 'touch' || this.lookPointer !== null) return;
+            if (this.game.paused || event.pointerType !== 'touch') return;
+            if (this.lookPointer !== null) {
+                // A second finger on the view: pinch to zoom the outside cameras.
+                if (this.pinchPointer == null && this.lastLook) {
+                    this.pinchPointer = event.pointerId;
+                    this.pinchAt = {x: event.clientX, y: event.clientY};
+                    this.pinchSpan = Math.hypot(event.clientX - this.lastLook.x, event.clientY - this.lastLook.y);
+                    canvas.setPointerCapture?.(event.pointerId);
+                }
+                return;
+            }
             event.preventDefault();
             this.lookPointer = event.pointerId;
             this.lastLook = {x:event.clientX, y:event.clientY};
             canvas.setPointerCapture?.(event.pointerId);
         });
         canvas.addEventListener('pointermove', event => {
-            if (this.game.paused || event.pointerId !== this.lookPointer || !this.lastLook) return;
+            if (this.game.paused || !this.lastLook) return;
+            if (this.pinchPointer != null && (event.pointerId === this.pinchPointer || event.pointerId === this.lookPointer)) {
+                event.preventDefault();
+                if (event.pointerId === this.pinchPointer) this.pinchAt = {x: event.clientX, y: event.clientY};
+                else this.lastLook = {x: event.clientX, y: event.clientY};
+                const span = Math.hypot(this.pinchAt.x - this.lastLook.x, this.pinchAt.y - this.lastLook.y);
+                // Fingers apart brings the camera in, as on a map.
+                this.game.viewSystem?.zoomBy?.(pinchSteps(this.pinchSpan, span));
+                this.pinchSpan = span;
+                return;
+            }
+            if (event.pointerId !== this.lookPointer) return;
             event.preventDefault();
             const dx = event.clientX - this.lastLook.x;
             const dy = event.clientY - this.lastLook.y;
@@ -128,9 +157,11 @@ export class TouchControls {
             applyTouchLook(this.game.playerSystem.camera, dx, dy);
         });
         const release = event => {
+            if (event.pointerId === this.pinchPointer) { this.pinchPointer = null; return; }
             if (event.pointerId !== this.lookPointer) return;
             this.lookPointer = null;
             this.lastLook = null;
+            this.pinchPointer = null;
         };
         for (const type of ['pointerup','pointercancel','lostpointercapture'])
             canvas.addEventListener(type, release);
@@ -151,6 +182,10 @@ export class TouchControls {
                 this.game.survivalSystem.interact();
             } else if (name === 'torch') {
                 this.game.effects?.toggleTorch?.();
+            } else if (name === 'dodge') {
+                this.game.playerSystem.dodge?.();
+            } else if (name === 'heal') {
+                this.game.inventorySystem.quickHeal?.();
             }
         };
         for (const button of this.controls.querySelectorAll('[data-action]')) {

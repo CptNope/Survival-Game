@@ -3,9 +3,10 @@
 // and boss that make up a run. Layout rules live in ../dungeon.js.
 import {
     CELL, GRID, FLOORS, dungeonsNear, dungeonEpoch, daysUntilReset, floorSeed, generateFloor,
-    flowField, cellOf, centreOf, isOpen, lineOfSight, resolveCircle
+    flowField, cellOf, centreOf, isOpen, lineOfSight, resolveCircle, themeFor, trapState, THEMES
 } from '../dungeon.js';
-import { createEntranceModel, createChestModel, createBrazierModel, createStairsModel } from '../models/creatures.js';
+import { createEntranceModel, createChestModel, createBrazierModel, createStairsModel, createTrapModel, createShrineModel } from '../models/creatures.js';
+import { BOONS } from './buffs.js';
 import { seededRandom } from '../models/wilderness.js';
 
 export const DUNGEON_DEPTH = -240; // World height of every dungeon floor.
@@ -35,6 +36,13 @@ export class DungeonSystem {
         this.markers = [];
         this.boss = null;
         this.mesh = null;
+        this.ceilingMesh = null;
+        this.capMesh = null;
+        this.ceilingVisible = true;
+        this.theme = THEMES[0];
+        this.traps = [];
+        this.shrine = null;
+        this.time = 0;
         this.material = null;
         this.scanTimer = 0;
         this.lastCell = -1;
@@ -101,6 +109,7 @@ export class DungeonSystem {
         if (this.active || player.isDead) return false;
         if (this.isCleared(site)) return false;
         this.site = site;
+        this.theme = themeFor(site);
         this.runFor(site);
         const position = player.camera.position;
         this.returnPosition = {x: position.x, z: position.z};
@@ -165,8 +174,10 @@ export class DungeonSystem {
         this.chests = [];
         this.braziers = [];
         this.markers = [];
-        this.mesh?.dispose(false, false);
-        this.mesh = null;
+        this.traps = [];
+        this.shrine = null;
+        for (const mesh of [this.mesh, this.ceilingMesh, this.capMesh]) mesh?.dispose(false, false);
+        this.mesh = this.ceilingMesh = this.capMesh = null;
     }
 
     buildFloor(floor) {
@@ -203,17 +214,31 @@ export class DungeonSystem {
         });
         layout.chests.forEach((cell, n) => {
             const key = `${floor}:${n}`, opened = run.opened.includes(key), boss = cell.tier === 'boss';
+            // A mimic that has already been woken leaves no chest behind.
+            if (cell.mimic && opened) return;
             const mesh = createChestModel(game.scene, boss, opened);
             const centre = place(mesh, cell, seededRandom(layout.seed + n)() * Math.PI * 2);
-            this.chests.push({key, boss, opened, mesh, cell, x: centre.x, z: centre.z});
+            this.chests.push({key, boss, opened, mesh, cell, mimic: Boolean(cell.mimic), x: centre.x, z: centre.z});
         });
+        for (const cell of layout.traps) {
+            const mesh = createTrapModel(game.scene);
+            const centre = place(mesh, cell);
+            this.traps.push({mesh, spikes: mesh.metadata.spikes, phase: cell.phase, x: centre.x, z: centre.z, struck: false, stage: 'rest'});
+        }
+        if (layout.shrine) {
+            const mesh = createShrineModel(game.scene);
+            const centre = place(mesh, layout.shrine);
+            const used = run.opened.includes(`shrine:${floor}`);
+            this.shrine = {mesh, used, x: centre.x, z: centre.z};
+            if (used) mesh.metadata.rune.setEnabled(false);
+        }
 
         const level = this.itemLevel();
         for (const spawn of layout.spawns) {
             if (spawn.kind === 'warden' && run.cleared) continue;
             const centre = centreOf(layout, spawn.x, spawn.y);
             const animal = game.animalSystem.spawnAnimal(centre.x, y, centre.z, spawn.kind,
-                {dungeon: true, tier: site.tier, floor, level});
+                {dungeon: true, tier: site.tier, floor, level, elite: spawn.elite});
             if (spawn.kind === 'warden') this.boss = animal;
         }
         if (layout.boss && run.cleared) this.openWayOut(centreOf(layout, layout.exit.x, layout.exit.y));
@@ -230,45 +255,66 @@ export class DungeonSystem {
         return this.site.tier * 2 - 1 + (this.floor - 1);
     }
 
-    // One mesh for the whole floor: floor, ceiling and only the wall faces
-    // that border a walkable cell.
+    // The floor is three meshes: floor and walls (only the wall faces that
+    // border a walkable cell), the ceiling, and dark caps over the surrounding
+    // rock. From overhead the ceiling is hidden and the caps shown instead.
     buildMesh(layout) {
-        const scene = this.game.scene, y0 = this.floorY, y1 = this.floorY + CEILING;
-        const positions = [], normals = [], colors = [], uvs = [], indices = [];
+        const y0 = this.floorY, y1 = this.floorY + CEILING, theme = this.theme;
         const random = seededRandom(layout.seed ^ 0x51ed);
-        const quad = (corners, normal, tint, uv) => {
-            const base = positions.length / 3, shade = .82 + random() * .26;
+        const sets = {main: this.vertexSet(), ceiling: this.vertexSet(), caps: this.vertexSet()};
+        const quad = (set, corners, normal, tint, uv) => {
+            const base = set.positions.length / 3, shade = .82 + random() * .26;
             corners.forEach((corner, n) => {
-                positions.push(...corner);
-                normals.push(...normal);
-                colors.push(tint[0] * shade, tint[1] * shade, tint[2] * shade, 1);
-                uvs.push(uv[n][0], uv[n][1]);
+                set.positions.push(...corner);
+                set.normals.push(...normal);
+                set.colors.push(tint[0] * shade, tint[1] * shade, tint[2] * shade, 1);
+                set.uvs.push(uv[n][0], uv[n][1]);
             });
-            indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+            set.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
         };
-        const tall = CEILING / CELL;
+        const tall = CEILING / CELL, flat = [[0, 0], [1, 0], [1, 1], [0, 1]], wall = [[0, 0], [1, 0], [1, tall], [0, tall]];
         for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) {
-            if (!isOpen(layout, i, j)) continue;
             const x0 = layout.originX + i * CELL, x1 = x0 + CELL, z0 = layout.originZ + j * CELL, z1 = z0 + CELL;
-            const flat = [[0, 0], [1, 0], [1, 1], [0, 1]];
-            quad([[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [0, 1, 0], [.44, .43, .46], flat);
-            quad([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], [0, -1, 0], [.22, .22, .26], flat);
-            const wall = [[0, 0], [1, 0], [1, tall], [0, tall]], stone = [.56, .55, .6];
-            if (!isOpen(layout, i, j - 1)) quad([[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], [0, 0, 1], stone, wall);
-            if (!isOpen(layout, i, j + 1)) quad([[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]], [0, 0, -1], stone, wall);
-            if (!isOpen(layout, i - 1, j)) quad([[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]], [1, 0, 0], stone, wall);
-            if (!isOpen(layout, i + 1, j)) quad([[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], [-1, 0, 0], stone, wall);
+            const top = [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]];
+            if (!isOpen(layout, i, j)) {
+                // Rock beside a room or corridor gets a lid, so the map reads as solid from above.
+                let edge = false;
+                for (let dj = -1; dj <= 1 && !edge; dj++) for (let di = -1; di <= 1; di++) if (isOpen(layout, i + di, j + dj)) { edge = true; break; }
+                if (edge) quad(sets.caps, top, [0, 1, 0], [.05, .05, .06], flat);
+                continue;
+            }
+            quad(sets.main, [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [0, 1, 0], theme.floor, flat);
+            quad(sets.ceiling, top, [0, -1, 0], theme.roof, flat);
+            if (!isOpen(layout, i, j - 1)) quad(sets.main, [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], [0, 0, 1], theme.wall, wall);
+            if (!isOpen(layout, i, j + 1)) quad(sets.main, [[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]], [0, 0, -1], theme.wall, wall);
+            if (!isOpen(layout, i - 1, j)) quad(sets.main, [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]], [1, 0, 0], theme.wall, wall);
+            if (!isOpen(layout, i + 1, j)) quad(sets.main, [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], [-1, 0, 0], theme.wall, wall);
         }
-        const mesh = new BABYLON.Mesh('dungeon-floor', scene);
-        const data = new BABYLON.VertexData();
-        data.positions = positions; data.normals = normals; data.colors = colors; data.uvs = uvs; data.indices = indices;
-        data.applyToMesh(mesh);
-        mesh.material = this.stoneMaterial();
-        mesh.isPickable = true; // Blocks the reticle, so nothing is struck through a wall.
-        mesh.checkCollisions = false; // Walls are enforced on the grid instead.
-        mesh.receiveShadows = false;
-        mesh.computeWorldMatrix(true);
-        return mesh;
+        const build = (name, set, pickable) => {
+            const mesh = new BABYLON.Mesh(name, this.game.scene);
+            const data = new BABYLON.VertexData();
+            Object.assign(data, set);
+            data.applyToMesh(mesh);
+            mesh.material = this.stoneMaterial();
+            mesh.isPickable = pickable; // Blocks the reticle, so nothing is struck through a wall.
+            mesh.checkCollisions = false; // Walls are enforced on the grid instead.
+            mesh.receiveShadows = false;
+            mesh.computeWorldMatrix(true);
+            return mesh;
+        };
+        this.ceilingMesh = build('dungeon-ceiling', sets.ceiling, false);
+        this.capMesh = build('dungeon-caps', sets.caps, false);
+        this.setCeilingVisible(this.ceilingVisible);
+        return build('dungeon-floor', sets.main, true);
+    }
+
+    vertexSet() { return {positions: [], normals: [], colors: [], uvs: [], indices: []}; }
+
+    // Overhead view looks down through the roof.
+    setCeilingVisible(visible) {
+        this.ceilingVisible = visible !== false;
+        this.ceilingMesh?.setEnabled(this.ceilingVisible);
+        this.capMesh?.setEnabled(!this.ceilingVisible);
     }
 
     stoneMaterial() {
@@ -318,6 +364,8 @@ export class DungeonSystem {
             return;
         }
         const camera = game.playerSystem.camera, layout = this.layout;
+        this.time += dt;
+        this.updateTraps();
         const fixed = resolveCircle(layout, camera.position.x, camera.position.z, PLAYER_RADIUS);
         camera.position.x = fixed.x; camera.position.z = fixed.z;
         const cell = cellOf(layout, fixed.x, fixed.z), id = cell.y * GRID + cell.x;
@@ -343,6 +391,8 @@ export class DungeonSystem {
             if (chest.boss && this.boss) return {label: 'Sealed while the Stone Warden stands', act: null};
             return {label: chest.boss ? "Press E to open the Warden's hoard" : 'Press E to open the chest', act: () => this.openChest(chest)};
         }
+        if (this.shrine && !this.shrine.used && near(this.shrine.x, this.shrine.z, 2.8))
+            return {label: 'Press E to touch the shrine', act: () => this.useShrine()};
         for (const marker of this.markers) {
             if (!near(marker.x, marker.z, 2.6)) continue;
             if (marker.kind === 'down') return {label: `Press E to descend to floor ${this.floor + 1}`, act: () => this.descend()};
@@ -358,6 +408,19 @@ export class DungeonSystem {
         if (!run.opened.includes(chest.key)) run.opened.push(chest.key);
         const position = chest.mesh.position.clone(), rotation = chest.mesh.rotation.y;
         const index = this.props.indexOf(chest.mesh);
+        if (chest.mimic) {
+            // Not a chest at all. It keeps its loot until it is beaten.
+            chest.mesh.dispose(false, true);
+            if (index >= 0) this.props.splice(index, 1);
+            this.chests.splice(this.chests.indexOf(chest), 1);
+            const animal = game.animalSystem.spawnAnimal(position.x, this.floorY, position.z, 'mimic',
+                {dungeon: true, tier: this.site.tier, floor: this.floor, level: this.itemLevel() + 1});
+            animal.fleeTimer = 30; // Awake and angry.
+            game.audio?.play('growl');
+            game.effects?.hurt?.(1);
+            game.uiSystem?.showNotification?.('The chest lunges at you: a mimic!');
+            return true;
+        }
         chest.mesh.dispose(false, true);
         chest.mesh = createChestModel(game.scene, chest.boss, true);
         chest.mesh.position.copyFrom(position); chest.mesh.rotation.y = rotation; chest.mesh.isPickable = false;
@@ -408,18 +471,75 @@ export class DungeonSystem {
         this.markers.push({kind: 'up', shortcut: true, x: spot.x, z: spot.z});
     }
 
-    summonAround(animal, kind, count) {
-        const layout = this.layout, origin = animal.mesh.position;
+    // Spawn `count` creatures in open cells around a creature or a point.
+    summonAround(origin, kind, count, radius = 3.4) {
+        const layout = this.layout, centre = origin.mesh ? origin.mesh.position : origin;
+        if (!layout) return 0;
         let made = 0;
         for (let n = 0; n < 12 && made < count; n++) {
-            const angle = n * 2.4, x = origin.x + Math.sin(angle) * 3.4, z = origin.z + Math.cos(angle) * 3.4;
+            const angle = n * 2.4, x = centre.x + Math.sin(angle) * radius, z = centre.z + Math.cos(angle) * radius;
             const cell = cellOf(layout, x, z);
             if (!isOpen(layout, cell.x, cell.y)) continue;
-            this.game.animalSystem.spawnAnimal(x, this.floorY, z, kind,
+            const spot = resolveCircle(layout, x, z, .5);
+            const animal = this.game.animalSystem.spawnAnimal(spot.x, this.floorY, spot.z, kind,
                 {dungeon: true, tier: this.site.tier, floor: this.floor, level: this.itemLevel()});
+            animal.fleeTimer = 12; // Newcomers know where the fight is.
             made++;
         }
         return made;
+    }
+
+    // Spike traps run on a fixed cycle: rest, glow a warning, strike, retract.
+    // Standing on one as it strikes hurts; jumping over or waiting does not.
+    updateTraps() {
+        if (!this.traps.length) return;
+        const game = this.game, player = game.playerSystem, position = player.camera.position;
+        for (const trap of this.traps) {
+            const state = trapState(this.time, trap.phase);
+            trap.spikes.position.y = -1.1 + state.raised * 1.1;
+            if (state.stage !== trap.stage) {
+                if (state.stage === 'warn') trap.mesh.material.emissiveColor = new BABYLON.Color3(.5, .08, .04);
+                else if (state.stage === 'up') {
+                    trap.struck = false;
+                    if (Math.hypot(trap.x - position.x, trap.z - position.z) < 14) game.audio?.play('trap');
+                } else trap.mesh.material.emissiveColor = BABYLON.Color3.Black();
+                trap.stage = state.stage;
+            }
+            if (state.stage !== 'up' || trap.struck || player.isDead) continue;
+            const onPlate = Math.abs(trap.x - position.x) < 1.15 && Math.abs(trap.z - position.z) < 1.15;
+            const feetDown = position.y - this.floorY < 2.7; // A jump clears the points.
+            if (onPlate && feetDown) {
+                trap.struck = true;
+                player.takeDamage(9 * (1 + (this.site.tier - 1) * .25 + (this.floor - 1) * .15), 'a spike trap');
+            }
+        }
+    }
+
+    // A shrine gives one boon per visit to the floor: either full health or a
+    // timed blessing.
+    useShrine() {
+        const shrine = this.shrine, game = this.game;
+        if (!shrine || shrine.used) return false;
+        shrine.used = true;
+        shrine.mesh.metadata.rune.setEnabled(false);
+        const run = this.runFor(this.site), key = `shrine:${this.floor}`;
+        if (!run.opened.includes(key)) run.opened.push(key);
+        const player = game.playerSystem;
+        // Healing is only on offer to someone who needs it, and likelier the worse off they are.
+        const hurt = player.health < player.maxHealth * .7 ? 2 : player.health < player.maxHealth ? 1 : 0;
+        const options = [...Object.keys(BOONS), ...Array(hurt).fill('vigor')];
+        const boon = options[Math.floor(Math.random() * options.length)];
+        if (boon === 'vigor') {
+            player.health = player.maxHealth;
+            game.uiSystem?.showNotification?.('The shrine restores you · Health full');
+        } else {
+            game.buffs?.add(boon);
+            game.uiSystem?.showNotification?.(`The shrine grants ${BOONS[boon].label} · ${BOONS[boon].text} for ${Math.round(BOONS[boon].seconds / 60)} minutes`);
+        }
+        game.audio?.play('shrine');
+        game.effects?.burst?.(shrine.mesh.position.add(new BABYLON.Vector3(0, 1.5, 0)), 'leaf', 18);
+        game.progression?.record('shrines');
+        return true;
     }
 
     // --- Saving -------------------------------------------------------------
