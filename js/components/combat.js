@@ -27,7 +27,19 @@ export class CombatSystem {
     }
 
     damage() {
-        return this.attackPower + (this.level - 1) * 2 + this.weaponBonus();
+        return this.attackPower + (this.level - 1) * 2 + this.weaponBonus() + (this.game.gear?.stat('power') || 0);
+    }
+
+    // Swing-speed bonuses from gear shorten every cooldown.
+    cooldown(ms) {
+        return ms / (1 + (this.game.gear?.stat('haste') || 0) / 100);
+    }
+
+    // The creature under the reticle, for the HUD.
+    targeted(hit = this.game.pickTarget(this.reach())) {
+        if (!hit?.hit) return null;
+        return this.game.animalSystem.animals.find(animal =>
+            hit.pickedMesh === animal.mesh || hit.pickedMesh.isDescendantOf?.(animal.mesh)) || null;
     }
 
     // Returns true when the blow landed on an animal.
@@ -37,7 +49,7 @@ export class CombatSystem {
         this.isAttacking = true;
         // Cooldown is a gaming term for a period during which an action cannot be performed again
         // This prevents players from attacking too rapidly and balances gameplay
-        setTimeout(() => { this.isAttacking = false; }, 450); // Attack cooldown
+        setTimeout(() => { this.isAttacking = false; }, this.cooldown(450)); // Attack cooldown
 
         const hit = this.game.pickTarget(this.reach());
         this.game.effects?.swing?.(this.game.inventorySystem?.inventory?.spear > 0 ? 'spear' : 'tool');
@@ -46,7 +58,9 @@ export class CombatSystem {
             // Check if we hit an animal
             for (let animal of this.game.animalSystem.animals) {
                 if (hit.pickedMesh === animal.mesh || hit.pickedMesh.isDescendantOf(animal.mesh)) {
-                    this.strike(animal, this.damage(), hit.pickedPoint);
+                    // Gear can turn a blow into a critical hit for double damage.
+                    const critical = Math.random() * 100 < (this.game.gear?.stat('crit') || 0);
+                    this.strike(animal, this.damage() * (critical ? 2 : 1), hit.pickedPoint, 0.8, critical);
                     return true;
                 }
             }
@@ -56,8 +70,13 @@ export class CombatSystem {
     }
 
     // Shared by normal and heavy attacks: damage, recoil and feedback.
-    strike(animal, damage, point = null, squish = 0.8) {
+    strike(animal, damage, point = null, squish = 0.8, critical = false) {
         animal.health -= damage;
+        const leech = this.game.gear?.stat('leech') || 0;
+        if (leech > 0) {
+            const player = this.game.playerSystem;
+            player.health = Math.min(player.maxHealth, player.health + leech);
+        }
         animal.fleeTimer = 5; // Prey bolts when struck, wherever the player stands.
         animal.staggerTimer = 0.3;
         const from = this.game.playerSystem.camera?.position;
@@ -71,8 +90,8 @@ export class CombatSystem {
         // Visual feedback
         animal.mesh.scaling.y = squish; // Squish effect
         setTimeout(() => { if (animal.mesh && animal.kind !== 'rabbit') animal.mesh.scaling.y = 1; }, 200);
-        this.game.audio?.play('hit');
-        this.game.effects?.hitAnimal?.(animal, damage, point);
+        this.game.audio?.play(critical ? 'crit' : 'hit');
+        this.game.effects?.hitAnimal?.(animal, damage, point, critical);
     }
 
     specialAttack() {
@@ -109,6 +128,8 @@ export class CombatSystem {
 
     // Experience and leveling system
     gainExperience(amount) {
+        // Bonus experience from gear applies to everything earned.
+        amount = Math.round(amount * (1 + (this.game.gear?.stat('fortune') || 0) / 100));
         this.experience += amount;
 
         // Check for level up

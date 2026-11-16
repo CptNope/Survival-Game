@@ -77,10 +77,10 @@ export class InventorySystem {
         if (!Number.isFinite(needed)) {
             this.game.uiSystem.showNotification('Craft a stone or iron tool to mine this deposit');
             this.game.audio?.play('deny');
-            this.nextSwingAt = now + SWING_COOLDOWN_MS;
+            this.nextSwingAt = now + this.swingCooldown();
             return false;
         }
-        this.nextSwingAt = now + SWING_COOLDOWN_MS;
+        this.nextSwingAt = now + this.swingCooldown();
         obj.hits = (obj.hits || 0) + 1;
         const finished = obj.hits >= needed;
         const direct = Boolean(hit?.hit && this.isMeshOf(obj, hit.pickedMesh) && hit.pickedPoint);
@@ -121,6 +121,10 @@ export class InventorySystem {
         this.game.uiSystem.updateInventoryUI();
         this.game.saveSystem?.save();
         return true;
+    }
+
+    swingCooldown() {
+        return SWING_COOLDOWN_MS / (1 + (this.game.gear?.stat('haste') || 0) / 100);
     }
 
     // True while the last swing is still recovering.

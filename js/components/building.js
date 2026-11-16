@@ -114,6 +114,7 @@ export class BuildingSystem {
 
     // Why a structure cannot stand at `at`, or '' when the site is good.
     blockedReason(type, at) {
+        if (this.game.dungeonSystem?.active) return 'Nothing can be built underground';
         if (!at) return 'Land before building';
         const terrain=this.game.terrainSystem;
         const {x,y,z}=at;

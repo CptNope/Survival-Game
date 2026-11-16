@@ -3,6 +3,13 @@ import { BUILDINGS } from './building.js';
 import { STAT_LABELS } from './progression.js';
 import { clockTime } from './sky.js';
 import { WATERSKIN_CAPACITY } from './survival.js';
+import { RARITIES, SLOTS, STATS, rarityIndex, describeStat, salvageValue } from '../gear.js';
+import { BAG_SIZE } from './equipment.js';
+import { GRID, FLOORS, cellOf, lineOfSight } from '../dungeon.js';
+import { CREATURES } from '../creatures.js';
+
+const escapeHtml = text => String(text).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const rarityOf = item => RARITIES[rarityIndex(item.rarity)];
 
 const BUILD_NOTES = {
     shelter: 'Shelter from the cold · a place to sleep', fire: 'Warmth · cooking · light',
@@ -26,14 +33,16 @@ export class UISystem {
             <div id="effects-layer" aria-hidden="true"></div>
             <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><button id="menu-button">Esc · Pause</button></header>
             <aside class="objective"><small id="objective-kicker">FIELD NOTES / 01</small><h2 id="objective-title">Make your first tool</h2><p id="objective-text"></p><span id="objective-progress"></span></aside>
-            <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / <span id="compass-facing">N</span></small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span></div>
+            <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / <span id="compass-facing">N</span></small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span><span id="dungeon-next"></span></div>
+            <canvas id="minimap" width="186" height="186" hidden aria-label="Dungeon map"></canvas>
+            <div id="boss-bar" hidden><small></small><progress max="100" value="100"></progress></div>
             <div id="crosshair">+</div><div id="target-hint"></div>
             <div id="toast" role="status" aria-live="polite"></div>
             <div id="day-banner" aria-live="polite"><strong></strong><span></span></div>
-            <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><div id="oxygen-row" hidden><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress></div><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Craft</button><button id="building-button">B · Build</button><button id="inventory-toggle" type="button" aria-expanded="false" aria-controls="inventory">Pack</button></footer>
+            <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><div id="oxygen-row" hidden><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress></div><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Craft</button><button id="building-button">B · Build</button><button id="gear-button">G · Gear</button><button id="inventory-toggle" type="button" aria-expanded="false" aria-controls="inventory">Pack</button></footer>
             <div id="fade" aria-hidden="true"></div>
             <div id="death-screen" hidden role="alert"><div><small id="death-kicker"></small><h1>The wilds claimed you.</h1><p id="death-cause"></p><p>Your supplies lie where you fell. Returning to the clearing…</p></div></div>
-            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="build-options"></div><div id="controls"></div>
+            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="controls"></div>
                 <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span></div>
                 <dl id="stats"></dl>
                 <button id="save-now">Save expedition (P)</button><button id="new-game" type="button">Start a new expedition</button><button id="resume" class="primary">Enter the wilds →</button></section></div>`;
@@ -42,6 +51,17 @@ export class UISystem {
         this.$('menu-button').onclick = () => this.toggleMenu();
         this.$('craft-button').onclick = () => this.toggleCrafting();
         this.$('building-button').onclick = () => this.toggleBuilding();
+        this.$('gear-button').onclick = () => this.toggleGear();
+        // One listener serves every button in the gear panel.
+        this.$('gear-panel').onclick = event => {
+            const button = event.target.closest('button[data-gear]');
+            if (!button) return;
+            const gear = game.gear, {gear: action, id} = button.dataset;
+            if (action === 'equip') gear.equip(id);
+            else if (action === 'unequip') gear.unequip(id);
+            else if (action === 'salvage') gear.salvage(id);
+            else if (action === 'clear') gear.salvageBelow(id);
+        };
         this.$('inventory-toggle').onclick = () => {
             const hidden = root.classList.toggle('mobile-inventory-closed');
             this.$('inventory-toggle').setAttribute('aria-expanded', String(!hidden));
@@ -116,6 +136,7 @@ export class UISystem {
     toggleMenu() { this.panel === 'menu' ? this.closePanel() : this.openPanel('menu'); }
     toggleCrafting() { this.panel === 'craft' ? this.closePanel() : this.openPanel('craft'); }
     toggleBuilding() { this.panel === 'build' ? this.closePanel() : this.openPanel('build'); }
+    toggleGear() { this.panel === 'gear' ? this.closePanel() : this.openPanel('gear'); }
     setSaveStatus(message) { this.$('save-status').textContent = message; }
     syncSettings() {
         const settings = this.game.settings;
@@ -127,7 +148,10 @@ export class UISystem {
         this.$('set-mute').setAttribute('aria-pressed', String(settings.muted));
     }
     renderPanel() {
-        const build = this.panel === 'build', craft = this.panel === 'craft', menu = !build && !craft;
+        const build = this.panel === 'build', craft = this.panel === 'craft', gear = this.panel === 'gear';
+        const menu = !build && !craft && !gear;
+        this.$('gear-panel').hidden = !gear;
+        if (gear) this.updateGearUI();
         const title = menu && !this.started;
         this.$('modal').hidden = !this.panel;
         this.$('recipes').hidden = !craft;
@@ -140,24 +164,26 @@ export class UISystem {
         this.$('new-game').textContent = 'Start a new expedition';
         if (menu) {
             this.$('controls').innerHTML = this.game.touchControls?.enabled
-                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks at lakes and rests in a shelter at night · TORCH lights the dark.</p><p>Tap Craft, Build, or Pack to manage supplies. Progress saves automatically.</p>'
-                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>R</kbd> Rotate · <kbd>E</kbd> Drink or rest</p><p><kbd>F</kbd> Torch · <kbd>M</kbd> Mute · <kbd>P</kbd> Save · Right click: heavy sweep</p>';
+                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks, rests in a shelter at night, opens chests and takes doorways and stairs · TORCH lights the dark.</p><p>Tap Craft, Build, Gear, or Pack to manage supplies. Progress saves automatically.</p>'
+                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>G</kbd> Gear · <kbd>R</kbd> Rotate</p><p><kbd>E</kbd> Drink, rest, open chests, use doorways and stairs</p><p><kbd>F</kbd> Torch · <kbd>M</kbd> Mute · <kbd>P</kbd> Save · Right click: heavy sweep</p>';
             const progression = this.game.progression;
             if (progression) this.$('stats').innerHTML = `<div><dt>Day</dt><dd>${this.game.dayCount}</dd></div><div><dt>Field notes</dt><dd>${progression.completed.size}</dd></div>` +
                 Object.entries(STAT_LABELS).map(([key, label]) => `<div><dt>${label}</dt><dd>${progression.stats[key]}</dd></div>`).join('');
         }
         this.$('save-now').hidden = !menu || title;
-        this.$('panel-title').innerHTML = build
+        this.$('panel-title').innerHTML = gear ? 'What the dark<br>gave up.' : build
             ? 'Make this place<br>your own.'
             : craft ? 'Make something<br>that matters.' : title ? 'Leave a little<br>less to chance.' : 'The wilds can wait.';
-        this.$('panel-kicker').textContent = build ? 'BASE CAMP CONSTRUCTION' : craft ? 'FIELD CRAFTING' : title ? 'WELCOME TO THE WILDS' : 'EXPEDITION PAUSED';
-        this.$('panel-copy').textContent = build
+        this.$('panel-kicker').textContent = gear ? 'GEAR AND LOOT' : build ? 'BASE CAMP CONSTRUCTION' : craft ? 'FIELD CRAFTING' : title ? 'WELCOME TO THE WILDS' : 'EXPEDITION PAUSED';
+        this.$('panel-copy').textContent = gear
+            ? 'Gear is graded by the bonuses it rolled, from Common to Legendary. You keep it when you fall.'
+            : build
             ? 'Choose a structure, then aim where it should stand. Click to place it, R to rotate, Esc to cancel.'
             : craft ? 'Better tools gather faster. Food and dressings work straight from your pack.'
             : title ? 'Gather, craft and build before nightfall. The cold, hunger and wolves will not wait.'
             : 'Follow your field notes, keep a fire going, and rest in a shelter at night. Progress saves on this device.';
         const returning = this.game.dayCount > 1 || this.game.progression?.completed.size > 0;
-        this.$('resume').textContent = build || craft ? 'Back to the wilds →'
+        this.$('resume').textContent = build || craft || gear ? 'Back to the wilds →'
             : title ? (returning ? `Continue expedition · Day ${this.game.dayCount} →` : 'Enter the wilds →') : 'Return to the wilds →';
         if (this.panel) {
             // Focus the way out without scrolling the long crafting list to its end.
@@ -168,6 +194,125 @@ export class UISystem {
         this.$('menu-button').textContent = touch ? 'Pause' : 'Esc · Pause';
         this.$('craft-button').textContent = touch ? 'Craft' : 'C · Craft';
         this.$('building-button').textContent = touch ? 'Build' : 'B · Build';
+        this.updateGearButton();
+    }
+    // --- Gear ---------------------------------------------------------------
+    gearCard(item, worn, equipped) {
+        const grade = rarityOf(item);
+        const stats = Object.entries(item.stats).map(([stat, value]) => {
+            const delta = equipped ? 0 : value - (worn?.stats[stat] || 0);
+            const change = equipped || !worn ? '' : delta > 0 ? ` <i class="up">▲ ${+delta.toFixed(1)}</i>` : delta < 0 ? ` <i class="down">▼ ${+(-delta).toFixed(1)}</i>` : '';
+            return `<li>${describeStat(stat, value)}${change}</li>`;
+        });
+        // Bonuses the worn piece has that this one would give up.
+        if (!equipped && worn) for (const [stat, value] of Object.entries(worn.stats)) {
+            if (!(stat in item.stats)) stats.push(`<li class="lost">Loses ${describeStat(stat, value).slice(1)}</li>`);
+        }
+        const upgrade = !equipped && this.game.gear.isUpgrade(item) ? '<em>Upgrade</em>' : '';
+        const actions = equipped
+            ? `<button type="button" data-gear="unequip" data-id="${item.slot}">Take off</button>`
+            : `<button type="button" data-gear="equip" data-id="${item.id}">Equip</button><button type="button" data-gear="salvage" data-id="${item.id}">Break down · ${salvageValue(item).xp} XP</button>`;
+        return `<article class="gear-card" style="--rarity:${grade.color}"><header><strong>${escapeHtml(item.name)}</strong>${upgrade}</header>
+            <small>${grade.name} ${SLOTS[item.slot].toLowerCase()} · Level ${item.level}</small><ul>${stats.join('')}</ul><div class="gear-actions">${actions}</div></article>`;
+    }
+    updateGearUI() {
+        const gear = this.game.gear;
+        if (!gear) return;
+        this.updateGearButton();
+        if (this.panel !== 'gear') return;
+        const slots = Object.entries(SLOTS).map(([slot, label]) => {
+            const item = gear.equipped[slot];
+            return `<section><h3>${label}</h3>${item ? this.gearCard(item, null, true) : '<p class="gear-empty">Nothing equipped</p>'}</section>`;
+        }).join('');
+        const totals = Object.entries(gear.totals).filter(([, value]) => value > 0)
+            .map(([stat, value]) => `<span>${describeStat(stat, value)}${value >= STATS[stat].cap ? ' (max)' : ''}</span>`).join('');
+        const bag = [...gear.bag].sort((a, b) => rarityIndex(b.rarity) - rarityIndex(a.rarity) || b.level - a.level);
+        const commons = gear.bag.filter(item => rarityIndex(item.rarity) < 2).length;
+        this.$('gear-panel').innerHTML = `<div class="gear-slots">${slots}</div>
+            <div class="gear-totals">${totals || '<span>No bonuses yet · Open chests in the dungeons to find gear</span>'}</div>
+            <div class="gear-bag-head"><h3>Bag · ${gear.bag.length} / ${BAG_SIZE}</h3>${commons > 1 ? `<button type="button" data-gear="clear" data-id="rare">Break down ${commons} below Rare</button>` : ''}</div>
+            <div class="gear-bag">${bag.map(item => this.gearCard(item, gear.equipped[item.slot], false)).join('') || '<p class="gear-empty">Your bag is empty.</p>'}</div>`;
+    }
+    updateGearButton() {
+        const gear = this.game.gear, button = this.$('gear-button');
+        if (!gear || !button) return;
+        const upgrades = gear.bag.filter(item => gear.isUpgrade(item)).length;
+        const touch = Boolean(this.game.touchControls?.enabled);
+        button.textContent = (touch ? 'Gear' : 'G · Gear') + (upgrades ? ` (${upgrades})` : '');
+        button.classList.toggle('has-upgrade', upgrades > 0);
+    }
+    // A found item, announced in its rarity colour.
+    showLoot(item, verb = 'Found') {
+        const grade = rarityOf(item);
+        const toast = this.$('toast');
+        toast.innerHTML = `${verb}: <b style="color:${grade.color}">${escapeHtml(item.name)}</b> · ${grade.name} ${SLOTS[item.slot].toLowerCase()}`;
+        toast.classList.add('visible');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => toast.classList.remove('visible'), 3800);
+    }
+    // --- Dungeon HUD --------------------------------------------------------
+    drawMinimap() {
+        const dungeon = this.game.dungeonSystem, canvas = this.$('minimap');
+        const layout = dungeon.layout, ctx = canvas.getContext?.('2d');
+        if (!layout || !ctx) return;
+        const size = canvas.width / GRID, position = this.game.playerSystem.camera.position;
+        const at = (x, y) => [x * size, (GRID - 1 - y) * size]; // North is up.
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(8,13,12,.82)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const seen = (x, y) => dungeon.explored[y * GRID + x] === 1;
+        ctx.fillStyle = '#6f7d74';
+        for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
+            if (seen(x, y)) ctx.fillRect(...at(x, y), size, size);
+        }
+        const dot = (x, y, colour, radius = size * .42) => {
+            const [px, py] = at(x, y);
+            ctx.fillStyle = colour; ctx.beginPath(); ctx.arc(px + size / 2, py + size / 2, radius, 0, Math.PI * 2); ctx.fill();
+        };
+        for (const marker of dungeon.markers) {
+            const cell = cellOf(layout, marker.x, marker.z);
+            if (seen(cell.x, cell.y)) dot(cell.x, cell.y, marker.kind === 'down' ? '#ffb23e' : '#7fd0ff', size * .6);
+        }
+        for (const chest of dungeon.chests) {
+            if (!chest.opened && seen(chest.cell.x, chest.cell.y)) dot(chest.cell.x, chest.cell.y, chest.boss ? '#ffb23e' : '#e9d37a');
+        }
+        for (const animal of this.game.animalSystem.animals) {
+            if (!animal.dungeon || !animal.mesh) continue;
+            const spot = animal.mesh.position;
+            if (Math.hypot(spot.x - position.x, spot.z - position.z) > 26 || !lineOfSight(layout, position.x, position.z, spot.x, spot.z)) continue;
+            const cell = cellOf(layout, spot.x, spot.z);
+            dot(cell.x, cell.y, '#ff6a55', CREATURES[animal.kind]?.boss ? size * .8 : size * .38);
+        }
+        // The player: an arrow pointing the way they face.
+        const here = cellOf(layout, position.x, position.z), [px, py] = at(here.x, here.y);
+        ctx.save();
+        ctx.translate(px + size / 2, py + size / 2);
+        ctx.rotate(this.game.playerSystem.camera.rotation.y);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.moveTo(0, -size * .95); ctx.lineTo(size * .62, size * .7); ctx.lineTo(-size * .62, size * .7); ctx.closePath(); ctx.fill();
+        ctx.restore();
+    }
+    updateDungeonUI() {
+        const dungeon = this.game.dungeonSystem;
+        if (!dungeon) return;
+        const underground = dungeon.active;
+        this.$('minimap').hidden = !underground;
+        this.$('exploration-card').hidden = underground;
+        const boss = underground ? dungeon.boss : null, bar = this.$('boss-bar');
+        bar.hidden = !(boss && boss.alerted !== undefined && (boss.alert > 0 || boss.health < boss.maxHealth));
+        if (!bar.hidden) {
+            bar.querySelector('small').textContent = 'STONE WARDEN' + (boss.enraged ? ' · ENRAGED' : '');
+            bar.querySelector('progress').value = Math.max(0, boss.health / boss.maxHealth * 100);
+        }
+        if (underground) {
+            this.$('weather-status').textContent = `${dungeon.site.name} · Floor ${dungeon.floor} / ${FLOORS}`;
+            this.drawMinimap();
+            return;
+        }
+        const site = dungeon.nearest, line = this.$('dungeon-next');
+        if (!site) { line.textContent = ''; return; }
+        const player = this.game.playerSystem.camera.position;
+        line.textContent = `${dungeon.found.has(site.id) ? site.name : 'Something underground'} · ${Math.round(site.distance)}m ${compass(Math.atan2(site.x - player.x, site.z - player.z))}${site.cleared ? ' · cleared' : ''}`;
     }
     updateInventoryUI() {
         const inv = this.game.inventorySystem.inventory;
@@ -257,9 +402,10 @@ export class UISystem {
         this.$('target-hint').textContent = this.gatherHint.text;
     }
     showLevelUpMessage() { this.showNotification(`Level ${this.game.combatSystem.level}! Health restored and attack increased.`); }
-    showDayBanner(day, message, slept = false) {
+    // `raw` shows `day` as the heading itself (a dungeon name, a victory).
+    showDayBanner(day, message, slept = false, raw = false) {
         const banner = this.$('day-banner');
-        banner.querySelector('strong').textContent = `Day ${day}`;
+        banner.querySelector('strong').textContent = raw ? day : `Day ${day}`;
         banner.querySelector('span').textContent = message;
         banner.classList.add('visible');
         clearTimeout(this.bannerTimer);
@@ -296,6 +442,15 @@ export class UISystem {
             const left = needed - (obj.hits || 0);
             return `Hold click to ${resource.verb} ${resource.label}${left > 1 ? ` · ${left} swings` : ''}`;
         }
+        // A creature under the reticle: its name and how much fight is left in it.
+        const creature = game.combatSystem.targeted();
+        if (creature) {
+            const def = CREATURES[creature.kind];
+            return `${def?.label || creature.kind} · ${Math.max(0, Math.ceil(creature.health))} / ${creature.maxHealth || Math.ceil(creature.health)}`;
+        }
+        const special = game.dungeonSystem?.interaction();
+        if (special) return special.label;
+        if (game.dungeonSystem?.active) return inv.torch > 0 && !game.effects?.torchLit ? 'Press F to light your torch' : '';
         if (p.isFlying) return 'Flying · Space to land / Ctrl to descend';
         if (p.isUnderwater) return 'Underwater · Space to surface';
         if (p.isSwimming) return 'Swimming · Ctrl to dive';
@@ -319,6 +474,7 @@ export class UISystem {
         this.updateSurvivalUI();
         if (this.game.weatherSystem) this.updateWeatherUI(
             {clear:'Clear skies',rain:'Rain',storm:'Storm'}[this.game.weatherSystem.type] || 'Clear skies');
+        this.updateDungeonUI();
         this.$('world-clock').textContent = `DAY ${this.game.dayCount} · ${clockTime(this.game.dayTime, this.game.dayLength)}`;
         if (this.game.paused) return;
         this.$('compass-facing').textContent = 'FACING ' + compass(p.camera.rotation.y);

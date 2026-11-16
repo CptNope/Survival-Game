@@ -22,6 +22,8 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - Progressive Web App (PWA) support for offline play
 - Procedural sound, a day/night sky with weather, swimmable lakes, field-note
   goals, sleeping, and a build preview (see *Expedition overhaul* below)
+- Procedurally generated dungeons, new enemies and a boss, and found gear with
+  rolled bonuses graded Common to Legendary (see *Depths and loot* below)
 
 ## Setup
 
@@ -53,6 +55,8 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - Right Click: Heavy sweep (uses a stone tool) / Cancel a build
 - C: Craft · B: Build · R or mouse wheel: Rotate the build preview
 - E: Drink at a lake or from the waterskin; rest in a shelter at night
+- G: Gear (equip, compare and break down found equipment)
+- E at a stone doorway, stairs or chest: descend, climb out, open
 - F: Torch · M: Mute · P: Save · Esc: Pause
 
 ## Codebase Structure
@@ -404,6 +408,85 @@ generated in the browser, so the game stays offline-first.
   save compatibility, the build preview, sky state, settings and audio.
 - Not verified here: how the synthesised audio actually sounds, and frame rate
   on real phones. Both need a listen and a playtest on hardware.
+
+## Depths and loot: dungeons, enemies and graded gear
+
+### Dungeons
+
+- **Entrances in the world.** Stone doorways are scattered through the hills,
+  placed deterministically like the landmarks. The first, the **Old Barrow**,
+  is a short walk south-west of the clearing, and the compass card points to
+  the nearest one. Press **E** at a doorway to descend.
+- **Procedurally generated floors.** Each dungeon has three floors built from
+  a seed: around 7 to 11 rooms joined by corridors with a few loops, an entry as far
+  as possible from the way on, chests tucked into dead ends, braziers, and
+  enemies that get tougher as you go down. The third floor is a great hall
+  with a boss.
+- **Layouts change.** A dungeon's seed comes from its location and a three-day
+  cycle, so the same dungeon is the same if you leave and return, then redraws
+  itself (and refills its chests) every three days. A cleared dungeon stays
+  quiet until then, which is the reason to go and find the next one. Dungeons
+  farther from home are a higher tier: harder enemies, higher-level loot.
+- **Underground rules.** No sky and no flying, no weather, no building. It is
+  dark: bring a torch. A minimap fills in as you explore and shows stairs,
+  unopened chests and any enemy you can see.
+- **Dying underground** ends the run. You wake at camp, your pack is waiting
+  outside the entrance, and you keep your gear.
+
+### Enemies
+
+| Creature | Where | Behaviour |
+| --- | --- | --- |
+| Cave spider | Dungeons | Fast and fragile; lunges from a few metres away |
+| Bat | Dungeons | Weaves through the air, bites and retreats |
+| Skeleton | Dungeons | Walks you down and swings |
+| Wraith | Floors 2 and 3 | Keeps its distance and throws bolts down corridors |
+| Stone Warden | Floor 3 | Boss. Slow, telegraphed slam; enrages and calls spiders at half health |
+| Boar | Surface, by day | Leaves you alone until you come close, then charges |
+| Bear | Surface, far from camp | Rare and dangerous; always drops a piece of gear |
+
+Every attack has a wind-up you can see, so stepping out of reach avoids it.
+Creatures that cannot see you follow a flow field through the corridors rather
+than walking into walls. The reticle shows the name and health of whatever you
+are looking at, and the boss has its own health bar.
+
+### Loot
+
+- **Rolled bonuses.** Gear drops from chests, monsters, bears and some
+  landmarks. Each piece rolls one to four bonuses from ten stats: damage,
+  critical chance, swing speed, health per hit, max health, damage reduction,
+  cold resistance, slower hunger and thirst, move speed and bonus experience.
+- **Rarity is graded, not assigned.** An item's bonuses are scored against its
+  level, and the score sets the grade: Common, Uncommon, Rare, Epic or
+  Legendary. A higher grade is therefore always measurably stronger. With no
+  luck bonus roughly 54% of drops are Common, 27% Uncommon, 13% Rare, 5% Epic
+  and 1% Legendary; deeper floors improve the odds and the boss hoard is always
+  Rare or better.
+- **Four slots:** weapon, armor, boots and charm. The **Gear** panel (**G**)
+  shows what you wear, your combined bonuses, and a bag of 24 with each item
+  compared against the one equipped. Spare gear breaks down into experience
+  (and iron ingots from Rare upwards).
+- Gear is separate from the resource pack and is **kept on death**.
+
+### Notes for developers
+
+- Pure, engine-free modules: `js/gear.js` (rolling and grading),
+  `js/dungeon.js` (sites, floor generation, grid collision, line of sight,
+  flow field) and `js/creatures.js` (the stat table). Engine-side:
+  `js/components/dungeon.js`, `equipment.js`, `creatures.js` (AI) and
+  `js/models/creatures.js`.
+- A floor is one mesh (floor, ceiling and only the wall faces that border a
+  walkable cell). Walls are enforced on the grid, not with mesh collisions.
+- Saves stay at version 1 with optional `gear` and `dungeons` fields. A save
+  made underground resumes outside the entrance. Gear is re-graded on load, so
+  an edited save cannot claim a rarity its bonuses do not earn.
+- `tests/depths.test.mjs` covers grading and drop rates, generated floors
+  (connectivity across 180 generated floors), collision, sight and pathing, each
+  creature's behaviour in a simulated arena (including dodging a wind-up), a
+  complete run from doorway to boss hoard, death underground and save
+  compatibility.
+- Not verified here: difficulty and pacing with real hands on the controls,
+  how the new sounds actually sound, and frame rate on real phones.
 
 ---
 

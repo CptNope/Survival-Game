@@ -1,6 +1,7 @@
 // Deterministic landmarks, zero-extra-draw-call dirt trails and discovery rewards.
 // Intentionally independent of external assets, save data, and physics middleware.
 import { seededRandom } from '../models/wilderness.js';
+import { dungeonsNear } from '../dungeon.js';
 
 export const SITE_SPACING = 96;
 export const STARTER_SITES = Object.freeze([
@@ -199,7 +200,9 @@ export class ExplorationSystem {
 
     isClearing(x, z) {
         return landmarksNear(x, z, 16).some(site =>
-            Math.hypot(site.x - x, site.z - z) < 8) || isTrailAt(x, z);
+            Math.hypot(site.x - x, site.z - z) < 8) || isTrailAt(x, z)
+            // Dungeon entrances keep their doorstep clear as well.
+            || dungeonsNear(x, z, 9).length > 0;
     }
 
     populateChunk(cx, cz, chunk) {
@@ -246,6 +249,12 @@ export class ExplorationSystem {
         for (const [item, amount] of Object.entries(reward)) inventory[item] += amount;
         this.game.uiSystem?.updateInventoryUI?.();
         this.game.uiSystem?.showNotification?.('Discovered ' + site.name + ' · Supplies recovered!');
+        // One landmark in three also hides a piece of gear, better the farther out it lies.
+        const cache = seededRandom(Math.floor(site.x * 7 + site.z * 13) | 0);
+        if (this.game.gear && cache() < .34) {
+            this.game.gear.dropRoll(new BABYLON.Vector3(site.x + 1.5, this.game.terrainSystem.getPerlinHeight(site.x + 1.5, site.z + 1.5), site.z + 1.5),
+                {level: 1 + Math.floor(Math.hypot(site.x, site.z) / 220), luck: .2});
+        }
         this.game.saveSystem?.save();
         return true;
     }

@@ -32,6 +32,22 @@ export const SOUNDS = Object.freeze({
     howl: [{f: 310, to: 470, type: 'sine', d: .55, g: .1}, {f: 470, to: 360, type: 'sine', d: 1.3, g: .1, at: .5}],
     thunder: [{n: 140, q: .5, d: 2.4, g: .9}, {n: 60, q: .6, d: 3, g: .8, at: .15}],
     sleep: [{f: 330, to: 220, type: 'sine', d: .9, g: .12}, {f: 247, to: 165, type: 'sine', d: 1.2, g: .12, at: .3}],
+    // Creatures, dungeons and loot.
+    grunt: [{f: 130, to: 85, type: 'sawtooth', d: .28, g: .26, vib: 34}, {n: 420, q: 1.2, d: .2, g: .2}],
+    roar: [{f: 120, to: 55, type: 'sawtooth', d: .95, g: .34, vib: 22}, {n: 240, q: .9, d: .9, g: .34}, {f: 62, to: 40, type: 'triangle', d: 1.1, g: .3}],
+    hiss: [{n: 5200, q: 1.2, hp: true, d: .32, g: .2}, {n: 3000, q: 3, d: .2, g: .12, at: .05}],
+    squeak: [{f: 3200, to: 4300, type: 'square', d: .05, g: .05}, {f: 4100, to: 3300, type: 'square', d: .06, g: .05, at: .07}],
+    rattle: [{n: 2300, q: 5, d: .04, g: .3}, {n: 1900, q: 5, d: .04, g: .28, at: .07}, {n: 2600, q: 5, d: .04, g: .26, at: .13}, {n: 1700, q: 5, d: .05, g: .24, at: .2}],
+    wail: [{f: 520, to: 310, type: 'sine', d: .8, g: .11, vib: 6}, {f: 780, to: 470, type: 'sine', d: .8, g: .06, vib: 7}],
+    bolt: [{f: 900, to: 260, type: 'sawtooth', d: .26, g: .13}, {n: 3000, q: 2, d: .18, g: .14}],
+    slam: [{f: 70, to: 32, type: 'triangle', d: .7, g: .8}, {n: 180, q: .6, d: .6, g: .8}, {n: 1400, q: 1, d: .14, g: .3}],
+    chest: [{n: 600, q: 1.5, d: .14, g: .4}, {f: 180, to: 240, type: 'triangle', d: .22, g: .25}, {f: 660, type: 'sine', d: .18, g: .14, at: .16}, {f: 990, type: 'sine', d: .3, g: .14, at: .28}],
+    stairs: [{f: 150, to: 80, type: 'triangle', d: .6, g: .3}, {n: 320, q: .8, d: .7, g: .28}, {f: 100, to: 60, type: 'sine', d: .9, g: .2, at: .2}],
+    loot: [{f: 784, type: 'sine', d: .12, g: .16}, {f: 1175, type: 'sine', d: .26, g: .16, at: .09}],
+    legendary: [{f: 523, type: 'triangle', d: .16, g: .18}, {f: 784, type: 'triangle', d: .16, g: .18, at: .1}, {f: 1047, type: 'triangle', d: .16, g: .18, at: .2}, {f: 1568, type: 'sine', d: .7, g: .2, at: .3}],
+    equip: [{n: 1800, q: 2, d: .06, g: .3}, {f: 300, to: 420, type: 'triangle', d: .12, g: .2, at: .04}],
+    crit: [{n: 700, q: .9, d: .12, g: .6}, {f: 260, to: 90, type: 'sawtooth', d: .14, g: .34}, {f: 1500, to: 900, type: 'square', d: .08, g: .08}],
+    drip: [{f: 1500, to: 900, type: 'sine', d: .07, g: .08}, {f: 1000, to: 700, type: 'sine', d: .12, g: .04, at: .08}],
     bird: [{f: 2400, to: 3100, type: 'sine', d: .07, g: .05}, {f: 2900, to: 2300, type: 'sine', d: .09, g: .05, at: .1}, {f: 2600, to: 3300, type: 'sine', d: .06, g: .045, at: .24}]
 });
 
@@ -174,12 +190,21 @@ export class AudioSystem {
     // Called a few times a second with the state of the world around the player.
     update(dt, world) {
         if (!this.context || this.context.state !== 'running') return;
+        // Underground there is no weather to hear: a low draught and dripping water.
+        if (world.underground) world = {...world, weather: 'clear', night: true};
         const rain = world.weather === 'storm' ? .2 : world.weather === 'rain' ? .11 : 0;
         const muffled = world.underwater ? .25 : 1;
         this.setLayer('rain', rain * muffled);
         this.setLayer('wind', (world.weather === 'storm' ? .2 : world.weather === 'rain' ? .1 : .045) * muffled
             + (world.flying ? .1 : 0));
-        this.setLayer('night', world.night && !rain && !world.underwater ? .016 : 0);
+        this.setLayer('night', world.night && !rain && !world.underwater && !world.underground ? .016 : 0);
+        if (world.underground) {
+            this.birdTimer -= dt;
+            if (this.birdTimer <= 0) {
+                this.birdTimer = 2.5 + Math.random() * 6;
+                this.play('drip', {pitch: .7 + Math.random() * .7});
+            }
+        }
         const fire = Number.isFinite(world.fireDistance) ? Math.max(0, 1 - world.fireDistance / 14) : 0;
         this.setLayer('fire', fire * .05);
         if (fire > .05) {
