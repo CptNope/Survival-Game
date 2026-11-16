@@ -17,6 +17,8 @@ import { EffectsSystem } from './components/effects.js';
 import { ProgressionSystem } from './components/progression.js';
 import { DungeonSystem } from './components/dungeon.js';
 import { GearSystem } from './components/equipment.js';
+import { ViewSystem } from './components/view.js';
+import { BuffSystem } from './components/buffs.js';
 import { loadSettings, saveSettings } from './settings.js';
 
 export class SurvivalGame {
@@ -45,6 +47,7 @@ export class SurvivalGame {
         this.progression = null;
         this.dungeonSystem = null;
         this.gear = null;
+        this.viewSystem = null;
         this.settings = loadSettings();
 
         // Day/night cycle properties
@@ -119,12 +122,15 @@ export class SurvivalGame {
             this.saveSystem = new SaveSystem(this);
             // Found equipment, and the dungeons it is found in.
             this.gear = new GearSystem(this);
+            this.buffs = new BuffSystem(this);
             this.dungeonSystem = new DungeonSystem(this);
 
             // UI is created before restoring state so it can refresh all meters.
             this.uiSystem = new UISystem(this);
             // Cosmetic feedback needs the HUD overlay layers and the camera.
             this.effects = new EffectsSystem(this);
+            // First-person, third-person and overhead cameras, and the avatar.
+            this.viewSystem = new ViewSystem(this);
             this.skySystem = new SkySystem(this);
             this.saveSystem.load();
             this.progression.check();
@@ -183,7 +189,10 @@ export class SurvivalGame {
         mesh.onDisposeObservable.add(() => this.shadowGenerator.removeShadowCaster(mesh, true));
     }
 
+    // What the player is aiming at. Outside first person there is no eye-level
+    // reticle, so the view decides (screen centre, or whatever is in front).
     pickTarget(range = 5) {
+        if (this.viewSystem && !this.viewSystem.firstPerson) return this.viewSystem.pick(range);
         return this.scene.pickWithRay(this.playerSystem.camera.getForwardRay(range));
     }
 
@@ -281,7 +290,9 @@ export class SurvivalGame {
             this.secondaryAction();
         });
         canvas.addEventListener('wheel', event => {
-            if (!this.paused && this.buildSystem.placing) this.buildSystem.rotatePlacement(event.deltaY > 0 ? 1 : -1);
+            if (this.paused) return;
+            if (this.buildSystem.placing) this.buildSystem.rotatePlacement(event.deltaY > 0 ? 1 : -1);
+            else this.viewSystem.zoomBy(event.deltaY > 0 ? 1 : -1);
         }, {passive: true});
         window.addEventListener('keydown', event => {
             if (event.repeat) return;
@@ -309,6 +320,9 @@ export class SurvivalGame {
             if (event.code === 'Space') { event.preventDefault(); this.playerSystem.jump(); }
             if (event.code === 'KeyE') this.survivalSystem.interact();
             if (event.code === 'KeyF') this.effects.toggleTorch();
+            if (event.code === 'KeyV') this.viewSystem.cycle();
+            if (event.code === 'KeyQ') this.playerSystem.dodge();
+            if (event.code === 'KeyH') this.inventorySystem.quickHeal();
             if (event.code === 'KeyR') this.buildSystem.rotatePlacement(1);
         });
         window.addEventListener('keyup', event => this.playerSystem.updateKeyState(event.keyCode, false));
@@ -352,7 +366,9 @@ export class SurvivalGame {
             this.inventorySystem.update();
             if (!underground) this.explorationSystem.update();
             this.dungeonSystem.update(dt);
+            this.viewSystem.update(dt);
             this.gear.update(dt);
+            this.buffs.update(dt);
             this.survivalSystem.update(dt);
             this.saveSystem.update(dt);
             this.updateAmbience(dt);

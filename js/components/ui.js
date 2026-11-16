@@ -31,7 +31,8 @@ export class UISystem {
         root.innerHTML = `
             <div id="hurt-vignette" aria-hidden="true"></div>
             <div id="effects-layer" aria-hidden="true"></div>
-            <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><button id="menu-button">Esc · Pause</button></header>
+            <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><div class="hud-buttons"><button id="view-button" type="button" aria-label="Change camera view">V · View</button><button id="menu-button">Esc · Pause</button></div></header>
+            <div id="buffs" aria-live="off"></div>
             <aside class="objective"><small id="objective-kicker">FIELD NOTES / 01</small><h2 id="objective-title">Make your first tool</h2><p id="objective-text"></p><span id="objective-progress"></span></aside>
             <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / <span id="compass-facing">N</span></small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span><span id="dungeon-next"></span></div>
             <canvas id="minimap" width="186" height="186" hidden aria-label="Dungeon map"></canvas>
@@ -52,6 +53,7 @@ export class UISystem {
         this.$('craft-button').onclick = () => this.toggleCrafting();
         this.$('building-button').onclick = () => this.toggleBuilding();
         this.$('gear-button').onclick = () => this.toggleGear();
+        this.$('view-button').onclick = () => { if (!game.paused) game.viewSystem?.cycle(); };
         // One listener serves every button in the gear panel.
         this.$('gear-panel').onclick = event => {
             const button = event.target.closest('button[data-gear]');
@@ -164,8 +166,8 @@ export class UISystem {
         this.$('new-game').textContent = 'Start a new expedition';
         if (menu) {
             this.$('controls').innerHTML = this.game.touchControls?.enabled
-                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks, rests in a shelter at night, opens chests and takes doorways and stairs · TORCH lights the dark.</p><p>Tap Craft, Build, Gear, or Pack to manage supplies. Progress saves automatically.</p>'
-                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>G</kbd> Gear · <kbd>R</kbd> Rotate</p><p><kbd>E</kbd> Drink, rest, open chests, use doorways and stairs</p><p><kbd>F</kbd> Torch · <kbd>M</kbd> Mute · <kbd>P</kbd> Save · Right click: heavy sweep</p>';
+                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks, rests in a shelter at night, opens chests and takes doorways and stairs · TORCH lights the dark.</p><p>VIEW switches between first-person, third-person and overhead · DODGE sidesteps a blow · HEAL uses your best remedy.</p><p>Tap Craft, Build, Gear, or Pack to manage supplies. Progress saves automatically.</p>'
+                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>G</kbd> Gear · <kbd>R</kbd> Rotate</p><p><kbd>E</kbd> Drink, rest, open chests, use doorways and stairs</p><p><kbd>V</kbd> First-person, third-person or overhead view · Mouse wheel zooms</p><p><kbd>Q</kbd> Dodge · <kbd>H</kbd> Quick heal · <kbd>F</kbd> Torch · Right click: heavy sweep</p><p><kbd>M</kbd> Mute · <kbd>P</kbd> Save</p>';
             const progression = this.game.progression;
             if (progression) this.$('stats').innerHTML = `<div><dt>Day</dt><dd>${this.game.dayCount}</dd></div><div><dt>Field notes</dt><dd>${progression.completed.size}</dd></div>` +
                 Object.entries(STAT_LABELS).map(([key, label]) => `<div><dt>${label}</dt><dd>${progression.stats[key]}</dd></div>`).join('');
@@ -192,6 +194,7 @@ export class UISystem {
         }
         const touch = Boolean(this.game.touchControls?.enabled);
         this.$('menu-button').textContent = touch ? 'Pause' : 'Esc · Pause';
+        this.$('view-button').textContent = touch ? 'View' : 'V · View';
         this.$('craft-button').textContent = touch ? 'Craft' : 'C · Craft';
         this.$('building-button').textContent = touch ? 'Build' : 'B · Build';
         this.updateGearButton();
@@ -475,6 +478,10 @@ export class UISystem {
         if (this.game.weatherSystem) this.updateWeatherUI(
             {clear:'Clear skies',rain:'Rain',storm:'Storm'}[this.game.weatherSystem.type] || 'Clear skies');
         this.updateDungeonUI();
+        // Shrine boons and how long they have left.
+        const boons = this.game.buffs?.list() || [];
+        const chips = boons.map(boon => `${boon.label} ${Math.floor(boon.left / 60)}:${String(Math.floor(boon.left % 60)).padStart(2, '0')}`).join(' · ');
+        if (this.$('buffs').textContent !== chips) this.$('buffs').textContent = chips;
         this.$('world-clock').textContent = `DAY ${this.game.dayCount} · ${clockTime(this.game.dayTime, this.game.dayLength)}`;
         if (this.game.paused) return;
         this.$('compass-facing').textContent = 'FACING ' + compass(p.camera.rotation.y);

@@ -147,7 +147,41 @@ function warden(scene, random) {
     return glow(finish(scene, pieces, 'warden'), .1, .05, .02);
 }
 
-const BUILDERS = {boar, bear, skeleton, spider, bat, wraith, warden};
+function slimeBody(scene, random, size) {
+    const goo = [.3, .62, .34], deep = [.18, .42, .26];
+    const pieces = [
+        ellipsoid(scene, 'slime', V(0, .5 * size, 0), V(.72 * size, .5 * size, .72 * size), goo, random),
+        ellipsoid(scene, 'slime-core', V(0, .34 * size, 0), V(.5 * size, .3 * size, .5 * size), deep, random),
+        ellipsoid(scene, 'slime-drip', V(-.5 * size, .16 * size, .3 * size), V(.26 * size, .14 * size, .24 * size), goo, random)
+    ];
+    for (const side of [-1, 1]) pieces.push(ellipsoid(scene, 'slime-eye', V(side * .24 * size, .62 * size, .6 * size), V(.09 * size, .11 * size, .06 * size), [.05, .08, .05], random));
+    return glow(finish(scene, pieces, 'slime'), .05, .14, .06);
+}
+const slime = (scene, random) => slimeBody(scene, random, 1);
+const slimelet = (scene, random) => slimeBody(scene, random, .55);
+
+// A chest with teeth: the lid gapes and a tongue lolls out.
+function mimic(scene, random) {
+    const wood = [.34, .22, .13], band = [.5, .52, .5], tooth = [.9, .88, .78];
+    const pieces = [
+        box(scene, 'mimic-base', V(0, .36, 0), V(1.15, .62, .78), wood, random),
+        box(scene, 'mimic-band-left', V(-.4, .37, 0), V(.12, .66, .82), band, random),
+        box(scene, 'mimic-band-right', V(.4, .37, 0), V(.12, .66, .82), band, random),
+        box(scene, 'mimic-maw', V(0, .68, .02), V(1, .06, .66), [.3, .04, .06], random),
+        ellipsoid(scene, 'mimic-tongue', V(.1, .7, .46), V(.16, .05, .34), [.75, .2, .28], random)
+    ];
+    const lid = box(scene, 'mimic-lid', V(0, 1.02, -.3), V(1.19, .24, .82), wood, random);
+    lid.rotation.x = -.7; pieces.push(lid);
+    for (let n = 0; n < 5; n++) {
+        const x = -.42 + n * .21;
+        pieces.push(branch(scene, V(x, .68, .36), V(x, .88, .36), .1, tooth, random, .01));
+        pieces.push(branch(scene, V(x + .1, 1.12, .12), V(x + .1, .94, .2), .1, tooth, random, .01));
+    }
+    for (const side of [-1, 1]) pieces.push(ellipsoid(scene, 'mimic-eye', V(side * .3, 1.2, -.1), V(.08, .08, .06), [1, .8, .2], random));
+    return finish(scene, pieces, 'mimic');
+}
+
+const BUILDERS = {boar, bear, skeleton, spider, bat, wraith, warden, slime, slimelet, mimic};
 
 export function createCreatureModel(scene, kind, seed = 1) {
     const build = BUILDERS[kind];
@@ -202,6 +236,44 @@ export function createBrazierModel(scene) {
         branch(scene, V(0, .85, 0), V(0, 1.15, 0), .3, iron, random, .74),
         ellipsoid(scene, 'coals', V(0, 1.14, 0), V(.3, .1, .3), [1, .45, .12], random)
     ], 'brazier'), .22, .09, .02);
+}
+
+// A spike trap: a plate set into the floor, and the spikes that come up
+// through it. The spikes are a child mesh so they can be raised and lowered.
+export function createTrapModel(scene) {
+    const random = seededRandom(131);
+    const plate = finish(scene, [
+        box(scene, 'trap-plate', V(0, .03, 0), V(2.2, .06, 2.2), [.16, .16, .18], random),
+        box(scene, 'trap-rim', V(0, .05, 0), V(2.5, .04, .16), [.3, .28, .26], random),
+        box(scene, 'trap-rim', V(0, .05, 0), V(.16, .04, 2.5), [.3, .28, .26], random)
+    ], 'spike-trap');
+    const points = [];
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++)
+        points.push(branch(scene, V(-.78 + i * .52, 0, -.78 + j * .52), V(-.78 + i * .52, 1.05, -.78 + j * .52), .2, [.62, .64, .68], random, .01));
+    const spikes = finish(scene, points, 'trap-spikes');
+    spikes.parent = plate;
+    spikes.isPickable = false;
+    plate.metadata = {spikes};
+    return plate;
+}
+
+// A shrine: a standing stone with a lit rune that dims once it has been used.
+export function createShrineModel(scene) {
+    const random = seededRandom(271);
+    const stone = finish(scene, [
+        box(scene, 'shrine-base', V(0, .15, 0), V(1.5, .3, 1.5), [.3, .31, .34], random),
+        branch(scene, V(0, .3, 0), V(0, 2.3, 0), .8, [.42, .44, .48], random, .46),
+        ellipsoid(scene, 'shrine-cap', V(0, 2.42, 0), V(.34, .2, .34), [.3, .31, .34], random)
+    ], 'shrine');
+    const material = new BABYLON.StandardMaterial('shrine-rune-mat', scene);
+    material.emissiveColor = new BABYLON.Color3(.35, .95, .85);
+    material.diffuseColor = BABYLON.Color3.Black();
+    material.specularColor = BABYLON.Color3.Black();
+    material.disableLighting = true;
+    const rune = BABYLON.MeshBuilder.CreatePolyhedron('shrine-rune', {type: 1, size: .2}, scene);
+    rune.position.set(0, 1.5, .42); rune.material = material; rune.parent = stone; rune.isPickable = false;
+    stone.metadata = {rune};
+    return stone;
 }
 
 // A marker for the stairs: a ring on the floor under a soft column of light.

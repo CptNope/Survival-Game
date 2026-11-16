@@ -57,6 +57,9 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - E: Drink at a lake or from the waterskin; rest in a shelter at night
 - G: Gear (equip, compare and break down found equipment)
 - E at a stone doorway, stairs or chest: descend, climb out, open
+- V: Switch between first-person, third-person and overhead views · Mouse
+  wheel: zoom the two outside views
+- Q: Dodge (a short dash that blows miss) · H: Quick heal
 - F: Torch · M: Mute · P: Save · Esc: Pause
 
 ## Codebase Structure
@@ -487,6 +490,83 @@ are looking at, and the boss has its own health bar.
   compatibility.
 - Not verified here: difficulty and pacing with real hands on the controls,
   how the new sounds actually sound, and frame rate on real phones.
+
+## Views and dangers: three cameras, dodging and deadlier dungeons
+
+### Three ways to look at it
+
+Press **V** (or the **View** button) to cycle the camera. The choice is saved
+with your other settings.
+
+| View | What it is for | Aiming |
+| --- | --- | --- |
+| First person | The original view, with the tool in hand | The crosshair |
+| Third person | Over the shoulder, with your character on screen | The crosshair, limited to your reach; if it is on nothing, whatever stands in front of you |
+| Overhead | High above and a little behind, so forward is up the screen | Whatever stands closest in front of you; a ring marks it |
+
+- The mouse wheel (or a two-finger pinch on a touch screen) zooms the two
+  outside views.
+- Your character carries the tool or torch you are holding, walks, swings and
+  swims.
+- In third person the camera slides in front of walls and hills instead of
+  going through them. With your back against a wall it hides the character
+  rather than fill the screen with the back of a head.
+- In overhead view a dungeon's ceiling is taken off and solid rock is capped in
+  black, so only the rooms and corridors show. Creatures behind a wall cannot
+  be targeted.
+- On a portrait phone the outside cameras sit further back.
+
+### Dodge and quick heal
+
+- **Dodge (Q)**: a 3.4 metre dash in the direction you are moving, or
+  backwards if you are standing still. Blows miss for a third of a second.
+  It needs about a second before it can be used again, and does not help
+  against hunger, cold or drowning.
+- **Quick heal (H)**: uses the strongest remedy you can make or eat right now
+  (herbal wrap, then field dressing, then food). Nothing is used at full
+  health.
+
+### New in the depths
+
+| Danger | Where | What it does |
+| --- | --- | --- |
+| Slime | Any floor | Slow and sturdy; splits into two quick slimelets when it dies |
+| Elite | One per floor from floor 2, sometimes on floor 1 | A larger, glowing version of an ordinary creature: more than twice the health, harder hits, and it always drops gear a level above the floor |
+| Mimic | Floors 2 and 3 | Looks like a chest until you open it. Always drops gear when beaten. Never the boss hoard, and never every chest on a floor |
+| Spike trap | Corridors | A plate that glows for 0.7 seconds, then strikes. Wait, or jump over it |
+| Shrine | Some floors | Touch it once for a two-minute boon or, if you are hurt, sometimes a full heal instead |
+
+Boons: **Fury** (+30% damage), **Stoneskin** (30% less damage from blows) and
+**Swiftness** (20% faster movement and swings). Active boons show above the
+health bar with the time left, and are saved.
+
+Dungeons now come in three kinds, fixed by where they are: stone **crypts**,
+warm earthen **caverns**, and **frozen vaults**, where the cold builds unless
+your torch is lit. The Old Barrow is always a crypt.
+
+### Notes for developers
+
+- `js/view.js` is pure camera maths (`cameraRig`, `clampRig`, `coneTarget`).
+  `js/components/view.js` owns a second camera that does the drawing in the
+  outside views. The player's body is still the original `FreeCamera`, and
+  everything else keeps reading its position and rotation; because it is no
+  longer the active camera in those views, `ViewSystem.update` runs its input
+  update by hand.
+- `game.pickTarget()` returns a real pick in first person and a synthetic one
+  (same shape, plus `assisted: true`) from the other views, so gathering,
+  combat and building did not need to know about views.
+- A dungeon floor is now three meshes (floor and walls, ceiling, rock caps) so
+  the ceiling can be switched off.
+- Saves stay at version 1 with an optional `buffs` field; settings gained
+  `view`.
+- `tests/views.test.mjs` covers the camera maths, mode switching, aiming in
+  each view (including through-wall checks), dodge distance and immunity,
+  quick heal, trap timing and avoidance, shrines and boons, mimics, elites,
+  slime splitting, the generator's placement rules across 240 floors, and
+  dungeon themes.
+- Not verified here: how third-person and overhead play with real hands on the
+  controls, pinch zoom on a real phone, the new sounds, and frame rate on real
+  phones.
 
 ---
 

@@ -10,6 +10,32 @@ export const WALL = 0, FLOOR = 1;
 export const DUNGEON_SPACING = 176;
 export const RESET_DAYS = 3; // Layouts and loot are redrawn every few days.
 export const FLOORS = 3;
+export const TRAP_CYCLE = 3.4; // Seconds for a spike trap to rest, warn, strike and retract.
+
+// A trap's state at a moment in time: resting, glowing a warning, or raised.
+export function trapState(time, phase = 0) {
+    const t = ((time + phase) % TRAP_CYCLE + TRAP_CYCLE) % TRAP_CYCLE;
+    if (t < 1.8) return {stage: 'rest', raised: 0, t};
+    if (t < 2.5) return {stage: 'warn', raised: 0, t};
+    if (t < 3.15) return {stage: 'up', raised: Math.min(1, (t - 2.5) / .08), t};
+    return {stage: 'rest', raised: Math.max(0, 1 - (t - 3.15) / .25), t};
+}
+
+// Each dungeon has a look and a temperature, fixed by where it is.
+export const THEMES = Object.freeze([
+    {id: 'crypt', label: 'crypt', floor: [.44, .43, .46], wall: [.56, .55, .6], roof: [.22, .22, .26],
+        fog: [.012, .012, .02], ambient: [.5, .54, .68], chill: -.25},
+    {id: 'cavern', label: 'cavern', floor: [.42, .35, .26], wall: [.5, .41, .3], roof: [.2, .17, .13],
+        fog: [.022, .016, .01], ambient: [.66, .56, .44], chill: -.25},
+    {id: 'frost', label: 'frozen vault', floor: [.5, .58, .66], wall: [.62, .72, .8], roof: [.24, .3, .36],
+        fog: [.03, .045, .06], ambient: [.56, .68, .84], chill: .4}
+]);
+export function themeFor(site) {
+    if (!site || site.id === 'dungeon:start') return THEMES[0];
+    let hashed = 7;
+    for (let i = 0; i < site.id.length; i++) hashed = Math.imul(hashed ^ site.id.charCodeAt(i), 16777619);
+    return THEMES[Math.abs(hashed) % THEMES.length];
+}
 
 const NAMES = ['Sunken Crypt', 'Forgotten Vault', 'Hollow Stair', 'Buried Sanctum', 'Silent Barrow', 'Drowned Cellar', 'Ashen Catacomb'];
 // The first dungeon sits beside the trail crossing south-west of the clearing.
@@ -65,9 +91,9 @@ const inside = (x, y) => x >= 1 && y >= 1 && x < GRID - 1 && y < GRID - 1;
 
 // Enemy mix by floor: [kind, weight].
 const ROSTER = {
-    1: [['spider', 4], ['bat', 3], ['skeleton', 3]],
-    2: [['spider', 3], ['bat', 2], ['skeleton', 4], ['wraith', 2]],
-    3: [['spider', 2], ['bat', 2], ['skeleton', 4], ['wraith', 3]]
+    1: [['spider', 4], ['bat', 3], ['skeleton', 3], ['slime', 2]],
+    2: [['spider', 3], ['bat', 2], ['skeleton', 4], ['wraith', 2], ['slime', 3]],
+    3: [['spider', 2], ['bat', 2], ['skeleton', 4], ['wraith', 3], ['slime', 2]]
 };
 function weighted(list, random) {
     let roll = random() * list.reduce((sum, [, weight]) => sum + weight, 0);
@@ -203,8 +229,38 @@ export function generateFloor(seed, floor = 1, lastFloor = FLOORS) {
         }
     }
 
+    // --- Dangers and rewards layered on afterwards (drawn last, so the rooms,
+    // chests and spawns above stay exactly as earlier versions generated them).
+    // Spike traps guard straight stretches of corridor, never the first steps in.
+    const inRoom = (x, y) => rooms.some(room => x >= room.x && x < room.x + room.w && y >= room.y && y < room.y + room.h);
+    const open = (x, y) => grid[index(x, y)] === FLOOR;
+    const straights = [];
+    for (let y = 1; y < GRID - 1; y++) for (let x = 1; x < GRID - 1; x++) {
+        if (!open(x, y) || inRoom(x, y) || fromStart[index(x, y)] < 3) continue;
+        const eastWest = open(x - 1, y) && open(x + 1, y) && !open(x, y - 1) && !open(x, y + 1);
+        const northSouth = open(x, y - 1) && open(x, y + 1) && !open(x - 1, y) && !open(x + 1, y);
+        if (eastWest || northSouth) straights.push({x, y});
+    }
+    const traps = [];
+    const wantedTraps = Math.min(straights.length, floor + (random() < .5 ? 1 : 0));
+    for (let attempt = 0; attempt < 60 && traps.length < wantedTraps; attempt++) {
+        const cell = straights[Math.floor(random() * straights.length)];
+        if (traps.some(trap => Math.abs(trap.x - cell.x) + Math.abs(trap.y - cell.y) < 3)) continue;
+        traps.push({...cell, phase: random() * TRAP_CYCLE});
+    }
+    // A shrine waits in a side room on most floors.
+    let shrine = null;
+    if (ordinary.length && random() < .6) shrine = freeCell(ordinary[Math.floor(random() * ordinary.length)]);
+    // Below the first floor some chests bite, but never every one of them.
+    const plain = chests.filter(chest => chest.tier === 'chest');
+    if (floor >= 2) for (const chest of plain) if (random() < .24) chest.mimic = true;
+    if (plain.length && plain.every(chest => chest.mimic)) plain[0].mimic = false;
+    // One creature on the floor is an elite: tougher, and carrying gear.
+    const ranks = spawns.filter(spawn => spawn.kind !== 'warden' && spawn.kind !== 'bat');
+    if (ranks.length && (floor >= 2 || random() < .5)) ranks[Math.floor(random() * ranks.length)].elite = true;
+
     return {
-        seed, floor, boss, grid, rooms, chests, spawns, braziers,
+        seed, floor, boss, grid, rooms, chests, spawns, braziers, traps, shrine,
         start: {x: start.cx, y: start.cy},
         exit: {x: exitRoom.cx, y: exitRoom.cy}
     };

@@ -89,7 +89,7 @@ export const STAT_LABELS = Object.freeze({
     hunted: 'Animals hunted', wolves: 'Wolves defeated', meals: 'Hot meals eaten',
     nights: 'Nights survived', slept: 'Nights slept', deaths: 'Deaths',
     delves: 'Dungeons entered', monsters: 'Monsters slain', bosses: 'Wardens defeated',
-    chests: 'Chests opened', gearFound: 'Gear found'
+    chests: 'Chests opened', gearFound: 'Gear found', shrines: 'Shrines touched'
 });
 
 export class ProgressionSystem {

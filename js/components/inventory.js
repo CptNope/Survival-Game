@@ -2,6 +2,7 @@ import { createLootModel } from '../models/wilderness.js';
 import { ITEMS, RESOURCES, RECIPES, hitsNeeded } from '../resources.js';
 
 const SWING_COOLDOWN_MS = 330;
+const QUICK_HEALS = ['herbalWrap', 'bandage', 'snack', 'eatMeat']; // Strongest first.
 const AIM_ASSISTED = new Set(['fiber', 'herb', 'berry']);
 const AIM_ASSIST_RADIUS = .8;
 const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -174,6 +175,23 @@ export class InventorySystem {
         this.game.saveSystem?.save();
         return true;
     }
+    // One key for "patch me up": the strongest healing item the pack can make.
+    quickHeal() {
+        const game = this.game, player = game.playerSystem;
+        if (game.paused || player.isDead) return false;
+        if (player.health >= player.maxHealth) {
+            game.uiSystem?.showNotification?.('Already at full health');
+            return false;
+        }
+        const recipe = QUICK_HEALS.find(id => this.canCraft(id));
+        if (!recipe) {
+            game.uiSystem?.showNotification?.('Nothing to heal with · Carry herbs and fiber, wood, berries or cooked meat');
+            game.audio?.play('deny');
+            return false;
+        }
+        return this.craft(recipe);
+    }
+
     craftPlanks() { return this.craft('planks'); }
     craftTool() { return this.craft('tools'); }
 

@@ -175,16 +175,18 @@ export class SkySystem {
         // light the player carries or the braziers throw.
         if (game.dungeonSystem?.active) {
             s.dayAmount = 0; // Torch and firelight burn at full strength.
+            const theme = game.dungeonSystem.theme;
             if (this.dome?.isEnabled()) this.dome.setEnabled(false);
             if (sun) sun.intensity = 0;
             if (ambient) {
                 ambient.intensity = .46;
-                ambient.diffuse.set(.5, .54, .68);
-                ambient.groundColor.set(.2, .2, .27);
+                ambient.diffuse.set(...theme.ambient);
+                ambient.groundColor.set(theme.ambient[0] * .4, theme.ambient[1] * .4, theme.ambient[2] * .4);
             }
-            this.scene.clearColor = new BABYLON.Color4(.012, .012, .02, 1);
-            this.scene.fogColor = new BABYLON.Color3(.012, .012, .02);
-            this.scene.fogDensity = .028;
+            this.scene.clearColor = new BABYLON.Color4(...theme.fog, 1);
+            this.scene.fogColor = new BABYLON.Color3(...theme.fog);
+            // From overhead the camera is far from the floor, so thin the murk.
+            this.scene.fogDensity = game.viewSystem?.mode === 'overhead' ? .013 : .028;
             return;
         }
         if (this.dome && !this.dome.isEnabled() && !game.playerSystem?.isUnderwater) this.dome.setEnabled(true);
