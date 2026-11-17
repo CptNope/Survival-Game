@@ -44,6 +44,8 @@ export class SaveSystem {
             gear:g.gear?.capture?.() || null,
             buffs:g.buffs?.capture?.() || null,
             perks:g.perks?.capture?.() || null,
+            legends:g.legends?.capture?.() || null,
+            gardens:g.gardens?.capture?.() || null,
             regions:g.regions?.capture?.() || null,
             dungeons:g.dungeonSystem?.capture?.() || null,
             inventory:Object.fromEntries(Object.keys(ITEMS).map(key=>[key,items[key] || 0])),
@@ -136,6 +138,8 @@ export class SaveSystem {
             g.buffs?.restore?.(saved.buffs);
             g.perks?.restore?.(saved.perks);
             g.regions?.restore?.(saved.regions);
+            g.legends?.restore?.(saved.legends);
+            g.gardens?.restore?.(saved.gardens);
             p.health=finite(saved.health,p.maxHealth,1,p.maxHealth);
         }
         g.explorationSystem.discovered=new Set((Array.isArray(saved.discovered)?saved.discovered:[])

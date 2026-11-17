@@ -98,6 +98,30 @@ export const QUESTS = Object.freeze([
         progress: g => `${g.inventorySystem.inventory.pelt} of 3 pelts`
     },
     {
+        id: 'angler', xp: 50, title: 'Wet a line',
+        text: 'Craft a fishing rod, stand at a lake shore and cast. Strike when the float dips, then grill the catch.',
+        done: g => g.progression.stats.fish > 0,
+        progress: g => g.inventorySystem.inventory.fishingRod > 0 ? `${g.progression.stats.fish} fish caught` : 'No rod yet · 2 wood and 3 fiber'
+    },
+    {
+        id: 'gardener', xp: 70, title: 'Grow your own',
+        text: 'Build a garden bed, plant berries, herbs, mushrooms or cactus fruit, and come back when they are ripe.',
+        done: g => g.progression.stats.harvests > 0,
+        progress: g => {
+            const beds = g.buildSystem.structures.filter(item => item.type === 'garden').length;
+            return beds ? `${g.gardens?.beds.size || 0} of ${beds} beds planted` : 'No garden bed yet · 4 wood and 2 fiber';
+        }
+    },
+    {
+        id: 'legend', xp: 200, title: 'Hunt a legend',
+        text: 'Each frontier region hides a lair ringed with standing stones. Whatever lives there carries a named, legendary prize.',
+        done: g => g.progression.stats.legends > 0,
+        progress: g => {
+            const near = g.legends?.nearest(g.playerSystem.camera.position);
+            return near ? `${near.legend.name} · ${Math.round(near.distance)}m away` : 'Find a frontier region first';
+        }
+    },
+    {
         id: 'veteran', xp: 150, title: 'Outlast the wilds',
         text: 'Keep the expedition alive through five full days.',
         done: g => g.dayCount >= 6,
@@ -111,7 +135,8 @@ export const STAT_LABELS = Object.freeze({
     nights: 'Nights survived', slept: 'Nights slept', deaths: 'Deaths',
     delves: 'Dungeons entered', monsters: 'Monsters slain', bosses: 'Wardens defeated',
     chests: 'Chests opened', gearFound: 'Gear found', shrines: 'Shrines touched',
-    arrows: 'Arrows loosed', arrowHits: 'Arrows on target'
+    arrows: 'Arrows loosed', arrowHits: 'Arrows on target',
+    fish: 'Fish caught', harvests: 'Crops harvested', legends: 'Legends slain'
 });
 
 export class ProgressionSystem {

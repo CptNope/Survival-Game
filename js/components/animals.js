@@ -190,6 +190,7 @@ export class AnimalSystem {
         // Some creatures come apart into smaller ones.
         if (def.split && animal.dungeon) game.dungeonSystem?.summonAround?.(position, def.split.kind, def.split.count, 1.3);
         if (def.boss) game.dungeonSystem?.onBossDefeated?.(animal, position);
+        if (def.legend) game.legends?.onSlain?.(animal, position);
         game.uiSystem?.updateInventoryUI?.();
         if (!animal.dungeon) game.saveSystem?.save();
     }

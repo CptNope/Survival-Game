@@ -107,6 +107,9 @@ export class SurvivalSystem {
             this.game.uiSystem?.showNotification(special.label);
             return false;
         }
+        // A garden bed underfoot: plant it, or pick what has ripened.
+        const garden = this.game.gardens?.interaction?.();
+        if (garden?.act) return garden.act() !== false;
         const sleep = this.sleepStatus();
         const thirsty = this.thirst < 60 && (this.nearWater() || (this.hasWaterskin() && this.water > 0));
         if (sleep.ok && !thirsty) return this.sleep();

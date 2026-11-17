@@ -56,6 +56,10 @@ export const SOUNDS = Object.freeze({
     loose: [{f: 420, to: 150, type: 'triangle', d: .11, g: .22}, {n: 2600, q: 1.2, d: .16, g: .22, at: .01}],
     arrow: [{n: 1700, q: 2.5, d: .05, g: .3}, {f: 190, to: 110, type: 'triangle', d: .1, g: .26}],
     croak: [{f: 130, to: 95, type: 'square', d: .16, g: .1, vib: 34}, {f: 150, to: 100, type: 'square', d: .2, g: .1, vib: 30, at: .2}],
+    // Homestead and legends.
+    splash: [{n: 900, q: .7, d: .28, g: .22}, {n: 2400, q: 1, d: .16, g: .1, at: .05}],
+    bite: [{f: 880, type: 'sine', d: .07, g: .2}, {f: 1175, type: 'sine', d: .1, g: .2, at: .09}],
+    plant: [{n: 500, q: .8, d: .14, g: .2}, {f: 300, to: 220, type: 'triangle', d: .12, g: .1, at: .05}],
     perk: [{f: 523, type: 'triangle', d: .18, g: .16}, {f: 784, type: 'triangle', d: .22, g: .16, at: .1}, {f: 1047, type: 'sine', d: .5, g: .14, at: .2}],
     drip: [{f: 1500, to: 900, type: 'sine', d: .07, g: .08}, {f: 1000, to: 700, type: 'sine', d: .12, g: .04, at: .08}],
     bird: [{f: 2400, to: 3100, type: 'sine', d: .07, g: .05}, {f: 2900, to: 2300, type: 'sine', d: .09, g: .05, at: .1}, {f: 2600, to: 3300, type: 'sine', d: .06, g: .045, at: .24}]

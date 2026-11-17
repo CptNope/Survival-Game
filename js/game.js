@@ -22,6 +22,8 @@ import { BuffSystem } from './components/buffs.js';
 import { PerkSystem } from './components/perks.js';
 import { RegionSystem } from './components/regions.js';
 import { ArcherySystem } from './components/archery.js';
+import { LegendSystem } from './components/legends.js';
+import { FishingSystem, GardenSystem } from './components/homestead.js';
 import { loadSettings, saveSettings } from './settings.js';
 
 export class SurvivalGame {
@@ -128,6 +130,9 @@ export class SurvivalGame {
             this.buffs = new BuffSystem(this);
             this.perks = new PerkSystem(this);
             this.regions = new RegionSystem(this);
+            this.legends = new LegendSystem(this);
+            this.fishing = new FishingSystem(this);
+            this.gardens = new GardenSystem(this);
             this.dungeonSystem = new DungeonSystem(this);
 
             // UI is created before restoring state so it can refresh all meters.
@@ -245,7 +250,11 @@ export class SurvivalGame {
         }
         // A held button only needs to look again once the last swing has recovered.
         if (!fresh && (this.inventorySystem.swinging() || this.combatSystem.isAttacking)) return;
+        // A line in the water takes the click: strike, or reel in.
+        if (this.fishing.busy()) { if (fresh) this.fishing.act(); return; }
         if (this.inventorySystem.findTarget()) this.inventorySystem.tryHarvest();
+        // At a shore with a rod and nothing to fight, the click casts.
+        else if (fresh && !this.combatSystem.targeted() && this.fishing.act()) return;
         else this.combatSystem.tryAttack();
     }
 
@@ -313,6 +322,7 @@ export class SurvivalGame {
             if (event.code === 'KeyC') this.uiSystem.toggleCrafting();
             if (event.code === 'KeyG') this.uiSystem.toggleGear();
             if (event.code === 'KeyK') this.uiSystem.togglePerks();
+            if (event.code === 'KeyN') this.uiSystem.toggleMap();
             if (event.code === 'KeyB') {
                 if (!this.paused && this.buildSystem.cancelPlacement()) return;
                 this.uiSystem.toggleBuilding();
@@ -385,6 +395,9 @@ export class SurvivalGame {
             this.gear.update(dt);
             this.buffs.update(dt);
             this.regions.update(dt);
+            this.legends.update(dt);
+            this.fishing.update(dt);
+            this.gardens.update(dt);
             this.archery.update(dt);
             this.survivalSystem.update(dt);
             this.saveSystem.update(dt);

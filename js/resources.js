@@ -5,7 +5,8 @@ export const ITEMS = {
     berries: 'Berries', ironTools: 'Iron tools', rawMeat: 'Raw meat', cookedMeat: 'Cooked meat',
     spear: 'Spear', torch: 'Torch', waterskin: 'Waterskin',
     bow: 'Bow', arrows: 'Arrows', pelt: 'Pelts', furCloak: 'Fur cloak',
-    cactusFruit: 'Cactus fruit', mushrooms: 'Mushrooms'
+    cactusFruit: 'Cactus fruit', mushrooms: 'Mushrooms',
+    fishingRod: 'Fishing rod', fish: 'Raw fish'
 };
 // `hits` is the number of swings a node takes by tool tier. A missing tier
 // means that tier cannot gather the node at all (bare hands on ore).
@@ -41,6 +42,7 @@ export const RECIPES = {
     spear: { group: 'gear', name: 'Spear', note: '+12 damage · longer reach', cost: { wood: 2, stone: 1, fiber: 1 }, output: 'spear', amount: 1, unique: true },
     torch: { group: 'gear', name: 'Torch', note: 'Light and a little warmth at night', cost: { wood: 1, fiber: 1 }, output: 'torch', amount: 1, unique: true },
     waterskin: { group: 'gear', name: 'Waterskin', note: 'Carries three drinks from any lake', cost: { fiber: 4 }, output: 'waterskin', amount: 1, unique: true },
+    fishingRod: { group: 'gear', name: 'Fishing rod', note: 'Stand at a lake shore and click to cast', cost: { wood: 2, fiber: 3 }, output: 'fishingRod', amount: 1, unique: true },
     bow: { group: 'gear', name: 'Bow', note: 'Hold R to draw, release to loose · needs arrows', cost: { wood: 3, fiber: 3 }, output: 'bow', amount: 1, unique: true },
     arrows: { group: 'gear', name: 'Arrows', note: 'Four to a bundle', cost: { wood: 1, stone: 1 }, output: 'arrows', amount: 4 },
     furCloak: { group: 'gear', name: 'Fur cloak', note: 'Halves the cold · pelts come from wolves and bears', cost: { pelt: 3, fiber: 2 }, output: 'furCloak', amount: 1, unique: true },
@@ -51,11 +53,12 @@ export const RECIPES = {
     cookMeat: { group: 'food', name: 'Roast meat at campfire', cost: { rawMeat: 1 }, output: 'cookedMeat', amount: 1, requiresFire: true },
     eatMeat: { group: 'food', name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50, meal: true },
     eatCactus: { group: 'food', name: 'Eat cactus fruit', cost: { cactusFruit: 1 }, hunger: 8, thirst: 35 },
+    grillFish: { group: 'food', name: 'Grill fish at campfire', cost: { fish: 1 }, heal: 15, hunger: 40, requiresFire: true, meal: true },
     roastMushrooms: { group: 'food', name: 'Roast mushrooms at campfire', cost: { mushrooms: 2 }, heal: 25, hunger: 32, requiresFire: true, meal: true }
 };
 export function itemAmount(item, count) {
     const singular = {planks: 'plank', tools: 'stone tool', iron: 'iron ingot', herbs: 'herb', berries: 'berry', ironTools: 'iron tool',
-        arrows: 'arrow', pelt: 'pelt', mushrooms: 'mushroom'};
+        arrows: 'arrow', pelt: 'pelt', mushrooms: 'mushroom', fish: 'raw fish'};
     return `${count} ${count === 1 && singular[item] ? singular[item] : ITEMS[item].toLowerCase()}`;
 }
 export function recipeDescription(recipe) {
