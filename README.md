@@ -62,6 +62,7 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - Q: Dodge (a short dash that blows miss) · H: Quick heal
 - Hold R: Draw the bow, release to loose (R still rotates a build preview)
 - K: Perks
+- N: Map (or tap the compass card)
 - F: Torch · M: Mute · P: Save · Esc: Pause
 
 ## Codebase Structure
@@ -641,6 +642,74 @@ times.
 - Not verified here: whether the regions' pressures and the bow's damage are
   balanced in real play, how the bow feels under real hands and on a real
   phone, and the five new sounds.
+
+## Legends and homestead: region bosses, a map, fishing and gardens
+
+### Legends
+
+Each frontier region has a lair: a ring of standing stones round a heap of
+bones, deep in the patch of that region nearest the clearing. Once you have
+found a region, the compass card and the map point to its lair.
+
+| Legend | Region | How it fights | Prize |
+| --- | --- | --- | --- |
+| Old Rime | Frostfell | A huge ice wolf; its bite chills, and it calls two ice wolves at two-thirds and one-third health | Rime's Fang (weapon) |
+| The Sand Tyrant | Sunscar | A huge scorpion that lunges and poisons for 5 s; calls two scorpions at half health | Tyrant's Carapace (armor) |
+| Mother of the Mire | Mirefen | A huge toad that keeps its distance and spits three bolts in a fan; calls two toads twice | Mirewalkers (boots) |
+
+- A legend wakes when you come within 60 m of its lair and shows a health bar.
+- Run more than 150 m from the lair (or die) and it goes home; the next visit
+  meets it at full health.
+- Each is killed once. The prize is always legendary, carries the legend's
+  name, and is rolled at your level.
+
+### The map
+
+Press **N** (or tap the compass card) for a map 1800 m across, centred on you
+with north up. Country of a region you have not yet reached stays dark. It
+marks you, the clearing, your camp, places you have discovered, dungeons you
+have entered, and the lairs of regions you have found.
+
+### Fishing
+
+Craft a **fishing rod** (2 wood, 3 fiber). Stand on dry ground facing a lake
+and click to cast. The float bobs for 2.5 to 7.5 seconds, then dips: click
+within a second and a half to land the catch. Clicking early reels in with
+nothing, and walking off brings the line in. Most catches are one fish,
+sometimes two, occasionally a clump of weed. **Grill fish** at a campfire for
+15 health and 40 hunger.
+
+### Garden beds
+
+Build a **garden bed** (4 wood, 2 fiber) and press **E** beside it to plant
+whichever of these you carry most of. Press **E** again when it is ripe.
+
+| Crop | Seed | Ripe in | Harvest |
+| --- | --- | --- | --- |
+| Berries | 2 | 1.5 days | 7 |
+| Herbs | 2 | 1.5 days | 6 |
+| Mushrooms | 2 | 2 days | 6 |
+| Cactus fruit | 1 | 2.5 days | 4 |
+
+So one trip to the marsh or the desert can be turned into a steady supply at
+home. Sleeping through the night counts toward ripening.
+
+### Notes for developers
+
+- `js/legends.js`, `js/map.js` and `js/homestead.js` are pure rules;
+  `js/components/legends.js` and `js/components/homestead.js` apply them.
+- A caster creature with `volley: n` fires a fan of `n` bolts.
+- Garden state is kept beside the building records, keyed by structure id, so
+  the building save format is unchanged. Saves stay at version 1 with optional
+  `legends` and `gardens` fields.
+- The click action checks, in order: build placement, a line already in the
+  water, something to gather, a creature to hit, and only then a cast.
+- `tests/homestead.test.mjs` covers lair placement, a full legend fight
+  (waking, reinforcements, leash, death and reward), the map's cells and
+  projection, fishing rules and a cast-to-catch run, and a garden from build
+  to harvest across a save.
+- Not verified here: whether the legends are beatable at a fair level with
+  real play, fishing's timing under real hands, and the three new sounds.
 
 ---
 

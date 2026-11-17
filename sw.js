@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v14-frontiers';
+const CACHE_NAME = 'survival-game-v15-legends-and-homestead';
 const ASSETS = [
   './',
   './index.html',
@@ -45,6 +45,11 @@ const ASSETS = [
   './js/components/regions.js',
   './js/components/archery.js',
   './js/components/perks.js',
+  './js/legends.js',
+  './js/map.js',
+  './js/homestead.js',
+  './js/components/legends.js',
+  './js/components/homestead.js',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png'
 ];

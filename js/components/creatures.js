@@ -188,7 +188,12 @@ export class CreatureAI {
     // The moment a wound-up attack lands.
     strike(animal, def, distance, layout) {
         const game = this.game;
-        if (def.brain === 'caster') { this.fireBolt(animal, def); return; }
+        if (def.brain === 'caster') {
+            // A volley fans out either side of the aimed bolt.
+            const shots = def.volley || 1;
+            for (let n = 0; n < shots; n++) this.fireBolt(animal, def, (n - (shots - 1) / 2) * .3);
+            return;
+        }
         if (def.brain === 'boss') {
             game.audio?.play('slam');
             game.effects?.burst?.(animal.mesh.position.add(new BABYLON.Vector3(0, .3, 0)), 'stone', 28);
@@ -199,7 +204,7 @@ export class CreatureAI {
         if (distance < def.reach * 1.2) this.hurtPlayer(animal, def);
     }
 
-    fireBolt(animal, def) {
+    fireBolt(animal, def, spread = 0) {
         const scene = this.game.scene, target = this.game.playerSystem.camera.position;
         const from = animal.mesh.position;
         // One glowing material per colour of bolt: wraith blue, toad green.
@@ -217,7 +222,8 @@ export class CreatureAI {
         mesh.material = this.boltMaterials.get(key);
         mesh.isPickable = false;
         mesh.position.set(from.x, from.y + 1.25, from.z);
-        const dx = target.x - from.x, dz = target.z - from.z, length = Math.hypot(dx, dz) || 1;
+        const aim = Math.atan2(target.x - from.x, target.z - from.z) + spread;
+        const dx = Math.sin(aim), dz = Math.cos(aim), length = 1;
         this.bolts.push({mesh, vx: dx / length * BOLT_SPEED, vz: dz / length * BOLT_SPEED, life: 2.4,
             damage: def.damage * (animal.damageScale || 1), cause: def.cause});
         this.game.audio?.play('bolt');

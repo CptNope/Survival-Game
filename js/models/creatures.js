@@ -226,7 +226,11 @@ function toad(scene, random) {
 
 const icewolf = (scene, random) => createWolfModel(scene, Math.floor(random() * 1e6) + 1, [.82, .86, .90], [.94, .96, .98]).mesh;
 
-const BUILDERS = {boar, bear, skeleton, spider, bat, wraith, warden, slime, slimelet, mimic, scorpion, toad, icewolf};
+// Legends are their region's creature grown huge.
+const giant = (build, size) => (scene, random) => { const mesh = build(scene, random); mesh.scaling.setAll(size); return mesh; };
+
+const BUILDERS = {boar, bear, skeleton, spider, bat, wraith, warden, slime, slimelet, mimic, scorpion, toad, icewolf,
+    rime: giant(icewolf, 1.9), tyrant: giant(scorpion, 2.3), miremother: giant(toad, 2.4)};
 
 export function createCreatureModel(scene, kind, seed = 1) {
     const build = BUILDERS[kind];

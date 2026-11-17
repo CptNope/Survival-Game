@@ -5,14 +5,15 @@ export const BUILDINGS = Object.freeze({
     fire: {name: 'Campfire', cost: {wood: 3, stone: 3}},
     floor: {name: 'Wooden floor', cost: {planks: 2}},
     wall: {name: 'Log wall', cost: {wood: 4}},
-    roof: {name: 'Wooden roof', cost: {planks: 3, fiber: 2}}
+    roof: {name: 'Wooden roof', cost: {planks: 3, fiber: 2}},
+    garden: {name: 'Garden bed', cost: {wood: 4, fiber: 2}}
 });
 
 function createModel(scene, type, item, material) {
     const pieces = [];
     const color = {
         wood: [.40,.28,.18], roof: [.31,.37,.24],
-        stone: [.42,.43,.40], ember: [.93,.39,.15], ash: [.18,.17,.15]
+        stone: [.42,.43,.40], ember: [.93,.39,.15], ash: [.18,.17,.15], soil: [.24,.17,.11]
     };
     function tint(mesh, shade) {
         const rgb = color[shade], values = [];
@@ -24,6 +25,14 @@ function createModel(scene, type, item, material) {
         const mesh = BABYLON.MeshBuilder.CreateBox(name, {width:w,height:h,depth:d},scene);
         mesh.position.set(x,y,z); mesh.rotation.x = tilt;
         tint(mesh,shade);
+    }
+    if (type === 'garden') {
+        // A low timber frame filled with dark soil.
+        beam('garden-soil', 0,.16,0,2.5,.2,1.7,'soil');
+        beam('garden-front', 0,.2,.9,2.8,.4,.14,'wood');
+        beam('garden-back', 0,.2,-.9,2.8,.4,.14,'wood');
+        beam('garden-left', -1.33,.2,0,.14,.4,1.8,'wood');
+        beam('garden-right', 1.33,.2,0,.14,.4,1.8,'wood');
     }
     if (type === 'shelter') {
         beam('base-platform', 0,.12,0,4,.22,3.3,'wood');
