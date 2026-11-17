@@ -318,7 +318,7 @@ export class PlayerSystem {
     // Handle player taking damage. `cause` names what hurt the player and is
     // A sting: `rate` health a second for `seconds`. A fresh sting restarts the clock.
     poison(rate, seconds) {
-        if (this.isDead) return;
+        if (this.isDead || this.game.buffs?.has('antivenom')) return;
         if (!(this.poisonLeft > 0)) this.game.uiSystem?.showNotification?.('Poisoned · It will pass');
         this.poisonRate = Math.max(this.poisonLeft > 0 ? this.poisonRate || 0 : 0, rate);
         this.poisonLeft = Math.max(this.poisonLeft || 0, seconds);

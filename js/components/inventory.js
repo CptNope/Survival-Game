@@ -1,3 +1,4 @@
+import { BOONS } from './buffs.js';
 import { createLootModel } from '../models/wilderness.js';
 import { ITEMS, RESOURCES, RECIPES, hitsNeeded } from '../resources.js';
 
@@ -138,8 +139,9 @@ export class InventorySystem {
         const player = this.game.playerSystem;
         return !!recipe && !player.isDead
             && (!recipe.unique || !this.inventory[recipe.output])
-            && (!(recipe.heal || recipe.hunger) || player.health < player.maxHealth ||
-                (recipe.hunger && this.game.survivalSystem?.hunger < 100))
+            && (!(recipe.heal || recipe.hunger) || Boolean(recipe.buff) || player.health < player.maxHealth ||
+                (recipe.hunger && this.game.survivalSystem?.hunger < 100) ||
+                Boolean(recipe.thirst && this.game.survivalSystem?.thirst < 100))
             && (!recipe.requiresFire || this.game.buildSystem?.nearFire(this.game.playerSystem.camera.position))
             && Object.entries(recipe.cost).every(([item, count]) => this.inventory[item] >= count);
     }
@@ -156,7 +158,17 @@ export class InventorySystem {
         const recipe = RECIPES[type];
         if (!this.canCraft(type)) return false;
         for (const [item, count] of Object.entries(recipe.cost)) this.inventory[item] -= count;
-        if (recipe.heal || recipe.hunger) {
+        if (recipe.buff) {
+            // A tonic: its effect starts now. Antivenom also clears what is already in you.
+            const player = this.game.playerSystem;
+            this.game.buffs?.add(recipe.buff);
+            if (recipe.buff === 'antivenom') player.poisonLeft = 0;
+            if (recipe.hunger) this.game.survivalSystem?.eatBerries(recipe.hunger);
+            this.game.uiSystem.showNotification(`${BOONS[recipe.buff].label} · ${BOONS[recipe.buff].text}`);
+            this.game.audio?.play('heal');
+            this.game.progression?.record('tonics');
+            if (recipe.meal) this.game.progression?.record('meals');
+        } else if (recipe.heal || recipe.hunger) {
             const player = this.game.playerSystem, survival = this.game.survivalSystem;
             const strength = recipe.heal ? Math.round(recipe.heal * (1 + (this.game.perks?.value('healing') || 0))) : 0;
             const healed = Math.min(strength, player.maxHealth - player.health);

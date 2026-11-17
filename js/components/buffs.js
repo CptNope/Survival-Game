@@ -3,8 +3,13 @@
 export const BOONS = Object.freeze({
     fury: {label: 'Fury', text: '+30% damage', seconds: 120, damage: 1.3},
     stoneskin: {label: 'Stoneskin', text: '30% less damage taken', seconds: 120, defence: .7},
-    haste: {label: 'Swiftness', text: '+20% move and swing speed', seconds: 120, speed: 1.2}
+    haste: {label: 'Swiftness', text: '+20% move and swing speed', seconds: 120, speed: 1.2},
+    // Brewed, not granted: tonics made from what the frontier grows.
+    warmth: {label: 'Warmed', text: 'The cold builds 60% slower', seconds: 180, cold: .4},
+    antivenom: {label: 'Antivenom', text: 'Immune to venom', seconds: 150}
 });
+// What a dungeon shrine may hand out.
+export const SHRINE_BOONS = Object.freeze(['fury', 'stoneskin', 'haste']);
 
 export class BuffSystem {
     constructor(game) {
@@ -20,7 +25,7 @@ export class BuffSystem {
 
     has(id) { return (this.active.get(id) || 0) > 0; }
 
-    // Combined multiplier for 'damage', 'defence' or 'speed'.
+    // Combined multiplier for 'damage', 'defence', 'speed' or 'cold'.
     factor(kind) {
         let value = 1;
         for (const id of this.active.keys()) value *= BOONS[id][kind] || 1;

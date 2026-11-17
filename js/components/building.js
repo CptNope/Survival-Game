@@ -6,7 +6,8 @@ export const BUILDINGS = Object.freeze({
     floor: {name: 'Wooden floor', cost: {planks: 2}},
     wall: {name: 'Log wall', cost: {wood: 4}},
     roof: {name: 'Wooden roof', cost: {planks: 3, fiber: 2}},
-    garden: {name: 'Garden bed', cost: {wood: 4, fiber: 2}}
+    garden: {name: 'Garden bed', cost: {wood: 4, fiber: 2}},
+    chest: {name: 'Storage chest', cost: {planks: 4, fiber: 2}}
 });
 
 function createModel(scene, type, item, material) {
@@ -25,6 +26,14 @@ function createModel(scene, type, item, material) {
         const mesh = BABYLON.MeshBuilder.CreateBox(name, {width:w,height:h,depth:d},scene);
         mesh.position.set(x,y,z); mesh.rotation.x = tilt;
         tint(mesh,shade);
+    }
+    if (type === 'chest') {
+        // A banded box with a slightly proud lid.
+        beam('chest-body', 0,.42,0,1.5,.84,.95,'wood');
+        beam('chest-lid', 0,.93,0,1.6,.2,1.05,'roof');
+        beam('chest-band-left', -.5,.5,0,.12,1.02,1.0,'stone');
+        beam('chest-band-right', .5,.5,0,.12,1.02,1.0,'stone');
+        beam('chest-latch', 0,.72,.5,.2,.24,.08,'ember');
     }
     if (type === 'garden') {
         // A low timber frame filled with dark soil.

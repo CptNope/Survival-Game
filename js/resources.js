@@ -53,6 +53,10 @@ export const RECIPES = {
     cookMeat: { group: 'food', name: 'Roast meat at campfire', cost: { rawMeat: 1 }, output: 'cookedMeat', amount: 1, requiresFire: true },
     eatMeat: { group: 'food', name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50, meal: true },
     eatCactus: { group: 'food', name: 'Eat cactus fruit', cost: { cactusFruit: 1 }, hunger: 8, thirst: 35 },
+    // Tonics: a timed effect rather than a meal.
+    warmingDraught: { group: 'food', name: 'Brew a warming draught at campfire', cost: { mushrooms: 2, herbs: 1 }, requiresFire: true, buff: 'warmth', effect: 'cold builds 60% slower for 3 minutes' },
+    antivenom: { group: 'food', name: 'Mix antivenom', cost: { cactusFruit: 1, herbs: 2 }, buff: 'antivenom', effect: 'cures venom · immune for 2½ minutes' },
+    huntersBroth: { group: 'food', name: "Simmer hunter's broth at campfire", cost: { fish: 1, berries: 2 }, requiresFire: true, hunger: 30, buff: 'fury', effect: '+30% damage for 2 minutes', meal: true },
     grillFish: { group: 'food', name: 'Grill fish at campfire', cost: { fish: 1 }, heal: 15, hunger: 40, requiresFire: true, meal: true },
     roastMushrooms: { group: 'food', name: 'Roast mushrooms at campfire', cost: { mushrooms: 2 }, heal: 25, hunger: 32, requiresFire: true, meal: true }
 };
@@ -63,5 +67,5 @@ export function itemAmount(item, count) {
 }
 export function recipeDescription(recipe) {
     const cost = Object.entries(recipe.cost).map(([item, count]) => itemAmount(item, count)).join(' + ');
-    return `${cost} → ${recipe.heal || recipe.hunger ? [recipe.heal && `${recipe.heal} health`, recipe.hunger && `${recipe.hunger} hunger`, recipe.thirst && `${recipe.thirst} thirst`].filter(Boolean).join(' + ') : itemAmount(recipe.output, recipe.amount)}`;
+    return `${cost} → ${recipe.heal || recipe.hunger || recipe.buff ? [recipe.heal && `${recipe.heal} health`, recipe.hunger && `${recipe.hunger} hunger`, recipe.thirst && `${recipe.thirst} thirst`, recipe.effect].filter(Boolean).join(' + ') : itemAmount(recipe.output, recipe.amount)}`;
 }

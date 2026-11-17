@@ -46,6 +46,8 @@ export class SaveSystem {
             perks:g.perks?.capture?.() || null,
             legends:g.legends?.capture?.() || null,
             gardens:g.gardens?.capture?.() || null,
+            companion:g.companion?.capture?.() || null,
+            storage:g.storage?.capture?.() || null,
             regions:g.regions?.capture?.() || null,
             dungeons:g.dungeonSystem?.capture?.() || null,
             inventory:Object.fromEntries(Object.keys(ITEMS).map(key=>[key,items[key] || 0])),
@@ -139,7 +141,7 @@ export class SaveSystem {
             g.perks?.restore?.(saved.perks);
             g.regions?.restore?.(saved.regions);
             g.legends?.restore?.(saved.legends);
-            g.gardens?.restore?.(saved.gardens);
+            g.companion?.restore?.(saved.companion);
             p.health=finite(saved.health,p.maxHealth,1,p.maxHealth);
         }
         g.explorationSystem.discovered=new Set((Array.isArray(saved.discovered)?saved.discovered:[])
@@ -167,6 +169,9 @@ export class SaveSystem {
             chunk.objects=chunk.objects?.filter(obj=>!g.terrainSystem.harvestedIds.has(obj.resourceId)) || [];
         }
         g.buildSystem.restore(saved.structures);
+        // Garden beds and chests belong to buildings, so they come back after them.
+        g.gardens?.restore?.(saved.gardens);
+        g.storage?.restore?.(saved.storage);
 
         // Loot is restored only from saved state, not recomputed from inventory.
         for(const drop of g.inventorySystem.droppedItems) drop.mesh.dispose(false,true);

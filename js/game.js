@@ -24,6 +24,8 @@ import { RegionSystem } from './components/regions.js';
 import { ArcherySystem } from './components/archery.js';
 import { LegendSystem } from './components/legends.js';
 import { FishingSystem, GardenSystem } from './components/homestead.js';
+import { CompanionSystem } from './components/companion.js';
+import { StorageSystem } from './components/storage.js';
 import { loadSettings, saveSettings } from './settings.js';
 
 export class SurvivalGame {
@@ -133,6 +135,8 @@ export class SurvivalGame {
             this.legends = new LegendSystem(this);
             this.fishing = new FishingSystem(this);
             this.gardens = new GardenSystem(this);
+            this.companion = new CompanionSystem(this);
+            this.storage = new StorageSystem(this);
             this.dungeonSystem = new DungeonSystem(this);
 
             // UI is created before restoring state so it can refresh all meters.
@@ -323,6 +327,7 @@ export class SurvivalGame {
             if (event.code === 'KeyG') this.uiSystem.toggleGear();
             if (event.code === 'KeyK') this.uiSystem.togglePerks();
             if (event.code === 'KeyN') this.uiSystem.toggleMap();
+            if (event.code === 'KeyT') this.companion.toggleMode();
             if (event.code === 'KeyB') {
                 if (!this.paused && this.buildSystem.cancelPlacement()) return;
                 this.uiSystem.toggleBuilding();
@@ -398,6 +403,7 @@ export class SurvivalGame {
             this.legends.update(dt);
             this.fishing.update(dt);
             this.gardens.update(dt);
+            this.companion.update(dt);
             this.archery.update(dt);
             this.survivalSystem.update(dt);
             this.saveSystem.update(dt);
