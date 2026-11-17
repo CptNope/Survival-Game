@@ -25,6 +25,7 @@ import { ArcherySystem } from './components/archery.js';
 import { LegendSystem } from './components/legends.js';
 import { FishingSystem, GardenSystem } from './components/homestead.js';
 import { CompanionSystem } from './components/companion.js';
+import { QualitySystem } from './components/quality.js';
 import { StorageSystem } from './components/storage.js';
 import { loadSettings, saveSettings } from './settings.js';
 
@@ -80,13 +81,19 @@ export class SurvivalGame {
             const canvas = document.getElementById("renderCanvas");
 
             // Generate the BABYLON 3D engine
-            this.engine = new BABYLON.Engine(canvas, true);
-            // Scale GPU workload by screen density, particularly on high-DPI phones.
+            // No full-screen antialiasing on phones: it is the most expensive
+            // thing a mobile GPU can be asked for, and the resolution is high anyway.
             const touch = window.matchMedia('(pointer: coarse)').matches;
-            this.engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / (touch ? 1.5 : 2)));
+            this.engine = new BABYLON.Engine(canvas, !touch, {powerPreference: 'high-performance', stencil: false});
 
             // Create the scene
             this.scene = new BABYLON.Scene(this.engine);
+            // Nothing here listens for what is under the pointer, so the engine
+            // need not go looking on every mouse move and tap.
+            this.scene.skipPointerMovePicking = true;
+            this.scene.skipPointerDownPicking = true;
+            this.scene.skipPointerUpPicking = true;
+            this.scene.autoClear = true;
             this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
             this.scene.fogDensity = 0.007;
             this.scene.clearColor = new BABYLON.Color3(0.5, 0.8, 1.0); // Sky blue background
@@ -95,6 +102,8 @@ export class SurvivalGame {
 
             // Create lighting
             this.setupLighting();
+            // Resolution, shadows and ground cover follow the graphics setting.
+            this.quality = new QualitySystem(this);
 
             // Sound is synthesised on the fly and stays silent until the first click.
             this.audio = new AudioSystem(this, this.settings);
@@ -388,6 +397,7 @@ export class SurvivalGame {
             this.buildSystem.updatePlacement();
 
             const dt = Math.min(this.engine.getDeltaTime() / 1000, .05);
+            this.quality.update(this.engine.getDeltaTime() / 1000);
             const underground = this.dungeonSystem.active;
             // Check if we need to update terrain chunks (the surface waits while underground)
             if (!underground) this.terrainSystem.checkChunkUpdates();
@@ -430,7 +440,9 @@ export class SurvivalGame {
             if (!this.paused) this.animalSystem.update();
             this.uiSystem.update();
 
-            // Scene rendering
+            // With a menu up nothing in the world moves, so there is no need
+            // to redraw it sixty times a second behind the panel.
+            if (this.paused && this.uiSystem.started && (this._pausedFrames = (this._pausedFrames || 0) + 1) % 8) return;
             this.scene.render();
         });
     }

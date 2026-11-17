@@ -1,556 +1,520 @@
+/* The Wilds: one stylesheet for the page shell, the in-game HUD, the menus
+   and the touch controls.
+
+   Sizes are in rem. The root font size steps up on large screens (see
+   "Screen scale"), so the whole interface grows together on a 4K monitor
+   instead of shrinking to a corner. Layout is a grid over the viewport; the
+   touch layout is switched by the .touch class the game sets on #hud, not by
+   guessing from screen width. Nothing over the 3D view is blurred behind:
+   blurring a canvas that redraws every frame is expensive on phones. */
+
 :root{color-scheme:dark;
-    --ink:#e9e9d9;
-    --muted:#9ba99c;
-    --accent:#c5dd8a;
-    --panel:rgba(15,26,24,.92)}
+  --ink:#eceadb;
+  --muted:#a9b6a8;
+  --accent:#c5dd8a;
+  --accent-ink:#17251c;
+  --gold:#ffd27a;
+  --warn:#ffb38a;
+  --danger:#e2572b;
+  --card:rgb(12 23 20 / .8);
+  --card-line:rgb(197 221 138 / .2);
+  --panel:#101c19;
+  --panel-raise:#16261f;
+  --radius:.75rem;
+  --gap:.625rem;
+  --pad:clamp(.75rem,2.2vmin,1.75rem);
+  --ease:cubic-bezier(.16,1,.3,1);
+  --shadow:0 .25rem 1.25rem rgb(0 0 0 / .32);
+  --text-shadow:0 1px .375rem rgb(0 0 0 / .85);
+  --safe-t:env(safe-area-inset-top,0px);--safe-r:env(safe-area-inset-right,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-l:env(safe-area-inset-left,0px)}
+
+/* --- Screen scale --------------------------------------------------------- */
+html{font-size:16px;-webkit-text-size-adjust:100%}
+@media (min-width:1800px) and (min-height:950px){html{font-size:19px}}
+@media (min-width:2400px) and (min-height:1300px){html{font-size:23px}}
+@media (min-width:3200px) and (min-height:1700px){html{font-size:31px}}
+
 *{box-sizing:border-box}
-body{margin:0;
-    overflow:hidden;
-    background:#12211e;
-    color:var(--ink);
-    font-family:'DM Sans',sans-serif}
-#renderCanvas{width:100vw;
-    height:100vh;
-    display:block;
-    outline:none;
-    touch-action:none}
-button{font:inherit;
-    color:inherit;
-    cursor:pointer;
-    border:1px solid #67776766;
-    background:var(--panel);
-    padding:13px 20px;
-    border-radius:6px}
-button:hover{border-color:var(--accent);
-    background:#293a30}
-button:focus-visible{outline:2px solid var(--accent);
-    outline-offset:4px}
-button:disabled{opacity:.4;
-    cursor:not-allowed}
+body{margin:0;overflow:hidden;background:#12211e;color:var(--ink);
+  font:400 .875rem/1.45 'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+::selection{background:var(--accent);color:var(--accent-ink)}
 [hidden]{display:none!important}
-small{font-size:10px;
-    letter-spacing:2px;
-    color:var(--muted);
-    font-weight:700}
-#hud{position:fixed;
-    inset:0;
-    pointer-events:none}
-.hud-top{display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:28px 34px;
-    background:linear-gradient(#10201dbb,transparent)}
-.hud-top strong{display:block;
-    font-family:'Space Grotesk';
-    font-size:20px;
-    margin-top:5px}
-#world-clock{font-size:11px;
-    letter-spacing:3px}
-button,.panel{pointer-events:auto}
-.objective{position:absolute;
-    top:130px;
-    left:34px;
-    width:245px;
-    padding:20px;
-    background:var(--panel);
-    border-left:2px solid var(--accent);
-    border-radius:0 8px 8px 0}
-.objective h2{font-size:16px;
-    margin:12px 0}
-.objective p{font-size:12px;
-    line-height:1.7;
-    color:#bcc5b8}
-.objective span{font-size:11px;
-    color:var(--accent)}
-#crosshair{position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    font-size:24px;
-    color:#ffffffe0;
-    text-shadow:0 1px 6px #000}
-#target-hint{position:absolute;
-    top:56%;
-    width:100%;
-    text-align:center;
-    font-size:12px;
-    text-shadow:0 1px 5px #000}
-.hud-bottom{position:absolute;
-    bottom:0;
-    width:100%;
-    padding:28px 34px;
-    display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
-    gap:24px;
-    background:linear-gradient(transparent,#10201ddd)}
-.vitals{width:220px;
-    display:grid;
-    gap:6px}
-.vitals label{display:flex;
-    justify-content:space-between;
-    font-size:10px;
-    color:#d1d7cc}
-.vitals small{margin-bottom:8px}
-progress{appearance:none;
-    width:100%;
-    height:5px;
-    border:0;
-    background:#ffffff22;
-    border-radius:3px}
-progress::-webkit-progress-bar{background:#ffffff22}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+
+#renderCanvas{position:relative;z-index:0;display:block;width:100vw;height:100vh;height:100dvh;outline:none;touch-action:none}
+#renderCanvas.shake{animation:wild-shake .22s linear}
+
+/* --- Controls shared by HUD and menus -------------------------------------- */
+button{font:600 .8125rem/1 'DM Sans',system-ui,sans-serif;color:var(--ink);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+  min-height:2.25rem;padding:0 .875rem;border:1px solid var(--card-line);border-radius:.5rem;
+  background:var(--card);transition:background-color .16s,border-color .16s,color .16s,transform .16s var(--ease)}
+button:hover{border-color:var(--accent)}
+button:active{transform:scale(.97)}
+button:focus-visible,[role=button]:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+button:disabled:active{transform:none}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.primary:hover{background:#d8ebaa}
+kbd{display:inline-block;min-width:1.6em;padding:.05em .35em;border:1px solid rgb(236 234 219 / .28);border-radius:.3rem;
+  background:rgb(236 234 219 / .08);color:var(--ink);font:600 .75rem/1.4 'DM Sans',system-ui,sans-serif;text-align:center}
+small{font-size:.75rem;color:var(--muted)}
+progress{appearance:none;-webkit-appearance:none;display:block;width:100%;height:.3125rem;border:0;border-radius:1rem;overflow:hidden;background:rgb(255 255 255 / .14)}
+progress::-webkit-progress-bar{background:rgb(255 255 255 / .14)}
 progress::-webkit-progress-value{background:var(--accent)}
-#oxygen::-webkit-progress-value{background:#8dc6cb}
-#experience{height:2px;
-    margin-top:7px}
-.inventory{display:flex;
-    border:1px solid #ffffff22;
-    background:var(--panel);
-    border-radius:8px;
-    overflow:hidden}
-.inventory div{padding:14px 23px;
-    border-right:1px solid #ffffff14;
-    min-width:90px}
-.inventory small{font-size:8px;
-    letter-spacing:1px;
-    display:block;
-    text-transform:uppercase}
-.inventory strong{font:26px 'Space Grotesk';
-    display:block;
-    margin-top:8px}
-#toast{position:absolute;
-    top:100px;
-    left:50%;
-    transform:translateX(-50%);
-    padding:12px 25px;
-    border:1px solid #a0b17b;
-    background:var(--panel);
-    border-radius:30px;
-    opacity:0;
-    transition:opacity .2s;
-    font-size:13px}
-#toast.visible{opacity:1}
-.modal{position:absolute;
-    inset:0;
-    display:grid;
-    place-items:center;
-    background:#06120d88;
-    backdrop-filter:blur(7px);
-    pointer-events:auto}
-.panel{width:min(540px,92vw);
-    max-height:90vh;
-    overflow:auto;
-    padding:42px;
-    background:#14241ff5;
-    border:1px solid #6d806455;
-    border-radius:14px;
-    box-shadow:0 30px 100px #0006}
-.panel h1{font:500 44px/1.08 'Space Grotesk';
-    letter-spacing:-2px;
-    margin:20px 0}
-.panel p{color:#aebbad;
-    line-height:1.7;
-    font-size:13px}
-.primary{background:var(--accent);
-    color:#15201a;
-    font-weight:700;
-    border:0;
-    width:100%;
-    margin-top:20px}
-.primary:hover{background:#dfedb8}
-kbd{color:var(--ink);
-    font:11px 'DM Sans';
-    padding:4px;
-    border:1px solid #5a6e5e;
-    border-radius:3px}
-#controls{margin:24px 0}
-.recipe{display:grid;
-    grid-template-columns:1fr auto;
-    text-align:left;
-    width:100%;
-    margin-top:10px;
-    gap:7px}
-.recipe span{font-size:11px;
-    color:var(--muted);
-    grid-column:1}
-.recipe b{grid-column:2;
-    grid-row:1/3;
-    align-self:center;
-    color:var(--accent);
-    font-size:12px}
-#loadingScreen{position:fixed;
-    inset:0;
-    background:#14241f;
-    z-index:10;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column}
-#loadingBar{height:3px;
-    width:200px;
-    background:#c5dd8a;
-    margin:20px}
-.installPrompt,#pwaInstallBanner{display:none}
-#pwaInstallBanner{position:fixed;
-    top:0;
-    left:0;
-    right:0;
-    z-index:20;
-    background:#14241f;
-    padding:10px;
-    gap:10px;
-    align-items:center}
-@media(max-width:800px){.hud-top,.hud-bottom{padding:16px}
-.objective{left:16px;
-    top:110px;
-    width:185px}
-.inventory div{padding:10px;
-    min-width:55px}
-.vitals{width:145px}
-.hud-bottom{gap:10px;
-    flex-wrap:wrap}
-#world-clock{font-size:9px}
-.panel{padding:26px}
-.panel h1{font-size:36px}
-}
-@media(max-height:600px){.objective{display:none}
-.panel{padding:22px}
-.panel h1{font-size:28px;
-    margin:10px 0}
-}
-/* Ten resource types remain readable without covering the whole viewport. */
-.inventory{display:grid;grid-template-columns:repeat(5,minmax(58px,1fr));max-width:530px;flex:1}
-.inventory div{min-width:0;padding:9px 12px}
-.inventory strong{font-size:19px;margin-top:4px}
-.inventory small{font-size:8px;letter-spacing:.5px}
-@media(max-width:800px){.hud-bottom{align-items:center}.inventory{max-width:400px}.inventory div{padding:7px}.inventory small{font-size:7px}.hud-bottom>button{padding:10px}.objective{top:100px}}
-@media(max-width:550px){.inventory{flex-basis:100%;order:3;max-width:none}.hud-bottom{padding:10px}.vitals{width:150px}.inventory div{padding:5px}.inventory strong{font-size:15px}.objective{width:155px;padding:12px}}
+progress::-moz-progress-bar{background:var(--accent)}
 
-/* Exploration guidance occupies the upper right without blocking the reticle. */
-.exploration-card{position:absolute;right:34px;top:130px;max-width:235px;padding:15px 18px;
-background:var(--panel);border-right:2px solid #c2a16b;border-radius:8px 0 0 8px;text-align:right}
-.exploration-card strong{display:block;font:600 14px/1.4 'Space Grotesk';margin:10px 0 6px}
-.exploration-card span{font-size:10px;line-height:1.5;color:#c3cfc1}
-@media(max-width:800px){.exploration-card{top:110px;right:16px;max-width:180px;padding:12px}
-.exploration-card strong{font-size:12px}}
-@media(max-width:550px){.exploration-card{top:90px;max-width:150px}
-.exploration-card span{font-size:9px}}
-@media(max-height:600px){.exploration-card{display:none}}
+/* --- The HUD: a grid over the view ----------------------------------------- */
+#hud{position:fixed;inset:0;z-index:2;pointer-events:none;display:grid;gap:var(--gap);
+  padding:max(var(--pad),var(--safe-t)) max(var(--pad),var(--safe-r)) max(var(--pad),var(--safe-b)) max(var(--pad),var(--safe-l));
+  grid-template-columns:minmax(23rem,1fr) minmax(0,46rem) minmax(23rem,1fr);
+  grid-template-rows:auto auto minmax(0,1fr) auto auto;
+  grid-template-areas:
+    "quest  status buttons"
+    "quest  .      compass"
+    ".      .      compass"
+    "chips  .      ."
+    "vitals belt   menu"}
+#hud button,#hud [role=button],.panel{pointer-events:auto}
 
-/* Additional survival meters and build controls. Compact on laptop screens. */
-#save-status{font-size:10px;color:#b7cbb1;letter-spacing:.3px}
-#hunger::-webkit-progress-value{background:#ddbd69}
-#thirst::-webkit-progress-value{background:#75bdcf}
-#cold::-webkit-progress-value{background:#a7aadd}
-.hud-bottom>button{white-space:nowrap}
-.vitals{min-width:180px;gap:4px}
-#build-options .recipe{border-color:#7f936044}
-#save-now{display:block;width:100%;padding:10px;margin-top:15px;border-color:#a5bd8255}
-@media(max-width:1000px){.hud-top{gap:9px}#save-status{display:none}
-.inventory{max-width:420px}.hud-bottom{gap:10px;padding:14px}
-.hud-bottom>button{padding:10px 11px;font-size:11px}.vitals{min-width:150px}}
-@media(max-width:650px){.vitals{width:calc(50% - 10px);min-width:145px}
-.hud-bottom>button{flex:1}.inventory{flex-basis:100%;order:4}
-.hud-top strong{font-size:16px}.hud-top{padding:12px}}
+.objective,.exploration-card,.vitals,.inventory{background:var(--card);border:1px solid var(--card-line);border-radius:var(--radius);box-shadow:var(--shadow)}
 
-/* Weather without new textures: one composited overlay and subtle fog. */
-#renderCanvas{position:relative;z-index:0}
-body.weather-rain::after,body.weather-storm::after{
-content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
-background:repeating-linear-gradient(103deg,transparent 0 14px,rgba(172,211,233,.18) 15px 16px,transparent 17px 29px);
-background-size:110px 170px;opacity:.33;animation:wild-rain .6s linear infinite}
-body.weather-storm::after{opacity:.65;animation-duration:.35s}
-@keyframes wild-rain{to{background-position:-35px 170px}}
-#hud{z-index:2}
-#weather-status{font-size:11px;letter-spacing:1px;color:#c9d9d7}
-body.weather-storm #weather-status{color:#d4bbd7}
-@media(max-width:900px){#weather-status{display:none}}
-@media(prefers-reduced-motion:reduce){
-body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.20}}
-/* Twelve items now include raw and cooked meat. */
-.inventory{grid-template-columns:repeat(6,minmax(50px,1fr));max-width:620px}
-@media(max-width:800px){.inventory{max-width:480px}}
-@media(max-width:550px){.inventory{max-width:none}}
+/* Field note: what to do next. */
+.objective{grid-area:quest;justify-self:start;align-self:start;width:min(20rem,100%);padding:.75rem .875rem}
+.objective h2{margin:0;font:600 1rem/1.25 'Space Grotesk','DM Sans',sans-serif;letter-spacing:-.01em}
+.objective p{margin:.35rem 0 0;color:#cfd8c8;font-size:.8125rem;line-height:1.45}
+.objective span{display:block;margin-top:.45rem;color:var(--accent);font-size:.75rem;font-weight:600}
 
+/* Clock, weather, save state. */
+.hud-status{grid-area:status;justify-self:center;align-self:start;display:flex;gap:.875rem;align-items:baseline;
+  min-height:2.25rem;padding-top:.5rem;font-size:.75rem;letter-spacing:.04em;color:#dfe6d8;text-shadow:var(--text-shadow);white-space:nowrap}
+#world-clock{font-weight:700;font-variant-numeric:tabular-nums}
+#save-status{color:var(--muted)}
+body.weather-storm #weather-status{color:#d9bfdc}
 
-/* Touch controls: only mounted for coarse-pointer devices. Separate active
-   regions leave the center of the canvas free for drag-to-look. */
-#inventory-toggle,#touch-controls{display:none}
-#touch-controls{position:fixed;inset:0;z-index:6;pointer-events:none}
-.touch-stick{position:absolute;left:12px;bottom:calc(12px + env(safe-area-inset-bottom));
-  width:140px;height:140px;pointer-events:auto;touch-action:none;user-select:none}
-.touch-stick-track{position:absolute;inset:8px;border:2px solid #d6e7b86b;
-  border-radius:50%;background:#15282099;box-shadow:0 2px 22px #0004}
-.touch-stick-knob{position:absolute;left:calc(50% - 25px);top:calc(50% - 25px);
-  width:50px;height:50px;border-radius:50%;background:#c5dd8a8c;
-  border:2px solid #e3f0c4;box-shadow:0 3px 15px #0008}
-.touch-actions{position:absolute;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));
-  display:grid;grid-template-columns:repeat(2,56px);gap:6px;pointer-events:none}
-.touch-actions button{width:56px;height:48px;padding:0;background:#142820e8;
-  border:1px solid #c5dd8a77;color:#f2f6e9;box-shadow:0 1px 9px #0005;
-  font-size:10px;font-weight:800;letter-spacing:.4px;touch-action:none;
-  pointer-events:auto;user-select:none;-webkit-user-select:none;
-  -webkit-tap-highlight-color:transparent;border-radius:14px}
-.touch-actions button.pressed{background:#c5dd8a;color:#14241f;transform:scale(.96)}
-.touch-actions [data-action="attack"]{background:#56754d;border-color:#d5f3bd}
-.touch-actions [data-action="jump"]{background:#395f68;border-color:#a0e4ef}
-.modal{z-index:12}
+.hud-buttons{grid-area:buttons;justify-self:end;align-self:start;display:flex;gap:.5rem}
 
-@media (any-pointer:coarse){
-  #touch-controls:not([hidden]){display:block}
-  #renderCanvas{touch-action:none}
-  #inventory-toggle{display:block}
-  .hud-top{min-height:55px;padding:9px 12px;gap:8px;align-items:center}
-  .hud-top strong{font-size:14px;line-height:1.2;margin-top:3px}
-  .hud-top small{font-size:8px}
-  .hud-top #world-clock{font-size:9px;letter-spacing:0}
-  #menu-button{padding:9px 11px;font-size:11px;margin-left:auto}
-  .objective{display:none}
-  .exploration-card{right:8px;top:68px;max-width:160px;padding:8px 10px}
-  .exploration-card small{font-size:8px;letter-spacing:0}
-  .exploration-card strong{font-size:11px;margin:5px 0}
-  .exploration-card span{display:none}
-  #target-hint{top:53%;font-size:11px}
-  .hud-bottom{bottom:calc(164px + env(safe-area-inset-bottom));padding:0 10px;
-    background:none;justify-content:center;align-items:center;
-    width:100%;gap:8px;pointer-events:none}
-  .hud-bottom>button{pointer-events:auto;min-height:38px;border-radius:20px;
-    font-size:11px;flex:1;max-width:130px;padding:8px 11px}
-  .vitals{position:fixed;top:68px;left:8px;width:150px;min-width:0;padding:10px;
-    background:var(--panel);border:1px solid #f2ffcf22;border-radius:10px;
-    gap:3px;pointer-events:none}
-  .vitals label{font-size:9px}
-  .vitals progress{height:4px}
-  #experience{height:2px}
-  .inventory{position:absolute;bottom:45px;left:8px;right:8px;
-    width:calc(100vw - 16px);max-width:400px;max-height:min(235px,37vh);
-    overflow-y:auto;grid-template-columns:repeat(4,minmax(0,1fr));
-    z-index:7;pointer-events:auto;box-shadow:0 8px 28px #0009}
-  .mobile-inventory-closed .inventory{display:none}
-  .inventory div{padding:5px}
-  .inventory strong{font-size:14px}
-  .inventory small{font-size:7px;white-space:normal}
-  #toast{top:55px;padding:9px 12px;font-size:11px;max-width:60vw;text-align:center}
-  .panel{width:min(520px,94vw);max-height:calc(95dvh - env(safe-area-inset-bottom));
-    padding:20px}
-  .panel h1{font-size:29px}
-  .panel p{line-height:1.45}
-}
-@media (any-pointer:coarse) and (max-height:480px){
-  .hud-top{padding:5px 9px;min-height:42px}
-  .vitals{top:48px;padding:6px 8px;gap:1px}
-  .exploration-card{top:48px}
-  .touch-stick{width:112px;height:112px}
-  .touch-actions{grid-template-columns:repeat(3,46px);gap:5px}
-  .touch-actions button{width:46px;height:43px;font-size:9px}
-  .hud-bottom{bottom:calc(105px + env(safe-area-inset-bottom))}
-  .hud-bottom>button{min-height:31px}
-  .panel{padding:14px}
-  .panel h1{font-size:24px}
-}
+/* Compass: the next place, and where you are. Opens the map. */
+.exploration-card{grid-area:compass;justify-self:end;align-self:start;width:min(17rem,100%);padding:.625rem .75rem;cursor:pointer;
+  display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.625rem;row-gap:.2rem;align-items:center;
+  transition:border-color .16s}
+.exploration-card:hover{border-color:var(--accent)}
+#compass-facing{grid-row:span 2;align-self:start;display:grid;place-items:center;width:2.125rem;height:2.125rem;border-radius:50%;
+  border:1px solid var(--card-line);background:rgb(197 221 138 / .1);color:var(--accent);font:700 .75rem/1 'DM Sans',sans-serif;letter-spacing:.02em}
+.exploration-card strong{font:600 .875rem/1.25 'Space Grotesk','DM Sans',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exploration-card span{grid-column:2;color:var(--muted);font-size:.75rem;line-height:1.35}
+.exploration-card span:empty{display:none}
+#dungeon-next{color:#ead9a6}
+#minimap{grid-area:compass;justify-self:end;align-self:start;width:11.5rem;height:11.5rem;border:1px solid var(--card-line);border-radius:var(--radius);background:rgb(8 12 11 / .82);box-shadow:var(--shadow)}
 
-/* ---- Expedition overhaul: feedback layers, compact pack, settings ---- */
-/* The pack lists only what is carried, so it wraps instead of holding a fixed grid. */
-.inventory{display:flex;flex-wrap:wrap;max-width:620px;flex:0 1 auto;align-content:flex-end}
-.inventory div{flex:0 0 auto;min-width:74px;padding:9px 14px;border-bottom:1px solid #ffffff10}
-.inventory small{white-space:nowrap}
-.empty-pack{margin:0;padding:14px 18px;font-size:11px;color:var(--muted);line-height:1.5}
-.objective p{margin:0 0 10px}
-#target-hint{font-weight:600;letter-spacing:.3px;min-height:1.4em}
-#hud.placing #crosshair{color:var(--accent)}
+/* Boons, the dog and a perk to spend sit just above the vitals. */
+.hud-chips{grid-area:chips;justify-self:start;align-self:end;display:flex;flex-wrap:wrap;gap:.375rem}
+#buffs{margin-top:.2rem;padding-top:.4rem;border-top:1px solid var(--card-line);color:#bfe9df;font-size:.75rem;font-weight:600;line-height:1.35;font-variant-numeric:tabular-nums}
+#buffs:empty{display:none}
+#dog-button,#perk-button{min-height:2rem;padding:0 .75rem;border-radius:1rem;font-size:.75rem}
+#perk-button{background:#3b3413;border-color:var(--gold);color:#ffe6ad;animation:perk-pulse 1.8s ease-in-out infinite}
+@keyframes perk-pulse{50%{box-shadow:0 0 0 .3rem rgb(255 210 122 / .18)}}
 
-/* Damage, hurt and time-of-day feedback. */
-#effects-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-.float-text{position:absolute;left:0;top:0;font:700 20px 'Space Grotesk',sans-serif;color:#ffe9a8;
-  text-shadow:0 2px 6px #000,0 0 2px #000;will-change:transform,opacity;white-space:nowrap}
-#hurt-vignette{position:absolute;inset:0;pointer-events:none;opacity:0;
-  background:radial-gradient(ellipse at center,transparent 45%,rgba(150,20,14,.62) 100%)}
+/* Condition. */
+.vitals{grid-area:vitals;justify-self:start;align-self:end;width:14.5rem;padding:.75rem .875rem;display:grid;gap:.25rem}
+.vitals small{font-size:.75rem;font-weight:600;letter-spacing:.03em;color:#d7dccb;font-variant-numeric:tabular-nums}
+#experience{height:.1875rem;margin-bottom:.4rem}
+#experience::-webkit-progress-value{background:var(--gold)}
+#experience::-moz-progress-bar{background:var(--gold)}
+.vitals label{display:flex;justify-content:space-between;gap:.5rem;font-size:.75rem;color:#dfe5d6}
+.vitals label span{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.vitals progress{margin-bottom:.3rem}
+#oxygen-row{display:grid;gap:.25rem}
+#health::-webkit-progress-value{background:#c5dd8a}
+#hunger::-webkit-progress-value{background:#e2b266}
+#hunger::-moz-progress-bar{background:#e2b266}
+#thirst::-webkit-progress-value{background:#6fc3d8}
+#thirst::-moz-progress-bar{background:#6fc3d8}
+#cold::-webkit-progress-value{background:#b7a8f0}
+#cold::-moz-progress-bar{background:#b7a8f0}
+#oxygen::-webkit-progress-value{background:#8fd6f0}
+#oxygen::-moz-progress-bar{background:#8fd6f0}
+#hud.need-hunger #hunger-value,#hud.need-thirst #thirst-value,#hud.need-cold #cold-value{color:var(--warn)}
+
+/* The pack: what you carry, as a compact belt. */
+.inventory{grid-area:belt;justify-self:center;align-self:end;max-width:min(46rem,100%);padding:.375rem;display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem}
+.inventory div{display:flex;align-items:baseline;gap:.3rem;padding:.25rem .5rem;border-radius:.4rem;background:rgb(255 255 255 / .055);white-space:nowrap}
+.inventory strong{font:700 .875rem/1 'DM Sans',sans-serif;font-variant-numeric:tabular-nums;order:-1}
+.inventory small{font-size:.75rem;color:#c3cdbd}
+.empty-pack{margin:0;padding:.35rem .6rem;font-size:.8125rem;color:var(--muted)}
+
+/* Craft, Build, Gear, Map. */
+.hud-menu{grid-area:menu;justify-self:end;align-self:end;display:flex;gap:.5rem}
+#inventory-toggle{display:none}
+#inventory-toggle[aria-expanded=true]{background:rgb(197 221 138 / .18);border-color:var(--accent);color:var(--accent)}
+#gear-button.has-upgrade{border-color:#ffb23e;color:#ffe2ad}
+#gear-count{display:grid;place-items:center;min-width:1.25rem;height:1.25rem;padding:0 .3rem;border-radius:1rem;background:#ffb23e;color:#2a1c05;font-size:.75rem;font-weight:700}
+
+/* --- Things drawn over the view ------------------------------------------- */
+#hurt-vignette{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgb(150 20 14 / .62) 100%)}
 #hurt-vignette.flash{animation:wild-hurt .55s ease-out}
 #hud.low-health #hurt-vignette{opacity:.42;animation:wild-pulse 1.1s ease-in-out infinite}
 #hud.low-health #hurt-vignette.flash{animation:wild-hurt .55s ease-out}
-@keyframes wild-hurt{0%{opacity:.95}100%{opacity:0}}
-@keyframes wild-pulse{0%,100%{opacity:.22}50%{opacity:.5}}
-#renderCanvas.shake{animation:wild-shake .22s linear}
-@keyframes wild-shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,4px)}
-  40%{transform:translate(6px,-5px)}60%{transform:translate(-4px,-3px)}80%{transform:translate(3px,4px)}}
-#hud.need-hunger #hunger-value,#hud.need-thirst #thirst-value,#hud.need-cold #cold-value{
-  color:#ffb38a;font-weight:700}
-#day-banner{position:absolute;top:23%;left:0;right:0;text-align:center;opacity:0;
-  transform:translateY(8px);transition:opacity .7s,transform .7s;pointer-events:none}
+#effects-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.float-text{position:absolute;left:0;top:0;font:700 1.25rem 'Space Grotesk','DM Sans',sans-serif;color:#ffe9a8;text-shadow:0 2px 6px #000,0 0 2px #000;will-change:transform,opacity;white-space:nowrap}
+.float-text.crit{color:#ffb23e;font-size:1.75rem}
+
+/* A drawn reticle: four short strokes round an open centre. */
+#crosshair{position:absolute;left:50%;top:50%;width:1.25rem;height:1.25rem;transform:translate(-50%,-50%);opacity:.9;
+  background:
+    linear-gradient(#fff,#fff) 50% 0/.125rem .375rem no-repeat,
+    linear-gradient(#fff,#fff) 50% 100%/.125rem .375rem no-repeat,
+    linear-gradient(#fff,#fff) 0 50%/.375rem .125rem no-repeat,
+    linear-gradient(#fff,#fff) 100% 50%/.375rem .125rem no-repeat;
+  filter:drop-shadow(0 0 1px rgb(0 0 0 / .9))}
+#hud.placing #crosshair{opacity:.35}
+body.view-overhead #crosshair{display:none}
+#draw-meter{position:absolute;left:50%;top:calc(50% + 1.5rem);width:4.5rem;height:.3125rem;transform:translateX(-50%);
+  background:rgb(15 28 23 / .7);border:1px solid rgb(197 221 138 / .4);border-radius:.2rem;opacity:0;transition:opacity .12s;overflow:hidden}
+#draw-meter i{display:block;height:100%;width:0;background:var(--accent)}
+#draw-meter.full i{background:var(--gold)}
+#target-hint{position:absolute;left:50%;top:calc(50% + 2.5rem);transform:translateX(-50%);max-width:min(90vw,34rem);text-align:center;
+  font-size:.8125rem;font-weight:600;letter-spacing:.01em;min-height:1.4em;text-shadow:var(--text-shadow);pointer-events:none}
+body.view-third #target-hint,body.view-overhead #target-hint{top:auto;bottom:calc(max(var(--pad),var(--safe-b)) + 6.5rem)}
+
+#toast{position:absolute;left:1rem;right:1rem;margin-inline:auto;width:fit-content;top:calc(max(var(--pad),var(--safe-t)) + 2.75rem);transform:translateY(-.4rem);max-width:min(92vw,30rem);
+  padding:.5rem .875rem;border-radius:2rem;background:rgb(10 19 16 / .92);border:1px solid var(--card-line);box-shadow:var(--shadow);
+  font-size:.8125rem;font-weight:500;text-align:center;opacity:0;transition:opacity .2s,transform .3s var(--ease);pointer-events:none}
+#toast.visible{opacity:1;transform:none}
+#toast b{font-weight:700}
+
+#boss-bar{position:absolute;left:50%;top:calc(max(var(--pad),var(--safe-t)) + 5.75rem);transform:translateX(-50%);width:min(27rem,62vw);text-align:center}
+#boss-bar small{display:block;margin-bottom:.35rem;font:700 .75rem 'DM Sans',sans-serif;letter-spacing:.16em;color:#ffd9a0;text-shadow:var(--text-shadow)}
+#boss-bar progress{height:.5625rem;border-radius:.2rem;background:rgb(26 15 12 / .8)}
+#boss-bar progress::-webkit-progress-bar{background:rgb(26 15 12 / .8)}
+#boss-bar progress::-webkit-progress-value{background:linear-gradient(90deg,#b6321d,#f08a3c)}
+#boss-bar progress::-moz-progress-bar{background:#d9562c}
+
+#day-banner{position:absolute;top:23%;left:0;right:0;padding:0 1rem;text-align:center;opacity:0;transform:translateY(.5rem);transition:opacity .7s,transform .7s var(--ease);pointer-events:none}
 #day-banner.visible{opacity:1;transform:none}
-#day-banner strong{display:block;font:500 58px/1 'Space Grotesk',sans-serif;letter-spacing:-2px;
-  text-shadow:0 3px 24px #000a}
-#day-banner span{display:block;margin-top:12px;font-size:13px;letter-spacing:.6px;
-  color:#dfe6d6;text-shadow:0 1px 8px #000}
+#day-banner strong{display:block;font:500 clamp(2rem,7vmin,3.75rem)/1 'Space Grotesk','DM Sans',sans-serif;letter-spacing:-.03em;text-shadow:0 .2rem 1.5rem rgb(0 0 0 / .65)}
+#day-banner span{display:block;margin-top:.75rem;font-size:.875rem;letter-spacing:.02em;color:#dfe6d6;text-shadow:var(--text-shadow)}
+
 #fade{position:absolute;inset:0;background:#040806;opacity:0;pointer-events:none;transition:opacity 1.5s ease}
 #fade.on{opacity:1}
 #fade.instant{transition:none}
-#death-screen{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
-  background:radial-gradient(ellipse at center,#1a0c0acc,#060303f2);pointer-events:auto;z-index:11;
-  animation:wild-fade-in .8s ease-out}
-#death-screen h1{font:500 46px/1.1 'Space Grotesk',sans-serif;letter-spacing:-1.5px;margin:18px 0 14px}
-#death-screen p{color:#cdbfb6;font-size:14px;line-height:1.7;margin:4px 0}
+#death-screen{position:absolute;inset:0;z-index:11;display:grid;place-items:center;padding:1.5rem;text-align:center;
+  background:radial-gradient(ellipse at center,rgb(26 12 10 / .8),rgb(6 3 3 / .95));pointer-events:auto;animation:wild-fade-in .8s ease-out}
+#death-screen small{color:#d7a79a;letter-spacing:.08em;text-transform:uppercase}
+#death-screen h1{margin:1rem 0 .875rem;font:500 clamp(1.75rem,6vmin,2.875rem)/1.1 'Space Grotesk','DM Sans',sans-serif;letter-spacing:-.03em}
+#death-screen p{margin:.25rem 0;color:#cdbfb6;font-size:.875rem;line-height:1.7}
 #death-cause{color:#f0d9c9!important;font-weight:600}
-@keyframes wild-fade-in{from{opacity:0}to{opacity:1}}
 
-/* Crafting groups, settings and the expedition log in the pause panel. */
-#recipes h3{font:700 10px 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;
-  color:var(--muted);margin:22px 0 2px}
-#recipes h3:first-child{margin-top:8px}
-#settings{display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;align-items:center;
-  margin:18px 0 6px;padding:16px;border:1px solid #6d806433;border-radius:8px;font-size:12px;color:#c4cebf}
-#settings input[type=range]{width:100%;accent-color:var(--accent);pointer-events:auto}
-#settings button{padding:6px 12px;font-size:11px}
-#sensitivity-value{font-size:11px;color:var(--muted);text-align:right}
-#stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin:14px 0 4px}
-#stats div{padding:9px 11px;background:#ffffff08;border-radius:6px}
-#stats dt{font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
-#stats dd{margin:4px 0 0;font:600 18px 'Space Grotesk',sans-serif}
-#new-game{display:block;width:100%;padding:9px;margin-top:8px;font-size:11px;color:var(--muted);
-  border-color:#6d806433;background:transparent}
+/* --- Weather and water over the canvas ------------------------------------- */
+body.weather-rain::after,body.weather-storm::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(103deg,transparent 0 14px,rgb(172 211 233 / .18) 15px 16px,transparent 17px 29px);
+  background-size:110px 170px;opacity:.33;animation:wild-rain .6s linear infinite}
+body.weather-storm::after{opacity:.65;animation-duration:.35s}
+body.underwater::after,body.underground::after{display:none}
+body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(rgb(13 74 90 / .33),rgb(6 34 46 / .53))}
+
+/* --- Menus ------------------------------------------------------------------ */
+.modal{position:absolute;inset:0;z-index:8;display:grid;place-items:center;pointer-events:auto;
+  padding:max(.75rem,var(--safe-t)) max(.75rem,var(--safe-r)) max(.75rem,var(--safe-b)) max(.75rem,var(--safe-l));
+  background:rgb(6 12 10 / .62)}
+.panel{width:min(44rem,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden;
+  background:var(--panel);border:1px solid var(--card-line);border-radius:1rem;box-shadow:0 1.5rem 4rem rgb(0 0 0 / .55)}
+.modal[data-panel=menu] .panel{width:min(52rem,100%)}
+
+.panel-tabs{flex:none;display:flex;gap:.25rem;padding:.5rem;border-bottom:1px solid var(--card-line);overflow-x:auto;scrollbar-width:none}
+.panel-tabs::-webkit-scrollbar{display:none}
+.panel-tabs button{flex:1 0 auto;min-height:2.5rem;border-color:transparent;background:none;color:var(--muted);border-radius:.5rem}
+.panel-tabs button:hover{color:var(--ink);background:rgb(255 255 255 / .05)}
+.panel-tabs button.current{background:rgb(197 221 138 / .14);color:var(--accent)}
+
+.panel-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:1.25rem 1.375rem 1rem;scrollbar-width:thin;scrollbar-color:rgb(197 221 138 / .35) transparent;overscroll-behavior:contain}
+.panel-body::-webkit-scrollbar{width:.5rem}
+.panel-body::-webkit-scrollbar-thumb{background:rgb(197 221 138 / .3);border-radius:1rem}
+.panel-head{margin-bottom:1rem}
+.panel h1{margin:0;font:600 1.75rem/1.1 'Space Grotesk','DM Sans',sans-serif;letter-spacing:-.025em;text-wrap:balance}
+.panel-head p{margin:.5rem 0 0;max-width:65ch;color:#cdd6c7;font-size:.875rem;line-height:1.55}
+.panel h3{margin:1.25rem 0 .5rem;font:700 .75rem 'DM Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.panel h3:first-child{margin-top:0}
+
+.panel-foot{flex:none;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.75rem 1.375rem;border-top:1px solid var(--card-line);background:var(--panel-raise)}
+.panel-foot button{min-height:2.75rem}
+#resume{flex:1 1 12rem;order:3;font-size:.9375rem}
+#save-now{order:1}
+#new-game{order:2;color:var(--muted);font-weight:500}
 #new-game.confirm{color:#ffb9a4;border-color:#c96f5a}
 
-/* A seventh touch action (TORCH) fits by widening the pad to three columns. */
-.touch-actions{grid-template-columns:repeat(3,54px)}
-.touch-actions button{width:54px}
-.touch-actions [data-action="drink"]{background:#3d5a66;border-color:#9fd0e0}
-@media (any-pointer:coarse){
-  .inventory{display:flex;max-width:400px}
-  .inventory div{min-width:64px;padding:6px 9px}
-  .mobile-inventory-closed .inventory{display:none}
-  #day-banner strong{font-size:40px}
-  #death-screen h1{font-size:32px;padding:0 16px}
-  #settings{padding:10px;gap:8px 10px}
-  #stats{grid-template-columns:repeat(3,1fr)}
-}
-@media (any-pointer:coarse) and (max-height:480px){
-  /* Nine actions in two rows, so the grid stays below the Craft / Build bar. */
-  .touch-actions{grid-template-columns:repeat(5,46px)}
-  .touch-actions button{width:46px}
-}
-@media(prefers-reduced-motion:reduce){
-  #renderCanvas.shake,#hud.low-health #hurt-vignette{animation:none}
-  #day-banner,#fade{transition:none}
-}
-
-/* Underwater: no rain on the lens, just a wash of lake water. */
-body.underwater::after{display:none}
-body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(#0d4a5a55,#06222e88)}
-#oxygen-row{display:grid;gap:4px}
-
-/* ---- Depths and loot: gear panel, minimap, boss bar ---- */
-body.underground::after{display:none} /* No rain falls underground. */
-#dungeon-next{display:block;margin-top:6px;color:#e9d9a8;font-size:10px;letter-spacing:.3px}
-#dungeon-next:empty{display:none}
-#minimap{position:absolute;top:130px;right:34px;width:186px;height:186px;border:1px solid #9fb08f55;
-  border-radius:8px;box-shadow:0 8px 30px #0008;image-rendering:pixelated}
-#boss-bar{position:absolute;top:158px;left:50%;transform:translateX(-50%);width:min(440px,60vw);text-align:center}
-#boss-bar small{display:block;font:700 11px 'DM Sans',sans-serif;letter-spacing:3px;color:#ffd9a0;
-  text-shadow:0 1px 6px #000;margin-bottom:6px}
-#boss-bar progress{width:100%;height:9px;accent-color:#e2572b}
-#boss-bar progress::-webkit-progress-value{background:linear-gradient(90deg,#b6321d,#f08a3c)}
-#boss-bar progress::-webkit-progress-bar{background:#1a0f0ccc}
-.float-text.crit{color:#ffb23e;font-size:28px}
-#gear-button.has-upgrade{border-color:#ffb23e;color:#ffe2ad}
-#toast b{font-weight:700}
-.gear-slots{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
-.gear-slots h3,.gear-bag-head h3{font:700 10px 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;
-  color:var(--muted);margin:0 0 6px}
-.gear-card{border:1px solid color-mix(in srgb,var(--rarity) 55%,transparent);border-left:3px solid var(--rarity);
-  border-radius:8px;padding:11px 13px;background:#ffffff07}
-.gear-card header{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
-.gear-card strong{color:var(--rarity);font:600 15px 'Space Grotesk',sans-serif}
-.gear-card em{font:700 9px 'DM Sans',sans-serif;letter-spacing:1px;text-transform:uppercase;color:#10180f;
-  background:#9be07c;border-radius:10px;padding:2px 8px;font-style:normal;white-space:nowrap}
-.gear-card small{display:block;margin:3px 0 7px;font-size:10px;letter-spacing:.4px;color:var(--muted)}
-.gear-card ul{list-style:none;margin:0;padding:0;font-size:12px;line-height:1.65;color:#dbe3d4}
-.gear-card i{font-style:normal;font-size:10px;margin-left:4px}
-.gear-card .up{color:#8fe07a}.gear-card .down,.gear-card .lost{color:#ff9a86}
-.gear-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
-.gear-actions button,.gear-bag-head button{padding:6px 12px;font-size:11px}
-.gear-empty{margin:0;padding:14px;border:1px dashed #6d806444;border-radius:8px;font-size:12px;color:var(--muted)}
-.gear-totals{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
-.gear-totals span{font-size:11px;padding:4px 10px;border-radius:12px;background:#ffffff0d;color:#dfe8d6}
-.gear-bag-head{display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px}
-.gear-bag{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-@media (max-width:700px),(any-pointer:coarse){
-  .gear-slots,.gear-bag{grid-template-columns:1fr}
-  #minimap{top:136px;right:10px;width:124px;height:124px}
-  #boss-bar{top:150px;width:56vw}
-}
-
-/* ---- Camera views, boons ---- */
-body.view-overhead #crosshair{display:none} /* From above, a ring marks the target instead. */
-.hud-buttons{display:flex;gap:10px;align-items:center}
-#view-button{pointer-events:auto;padding:10px 16px;font-size:12px}
-/* With the player on screen, prompts sit clear of them, above the pack. */
-body.view-third #target-hint,body.view-overhead #target-hint{top:auto;bottom:112px}
-#buffs{position:absolute;left:34px;bottom:178px;font:700 11px 'DM Sans',sans-serif;letter-spacing:.6px;
-  color:#9af3df;text-shadow:0 1px 6px #000}
-#buffs:empty{display:none}
-@media (any-pointer:coarse){
-  #view-button{padding:9px 12px;font-size:13px}
-  .hud-buttons{gap:6px}
-  body.view-third #target-hint,body.view-overhead #target-hint{bottom:230px}
-  #buffs{left:18px;bottom:auto;top:430px}
-}
-
-/* --- Frontiers: the bow, perks and regions ------------------------------ */
-/* How far the bow is drawn, just under the crosshair. */
-#draw-meter{position:absolute;left:50%;top:calc(50% + 26px);width:74px;height:5px;transform:translateX(-50%);
-  background:#0f1c17b0;border:1px solid #c5dd8a66;border-radius:3px;opacity:0;transition:opacity .12s;overflow:hidden}
-#draw-meter i{display:block;height:100%;width:0;background:#c5dd8a}
-#draw-meter.full i{background:#ffd27a}
-/* A point to spend: sits above the boons, out of the way of the vitals. */
-#perk-button{position:absolute;left:34px;bottom:204px;pointer-events:auto;padding:8px 14px;font-size:12px;
-  background:#3b3413ee;border:1px solid #ffd27a;color:#ffe6ad;animation:perk-pulse 1.8s ease-in-out infinite}
-@keyframes perk-pulse{50%{box-shadow:0 0 0 5px #ffd27a2e}}
-.perk-list{margin:6px 0 14px;padding-left:18px;font-size:13px;line-height:1.7;color:#d5dcc4}
+/* Lists of things to make or build: one row each. */
+#recipes,#build-options,#perk-panel{display:grid;gap:.5rem}
+#recipes h3,#perk-panel h3{margin:.875rem 0 0}
+#recipes h3:first-child,#perk-panel h3:first-child{margin-top:0}
+.recipe{width:100%;min-height:3.25rem;padding:.625rem .875rem;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:.875rem;row-gap:.2rem;align-items:center;
+  text-align:left;justify-content:stretch;background:rgb(255 255 255 / .04);border-radius:.625rem}
+.recipe strong{font:600 .9375rem/1.25 'Space Grotesk','DM Sans',sans-serif}
+.recipe span{grid-column:1;color:var(--muted);font-size:.8125rem;font-weight:400;line-height:1.4}
+.recipe b{grid-column:2;grid-row:1 / span 2;color:var(--accent);font-size:.8125rem;font-weight:700;white-space:nowrap}
+.recipe:disabled b{color:var(--muted)}
+.perk-list{margin:.25rem 0 0;padding-left:1.1rem;font-size:.8125rem;line-height:1.7;color:#d5dcc4}
 .perk-list strong{color:#ffe6ad}
-#perk-panel h3{margin:14px 0 8px}
-#region-line{display:block;margin-top:6px;color:#bcd0c6;font-size:10px;letter-spacing:.3px}
-#region-line:empty{display:none}
-/* Ten touch actions: four narrow columns upright, five across in landscape. */
-.touch-actions{grid-template-columns:repeat(4,46px);gap:5px}
-.touch-actions button{width:46px;font-size:9px}
-.touch-actions [data-action="bow"]{background:#5b4a2a;border-color:#e6c98a}
-@media (any-pointer:coarse){
-  /* Under the vitals card, clear of the compass, the toast and the sticks. */
-  #perk-button{left:12px;bottom:auto;top:calc(240px + env(safe-area-inset-top));padding:7px 10px;font-size:11px}
-}
-@media (any-pointer:coarse) and (max-height:480px){
-  .touch-actions{grid-template-columns:repeat(5,46px)}
-  #perk-button{top:156px}
-}
-@media(prefers-reduced-motion:reduce){#perk-button{animation:none}}
 
-/* --- Legends and homestead: the map ------------------------------------- */
-#map-panel{display:grid;gap:12px;justify-items:center;margin:6px 0 14px}
+/* Pause: settings beside the key list on a wide screen. */
+#settings{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.625rem .875rem;align-items:center;padding:.875rem 1rem;
+  border:1px solid var(--card-line);border-radius:.75rem;background:rgb(255 255 255 / .03)}
+#settings label,.settings-label{font-size:.8125rem;font-weight:600;color:#dfe5d6}
+#settings input[type=range]{width:100%;min-height:1.75rem;accent-color:var(--accent)}
+#sensitivity-value,#quality-value{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+#set-quality{display:flex;border:1px solid var(--card-line);border-radius:.5rem;overflow:hidden}
+#set-quality button{flex:1;min-height:2.25rem;border:0;border-radius:0;background:none;color:var(--muted);padding:0 .5rem}
+#set-quality button + button{border-left:1px solid var(--card-line)}
+#set-quality button.current{background:rgb(197 221 138 / .16);color:var(--accent)}
+
+#controls-wrap{margin-top:.875rem;border:1px solid var(--card-line);border-radius:.75rem;background:rgb(255 255 255 / .03)}
+#controls-wrap summary{padding:.75rem 1rem;font-size:.8125rem;font-weight:600;cursor:pointer;border-radius:.75rem;list-style-position:inside}
+#controls{padding:0 1rem .875rem}
+.key-list{margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.4rem 1.25rem}
+.key-list div{display:grid;grid-template-columns:6.25rem minmax(0,1fr);gap:.625rem;align-items:baseline}
+.key-list dt{display:flex;flex-wrap:wrap;gap:.2rem;justify-content:flex-end}
+.key-list dd{margin:0;font-size:.8125rem;color:#cdd6c7;line-height:1.4}
+
+#stats{margin:.875rem 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:.375rem}
+#stats div{padding:.5rem .625rem;border-radius:.5rem;background:rgb(255 255 255 / .04)}
+#stats dt{font-size:.75rem;color:var(--muted)}
+#stats dd{margin:.1rem 0 0;font:600 1.0625rem/1.2 'Space Grotesk','DM Sans',sans-serif;font-variant-numeric:tabular-nums}
+
+/* Gear. */
+.gear-slots,.gear-bag{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.625rem}
+.gear-slots h3{margin:0 0 .35rem}
+.gear-card{padding:.625rem .75rem;border:1px solid color-mix(in srgb,var(--rarity) 55%,transparent);border-radius:.625rem;background:color-mix(in srgb,var(--rarity) 7%,transparent)}
+.gear-card header{display:flex;justify-content:space-between;gap:.5rem;align-items:baseline}
+.gear-card strong{color:var(--rarity);font:600 .9375rem 'Space Grotesk','DM Sans',sans-serif}
+.gear-card em{flex:none;padding:.15rem .45rem;border-radius:.3rem;background:var(--rarity);color:#10180f;font:700 .75rem 'DM Sans',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.gear-card small{display:block;margin:.2rem 0 .4rem}
+.gear-card ul{list-style:none;margin:0;padding:0;font-size:.8125rem;line-height:1.6;color:#dbe3d4}
+.gear-card i{font-style:normal;font-size:.75rem;margin-left:.25rem}
+.gear-card .up{color:#8fe07a}
+.gear-card .down,.gear-card .lost{color:#ff9a86}
+.gear-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.55rem}
+.gear-actions button,.gear-bag-head button{min-height:2rem;padding:0 .75rem;font-size:.75rem}
+.gear-empty{margin:0;padding:.875rem;border:1px dashed rgb(109 128 100 / .4);border-radius:.625rem;font-size:.8125rem;color:var(--muted)}
+.gear-totals{display:flex;flex-wrap:wrap;gap:.375rem;margin:.875rem 0 .25rem}
+.gear-totals span{font-size:.75rem;padding:.25rem .625rem;border-radius:1rem;background:rgb(255 255 255 / .06);color:#dfe8d6}
+.gear-bag-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin:1.125rem 0 .5rem}
+.gear-bag-head h3{margin:0}
+
+/* Map. */
+#map-panel{display:grid;gap:.75rem;justify-items:center}
 #map-panel[hidden]{display:none}
-#map-canvas{width:min(100%,540px,46vh);height:auto;aspect-ratio:1;border:1px solid #c5dd8a55;border-radius:6px;image-rendering:pixelated;background:#27302b}
-#map-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:#d5dcc4;justify-content:center}
-#map-legend b{display:inline-block;min-width:14px;text-align:center}
-#map-legend .map-scale{color:#9fb0a6}
-/* The compass card opens the map. */
-#exploration-card{pointer-events:auto;cursor:pointer}
+#map-canvas{width:min(100%,33.75rem,56dvh);height:auto;aspect-ratio:1;border:1px solid var(--card-line);border-radius:.5rem;image-rendering:pixelated;background:#27302b}
+#map-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem 1rem;justify-content:center;font-size:.8125rem;color:#d5dcc4}
+#map-legend li{display:flex;align-items:center;gap:.35rem}
+#map-legend .map-scale{color:var(--muted)}
 
-/* --- Companions and comforts -------------------------------------------- */
-/* The dog's state; tapping it tells the dog to stay or come. */
-#dog-button{position:absolute;left:34px;bottom:240px;pointer-events:auto;padding:6px 12px;font-size:11px;
-  background:#1a2a24e6;border:1px solid #c5dd8a66;color:#dfe9cf}
-.storage-table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 14px}
-.storage-table th,.storage-table td{padding:6px 8px;border-bottom:1px solid #ffffff14;text-align:right}
-.storage-table th:first-child{text-align:left;font-weight:600;color:#e9efdc}
-.storage-table thead th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#9fb0a6;font-weight:600}
+/* Storage. */
+.storage-table{width:100%;border-collapse:collapse;font-size:.875rem}
+.storage-table th,.storage-table td{padding:.375rem .5rem;border-bottom:1px solid rgb(255 255 255 / .07);text-align:right;font-variant-numeric:tabular-nums}
+.storage-table th:first-child{text-align:left;font-weight:600;color:var(--ink)}
+.storage-table thead th{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .storage-moves{white-space:nowrap;text-align:center!important}
-.storage-moves button{min-width:34px;min-height:34px;margin:0 2px;padding:0;font-size:16px;line-height:1}
-.storage-moves button:disabled{opacity:.3}
-#storage-panel h3{margin:10px 0 6px}
-@media (any-pointer:coarse){
-  #dog-button{left:12px;bottom:auto;top:calc(274px + env(safe-area-inset-top));padding:6px 9px;font-size:10px}
+.storage-moves button{min-width:2.25rem;min-height:2.25rem;margin:0 .1rem;padding:0}
+
+/* --- Page shell: loading, install prompt ----------------------------------- */
+#loadingScreen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;padding:1.5rem;background:#14241f;text-align:center}
+#loadingScreen h1{margin:0;font:600 clamp(1.75rem,6vmin,2.5rem)/1.1 'Space Grotesk','DM Sans',sans-serif;letter-spacing:-.03em}
+#loadingBar{width:min(13rem,60vw);height:.1875rem;border-radius:1rem;background:rgb(197 221 138 / .2);overflow:hidden}
+#loadingProgress{height:100%;background:var(--accent)}
+#loadingText{color:var(--muted);font-size:.8125rem}
+.installPrompt,#pwaInstallBanner{display:none}
+#pwaInstallBanner{position:fixed;top:0;left:0;right:0;z-index:20;align-items:center;justify-content:center;gap:.75rem;
+  padding:max(.625rem,var(--safe-t)) 1rem .625rem;background:#14241f;border-bottom:1px solid var(--card-line);font-size:.8125rem}
+#pwaInstallBanner p{margin:0}
+
+/* --- Narrower windows: say less --------------------------------------------- */
+@media (max-width:1500px){
+  .objective p{display:none}
 }
-@media (any-pointer:coarse) and (max-height:480px){
-  #dog-button{top:156px;left:112px}
+/* No room for a belt between the vitals and the menu: the pack opens on demand. */
+@media (max-width:1180px){
+  #hud:not(.touch){grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    grid-template-rows:auto auto minmax(0,1fr) auto auto auto;
+    grid-template-areas:
+      "quest  status buttons"
+      "quest  .      compass"
+      ".      .      compass"
+      "chips  .      ."
+      "belt   belt   belt"
+      "vitals menu   menu"}
+  #inventory-toggle{display:inline-flex}
+  .mobile-inventory-closed .inventory{display:none}
+  .inventory{justify-self:start;max-width:100%;justify-content:flex-start}
+  #save-status{display:none}
 }
-@media (any-pointer:coarse){.storage-moves button{min-width:40px;min-height:40px}}
+@media (max-width:900px){
+  .objective{width:min(15rem,100%)}
+  .exploration-card{width:min(15rem,100%)}
+  #weather-status{display:none}
+}
+@media (max-width:700px){
+  .hud-menu kbd,.hud-buttons kbd{display:none}
+  .vitals{width:12.5rem}
+}
+
+/* --- Touch: thumbs at the bottom, information at the top -------------------- */
+#touch-controls{display:none;position:fixed;inset:0;z-index:6;pointer-events:none}
+@media (any-pointer:coarse){#touch-controls:not([hidden]){display:block}}
+.touch-stick{position:absolute;left:max(.75rem,var(--safe-l));bottom:max(.75rem,var(--safe-b));width:7.5rem;height:7.5rem;pointer-events:auto;touch-action:none;
+  border-radius:50%;background:rgb(12 23 20 / .5);border:1px solid rgb(214 231 184 / .25)}
+.touch-stick-track{position:absolute;inset:.5rem;border:2px solid rgb(214 231 184 / .42);border-radius:50%}
+.touch-stick-knob{position:absolute;left:calc(50% - 1.5625rem);top:calc(50% - 1.5625rem);width:3.125rem;height:3.125rem;border-radius:50%;
+  background:#8fa56c;border:2px solid #e3f0c4;box-shadow:0 .2rem .6rem rgb(0 0 0 / .4);will-change:transform}
+.touch-actions{position:absolute;right:max(.75rem,var(--safe-r));bottom:max(.75rem,var(--safe-b));display:grid;grid-template-columns:repeat(4,3rem);gap:.375rem;pointer-events:auto}
+.touch-actions button{width:3rem;height:3rem;min-height:0;padding:0;border-radius:.75rem;background:rgb(20 40 32 / .9);border-color:rgb(214 231 184 / .3);
+  font-size:.75rem;font-weight:700;letter-spacing:0;touch-action:none;user-select:none;-webkit-user-select:none}
+.touch-actions button.pressed{background:var(--accent);color:var(--accent-ink);transform:scale(.94)}
+.touch-actions [data-action="attack"]{background:#56754d;border-color:#d5f3bd}
+.touch-actions [data-action="jump"]{background:#395f68;border-color:#a0e4ef}
+.touch-actions [data-action="drink"]{background:#3d5a66;border-color:#9fd0e0}
+.touch-actions [data-action="bow"]{background:#5b4a2a;border-color:#e6c98a}
+
+#hud.touch{--pad:.75rem;--gap:.5rem;--thumbs:10.75rem;
+  /* Room at the bottom for the stick and the action grid (three rows). */
+  padding-bottom:calc(max(.75rem,var(--safe-b)) + var(--thumbs));
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:auto auto auto auto minmax(0,1fr) auto;
+  grid-template-areas:
+    "vitals buttons"
+    "vitals compass"
+    "vitals quest"
+    "chips  chips"
+    ".      ."
+    "menu   menu"}
+#hud.touch button{min-height:2.75rem}
+#hud.touch .hud-status{position:absolute;left:0;right:0;top:max(.25rem,var(--safe-t));justify-content:center;min-height:0;padding:0;pointer-events:none}
+#hud.touch #weather-status,#hud.touch #save-status,#hud.touch .hud-menu kbd,#hud.touch .hud-buttons kbd{display:none}
+#hud.touch .hud-buttons,#hud.touch .vitals{margin-top:1rem}
+#hud.touch .hud-buttons{justify-self:stretch;display:grid;grid-template-columns:1fr 1fr}
+#hud.touch .vitals{align-self:start;justify-self:stretch;width:auto;padding:.5rem .625rem;gap:.125rem}
+#hud.touch .vitals label{line-height:1.3}
+#hud.touch .vitals progress{height:.25rem;margin-bottom:.2rem}
+#hud.touch #experience{height:.1875rem;margin-bottom:.3rem}
+#hud.touch .hud-chips{align-self:start}
+#hud.touch .exploration-card{justify-self:stretch;width:auto;padding:.5rem .625rem;column-gap:.5rem}
+#hud.touch .exploration-card strong{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#hud.touch #compass-facing{width:1.875rem;height:1.875rem;grid-row:auto;align-self:center}
+#hud.touch .exploration-card span{display:none}
+#hud.touch #minimap{width:9rem;height:9rem}
+#hud.touch .objective{align-self:start;justify-self:stretch;width:auto;padding:.5rem .625rem}
+#hud.touch .objective p{display:none}
+#hud.touch .objective h2{font-size:.8125rem}
+#hud.touch .objective span{margin-top:.2rem}
+#hud.touch .hud-menu{justify-self:stretch;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.375rem}
+#hud.touch .hud-menu button{padding:0 .25rem;border-radius:1.5rem}
+#hud.touch #inventory-toggle{display:inline-flex}
+#hud.touch .inventory{position:absolute;z-index:1;left:max(.75rem,var(--safe-l));right:max(.75rem,var(--safe-r));bottom:calc(max(.75rem,var(--safe-b)) + var(--thumbs) + 3.5rem);
+  max-width:none;max-height:45dvh;overflow-y:auto;justify-content:flex-start;background:var(--panel);pointer-events:auto}
+#hud.touch.mobile-inventory-closed .inventory{display:none}
+#hud.touch #toast{top:auto;bottom:calc(max(.75rem,var(--safe-b)) + var(--thumbs) + 3.75rem)}
+#hud.touch #boss-bar{top:calc(max(.75rem,var(--safe-t)) + 16.5rem)}
+#hud.touch #day-banner{top:calc(max(.75rem,var(--safe-t)) + 17rem)}
+body.view-third #hud.touch #target-hint,body.view-overhead #hud.touch #target-hint{bottom:calc(max(.75rem,var(--safe-b)) + var(--thumbs) + 7rem)}
+
+/* Small phones: a slightly smaller stick so the action grid never touches it. */
+@media (max-width:389px){
+  .touch-stick{width:6.75rem;height:6.75rem}
+  .touch-actions{grid-template-columns:repeat(4,2.875rem);gap:.3125rem}
+  .touch-actions button{width:2.875rem;height:2.875rem}
+  #hud.touch{--thumbs:10.25rem}
+}
+/* Tablets: bigger controls, and room for the field note's text. */
+@media (min-width:700px) and (min-height:700px){
+  .touch-stick{width:9rem;height:9rem}
+  .touch-stick-knob{left:calc(50% - 1.875rem);top:calc(50% - 1.875rem);width:3.75rem;height:3.75rem}
+  .touch-actions{grid-template-columns:repeat(4,3.75rem);gap:.5rem}
+  .touch-actions button{width:3.75rem;height:3.75rem;font-size:.8125rem}
+  #hud.touch{--thumbs:13.25rem;
+    grid-template-rows:auto auto minmax(0,1fr) auto auto;
+    grid-template-areas:
+      "vitals buttons"
+      "quest  compass"
+      ".      ."
+      "chips  ."
+      "menu   menu"}
+  #hud.touch .hud-buttons{justify-self:end;display:flex}
+  #hud.touch .vitals{justify-self:start;width:15rem;padding:.75rem .875rem}
+  #hud.touch .exploration-card{justify-self:end;width:17rem}
+  #hud.touch .exploration-card span{display:block}
+  #hud.touch .exploration-card span:empty{display:none}
+  #hud.touch .objective{justify-self:start;width:19rem;padding:.75rem .875rem}
+  #hud.touch .objective p{display:block}
+  #hud.touch .objective h2{font-size:1rem}
+  #hud.touch .hud-chips{align-self:end}
+  #hud.touch .hud-menu{justify-self:center;width:min(34rem,100%)}
+  #hud.touch #boss-bar{top:calc(max(.75rem,var(--safe-t)) + 3rem)}
+  #hud.touch #day-banner{top:36%}
+}
+/* A phone on its side: two rows of actions, menus along the top. */
+@media (max-height:520px){
+  .touch-stick{width:6.75rem;height:6.75rem}
+  .touch-actions{grid-template-columns:repeat(5,2.875rem);gap:.3125rem}
+  .touch-actions button{width:2.875rem;height:2.875rem}
+  #hud.touch{--thumbs:0rem;padding-bottom:max(.5rem,var(--safe-b));
+    grid-template-columns:11rem minmax(0,1fr) 12.5rem;
+    grid-template-rows:2.75rem auto minmax(0,1fr);
+    grid-template-areas:
+      "vitals menu  buttons"
+      "vitals chips compass"
+      ".      .     compass"}
+  #hud.touch .hud-status{left:auto;right:max(.75rem,var(--safe-r));top:calc(max(.75rem,var(--safe-t)) + 7rem);justify-content:flex-end}
+  body.underground #hud.touch .hud-status{display:none}
+  #hud.touch .hud-buttons,#hud.touch .vitals{margin-top:0}
+  #hud.touch .objective{display:none}
+  #hud.touch .hud-menu{justify-self:center;align-self:start;width:min(23rem,100%)}
+  #hud.touch .hud-menu button{padding:0}
+  #hud.touch .exploration-card{align-self:start}
+  #hud.touch .hud-chips{justify-self:center;justify-content:center}
+  #hud.touch #minimap{width:7.5rem;height:7.5rem}
+  #hud.touch .inventory{left:12.25rem;right:13.75rem;bottom:auto;top:calc(max(.75rem,var(--safe-t)) + 3.25rem);max-height:calc(100dvh - 5rem)}
+  #hud.touch #toast{left:8.5rem;right:17.5rem;bottom:max(.75rem,var(--safe-b));max-width:none}
+  #hud.touch #boss-bar{top:calc(max(.75rem,var(--safe-t)) + 6.5rem);width:min(20rem,40vw)}
+  #hud.touch #day-banner{top:calc(max(.75rem,var(--safe-t)) + 6.75rem)}
+  #hud.touch #day-banner strong{font-size:1.5rem}
+  body.view-third #hud.touch #target-hint,body.view-overhead #hud.touch #target-hint{bottom:calc(max(.5rem,var(--safe-b)) + 7.25rem)}
+}
+
+/* Menus on small screens: the panel fills the screen and its sections stack. */
+@media (max-width:640px),(max-height:520px){
+  .modal{padding:0}
+  .panel{width:100%;height:100%;max-height:none;border:0;border-radius:0;padding-top:var(--safe-t)}
+  .panel-body{padding:1rem 1rem .75rem}
+  .panel-foot{padding:.625rem 1rem max(.625rem,var(--safe-b))}
+  .panel h1{font-size:1.5rem}
+  .panel-tabs button{min-height:2.75rem}
+  #settings{grid-template-columns:auto minmax(0,1fr) auto}
+  .settings-label{grid-column:1 / -1;margin-top:.25rem}
+  #set-quality{grid-column:1 / -1}
+  #quality-value{grid-column:1 / -1}
+  #set-quality button{min-height:2.75rem}
+  .key-list{grid-template-columns:1fr}
+  .key-list div{grid-template-columns:5.5rem minmax(0,1fr)}
+  .storage-moves button{min-width:2.75rem;min-height:2.75rem}
+  .storage-table th,.storage-table td{padding:.25rem .25rem}
+  .recipe{min-height:3.5rem}
+}
+@media (pointer:coarse){
+  .panel button{min-height:2.75rem}
+  .gear-actions button,.gear-bag-head button{min-height:2.75rem}
+  .storage-moves button{min-width:2.75rem;min-height:2.75rem}
+}
+
+/* --- Motion ------------------------------------------------------------------ */
+@keyframes wild-rain{to{background-position:-35px 170px}}
+@keyframes wild-hurt{0%{opacity:.95}100%{opacity:0}}
+@keyframes wild-pulse{0%,100%{opacity:.22}50%{opacity:.5}}
+@keyframes wild-shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,4px)}40%{transform:translate(6px,-5px)}60%{transform:translate(-4px,-3px)}80%{transform:translate(3px,4px)}}
+@keyframes wild-fade-in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.2}
+  #perk-button{animation:none}
+  #renderCanvas.shake{animation:none}
+  button,#toast,#day-banner{transition:none}
+}

@@ -1,7 +1,8 @@
 // Device preferences, kept apart from the expedition save so a new game keeps them.
 export const SETTINGS_KEY = 'the-wilds-settings-v1';
-export const DEFAULT_SETTINGS = Object.freeze({volume: .7, muted: false, sensitivity: 1, view: 'first'});
+export const DEFAULT_SETTINGS = Object.freeze({volume: .7, muted: false, sensitivity: 1, view: 'first', quality: 'auto'});
 const VIEWS = ['first', 'third', 'overhead'];
+const QUALITIES = ['auto', 'low', 'medium', 'high'];
 
 const clamp = (value, low, high, fallback) =>
     Number.isFinite(value) ? Math.max(low, Math.min(high, value)) : fallback;
@@ -12,7 +13,8 @@ export function normalizeSettings(raw) {
         volume: clamp(source.volume, 0, 1, DEFAULT_SETTINGS.volume),
         muted: source.muted === true,
         sensitivity: clamp(source.sensitivity, .3, 2.5, DEFAULT_SETTINGS.sensitivity),
-        view: VIEWS.includes(source.view) ? source.view : DEFAULT_SETTINGS.view
+        view: VIEWS.includes(source.view) ? source.view : DEFAULT_SETTINGS.view,
+        quality: QUALITIES.includes(source.quality) ? source.quality : DEFAULT_SETTINGS.quality
     };
 }
 

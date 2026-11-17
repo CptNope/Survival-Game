@@ -2,6 +2,7 @@ import { ITEMS, RESOURCES, RECIPES, RECIPE_GROUPS, recipeDescription, hitsNeeded
 import { MAP_SPAN, MAP_CELLS, MAP_COLORS, mapCells, toSheet, onSheet } from '../map.js';
 import { LEGEND_LIST } from '../legends.js';
 import { CHEST_CAPACITY } from '../storage.js';
+import { QUALITY_CHOICES, QUALITY_LABELS } from '../quality.js';
 import { PERKS } from '../perks.js';
 import { BUILDINGS } from './building.js';
 import { STAT_LABELS } from './progression.js';
@@ -22,6 +23,15 @@ const BUILD_NOTES = {
     garden: 'Plant berries, herbs, mushrooms or cactus fruit · harvest more',
     chest: 'Holds 300 items · safe when you die'
 };
+// Map markers: [colour, SVG path in a 2-unit box, drawn as an outline?].
+const MAP_MARKS = {
+    site: ['#f4e3a1', 'M0 -1L1 0L0 1L-1 0Z'],
+    dungeon: ['#c9a2ff', 'M-1 -.85L1 -.85L0 1Z'],
+    lair: ['#ff6a55', 'M-.9 -.9L.9 .9M.9 -.9L-.9 .9', true],
+    slain: ['#a3ada5', 'M-.9 -.9L.9 .9M.9 -.9L-.9 .9', true],
+    camp: ['#ffb23e', 'M0 -1L1 -.1L.72 1L-.72 1L-1 -.1Z'],
+    home: ['#ffffff', 'M0 -1.1L.29 -.34L1.05 -.34L.44 .16L.66 .92L0 .47L-.66 .92L-.44 .16L-1.05 -.34L-.29 -.34Z']
+};
 const DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const compass = bearing => DIRECTIONS[(Math.round(bearing / (Math.PI / 4)) % 8 + 8) % 8];
 
@@ -35,27 +45,37 @@ export class UISystem {
         const root = document.createElement('div');
         root.id = 'hud';
         root.classList.add('mobile-inventory-closed');
+        // Small drawn icons: one stroke weight, no glyphs standing in for them.
+        const chevron = (double, left) => `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"${left ? ' style="transform:scaleX(-1)"' : ''}><path d="${double ? 'M3 3l5 5-5 5M8 3l5 5-5 5' : 'M6 3l5 5-5 5'}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        this.icons = {take: chevron(false, true), takeAll: chevron(true, true), store: chevron(false, false), storeAll: chevron(true, false)};
         root.innerHTML = `
             <div id="hurt-vignette" aria-hidden="true"></div>
             <div id="effects-layer" aria-hidden="true"></div>
-            <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><div class="hud-buttons"><button id="view-button" type="button" aria-label="Change camera view">V · View</button><button id="menu-button">Esc · Pause</button></div></header>
-            <div id="buffs" aria-live="off"></div>
-            <aside class="objective"><small id="objective-kicker">FIELD NOTES / 01</small><h2 id="objective-title">Make your first tool</h2><p id="objective-text"></p><span id="objective-progress"></span></aside>
-            <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / <span id="compass-facing">N</span></small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span><span id="dungeon-next"></span><span id="region-line"></span></div>
+            <aside class="objective" aria-label="Current field note"><small id="objective-kicker" class="sr-only"></small><h2 id="objective-title">Make your first tool</h2><p id="objective-text"></p><span id="objective-progress"></span></aside>
+            <div class="hud-status"><span id="world-clock"></span><span id="weather-status">Clear skies</span><span id="save-status" role="status">Autosave · Every 30s</span></div>
+            <div class="hud-buttons"><button id="view-button" type="button" aria-label="Change camera view"><kbd>V</kbd><span>View</span></button><button id="menu-button" type="button" aria-label="Pause"><kbd>Esc</kbd><span>Pause</span></button></div>
+            <div class="exploration-card" id="exploration-card" role="button" tabindex="0" aria-label="Open the map"><b id="compass-facing" aria-label="Facing">N</b><strong id="location-next">Finding the trail…</strong><span id="location-progress"></span><span id="dungeon-next"></span><span id="region-line"></span></div>
             <canvas id="minimap" width="186" height="186" hidden aria-label="Dungeon map"></canvas>
             <div id="boss-bar" hidden><small></small><progress max="100" value="100"></progress></div>
-            <div id="crosshair">+</div><div id="draw-meter" aria-hidden="true"><i></i></div><div id="target-hint"></div>
-            <button id="perk-button" type="button" hidden></button>
-            <button id="dog-button" type="button" hidden></button>
+            <div id="crosshair" aria-hidden="true"></div><div id="draw-meter" aria-hidden="true"><i></i></div><div id="target-hint"></div>
             <div id="toast" role="status" aria-live="polite"></div>
             <div id="day-banner" aria-live="polite"><strong></strong><span></span></div>
-            <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><div id="oxygen-row" hidden><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress></div><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Craft</button><button id="building-button">B · Build</button><button id="gear-button">G · Gear</button><button id="inventory-toggle" type="button" aria-expanded="false" aria-controls="inventory">Pack</button></footer>
+            <div class="hud-chips"><button id="dog-button" type="button" hidden></button><button id="perk-button" type="button" hidden></button></div>
+            <section class="vitals" aria-label="Condition"><small id="level"></small><progress id="experience" max="100" aria-label="Experience"></progress><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><div id="oxygen-row" hidden><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress></div><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><div id="buffs" aria-live="off"></div></section>
+            <section id="inventory" class="inventory" aria-label="Pack"></section>
+            <nav class="hud-menu" aria-label="Menus"><button id="craft-button" type="button"><kbd>C</kbd><span>Craft</span></button><button id="building-button" type="button"><kbd>B</kbd><span>Build</span></button><button id="gear-button" type="button"><kbd>G</kbd><span>Gear</span><b id="gear-count" hidden></b></button><button id="map-button" type="button"><kbd>N</kbd><span>Map</span></button><button id="inventory-toggle" type="button" aria-expanded="false" aria-controls="inventory">Pack</button></nav>
             <div id="fade" aria-hidden="true"></div>
             <div id="death-screen" hidden role="alert"><div><small id="death-kicker"></small><h1>The wilds claimed you.</h1><p id="death-cause"></p><p>Your supplies lie where you fell. Returning to the clearing…</p></div></div>
-            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="map-panel"><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div><div id="controls"></div>
-                <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span></div>
-                <dl id="stats"></dl>
-                <button id="save-now">Save expedition (P)</button><button id="new-game" type="button">Start a new expedition</button><button id="resume" class="primary">Enter the wilds →</button></section></div>`;
+            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+                <nav id="panel-tabs" class="panel-tabs" aria-label="Sections"><button type="button" data-panel="menu">Paused</button><button type="button" data-panel="craft">Craft</button><button type="button" data-panel="build">Build</button><button type="button" data-panel="gear">Gear</button><button type="button" data-panel="perks">Perks</button><button type="button" data-panel="map">Map</button></nav>
+                <div class="panel-body">
+                    <header class="panel-head"><small id="panel-kicker" class="sr-only"></small><h1 id="panel-title">The Wilds</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p></header>
+                    <div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="map-panel"><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div>
+                    <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span><span class="settings-label" id="quality-label">Graphics</span><div id="set-quality" role="group" aria-labelledby="quality-label">${QUALITY_CHOICES.map(choice => `<button type="button" data-quality="${choice}">${QUALITY_LABELS[choice]}</button>`).join('')}</div><span id="quality-value"></span></div>
+                    <details id="controls-wrap"><summary>Controls</summary><div id="controls"></div></details>
+                    <dl id="stats"></dl>
+                </div>
+                <footer class="panel-foot"><button id="save-now" type="button">Save now</button><button id="new-game" type="button">Start a new expedition</button><button id="resume" class="primary" type="button">Enter the wilds</button></footer></section></div>`;
         document.body.append(root);
         this.$ = id => document.getElementById(id);
         this.$('menu-button').onclick = () => this.toggleMenu();
@@ -65,6 +85,19 @@ export class UISystem {
         this.$('view-button').onclick = () => { if (!game.paused) game.viewSystem?.cycle(); };
         this.$('perk-button').onclick = () => this.togglePerks();
         this.$('exploration-card').onclick = () => this.toggleMap();
+        this.$('exploration-card').onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.toggleMap(); } };
+        this.$('map-button').onclick = () => this.toggleMap();
+        // The tabs along the top of a panel: move between sections without closing it.
+        this.$('panel-tabs').onclick = event => {
+            const tab = event.target.closest('button[data-panel]');
+            if (!tab || tab.dataset.panel === this.panel) return;
+            if (tab.dataset.panel === 'map' && game.dungeonSystem?.active) { this.showNotification('No map underground · the corner chart shows this floor'); return; }
+            this.openPanel(tab.dataset.panel);
+        };
+        this.$('set-quality').onclick = event => {
+            const button = event.target.closest('button[data-quality]');
+            if (button && game.quality?.setChoice(button.dataset.quality)) { game.audio?.play('click'); this.syncSettings(); }
+        };
         this.$('dog-button').onclick = () => game.companion?.toggleMode();
         this.$('storage-panel').onclick = event => {
             const button = event.target.closest('button[data-move]');
@@ -90,7 +123,6 @@ export class UISystem {
         this.$('inventory-toggle').onclick = () => {
             const hidden = root.classList.toggle('mobile-inventory-closed');
             this.$('inventory-toggle').setAttribute('aria-expanded', String(!hidden));
-            this.$('inventory-toggle').textContent = hidden ? 'Pack' : 'Close pack';
         };
         this.$('save-now').onclick = () => {
             if (game.saveSystem.save()) this.showNotification('Expedition saved on this device');
@@ -177,6 +209,13 @@ export class UISystem {
         this.$('sensitivity-value').textContent = settings.sensitivity.toFixed(1) + '×';
         this.$('set-mute').textContent = settings.muted ? 'Unmute' : 'Mute';
         this.$('set-mute').setAttribute('aria-pressed', String(settings.muted));
+        const quality = this.game.quality;
+        for (const button of this.$('set-quality').children) {
+            const chosen = button.dataset.quality === (quality?.choice || 'auto');
+            button.classList.toggle('current', chosen);
+            button.setAttribute('aria-pressed', String(chosen));
+        }
+        this.$('quality-value').textContent = quality?.choice === 'auto' ? quality.describe().replace('Auto · ', 'Now: ') : '';
     }
     renderPanel() {
         const build = this.panel === 'build', craft = this.panel === 'craft', gear = this.panel === 'gear', perks = this.panel === 'perks';
@@ -201,18 +240,29 @@ export class UISystem {
         this.$('new-game').classList.remove('confirm');
         this.$('new-game').textContent = 'Start a new expedition';
         if (menu) {
+            const rows = list => '<dl class="key-list">' + list.map(([keys, action]) => `<div><dt>${keys.split(' ').map(key => `<kbd>${key}</kbd>`).join('')}</dt><dd>${action}</dd></div>`).join('') + '</dl>';
             this.$('controls').innerHTML = this.game.touchControls?.enabled
-                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks, rests in a shelter at night, opens chests and takes doorways and stairs · TORCH lights the dark.</p><p>VIEW switches between first-person, third-person and overhead · DODGE sidesteps a blow · HEAL uses your best remedy.</p><p>Hold BOW to draw and let go to loose an arrow · Tap Perk ready when it appears to spend a point · Tap the compass card for the map · Tap the dog status to tell it to stay or follow.</p><p>Tap Craft, Build, Gear, or Pack to manage supplies. Progress saves automatically.</p>'
-                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>G</kbd> Gear · <kbd>R</kbd> Rotate</p><p><kbd>E</kbd> Drink, rest, open chests, use doorways and stairs</p><p><kbd>V</kbd> First-person, third-person or overhead view · Mouse wheel zooms</p><p>Hold <kbd>R</kbd> to draw the bow, release to loose · <kbd>K</kbd> Perks · <kbd>N</kbd> Map · <kbd>T</kbd> Dog: stay or follow</p><p><kbd>Q</kbd> Dodge · <kbd>H</kbd> Quick heal · <kbd>F</kbd> Torch · Right click: heavy sweep</p><p><kbd>M</kbd> Mute · <kbd>P</kbd> Save</p>';
+                ? rows([['Stick', 'Move'], ['Drag', 'Look around; pinch to zoom the outside views'], ['HIT', 'Hold to gather or attack; tap to cast a line'], ['USE', 'Drink, sleep, open chests, plant, take doors and stairs'], ['JUMP', 'Jump; double tap to fly'], ['RUN', 'Hold to sprint'], ['DODGE', 'A short dash that blows miss'], ['HEAL', 'Use your best remedy'], ['BOW', 'Hold to draw, let go to loose'], ['TORCH', 'Light or put away the torch'], ['SKILL', 'Heavy sweep; cancels building'], ['DOWN', 'Descend while flying, or dive'], ['View', 'First-person, third-person or overhead'], ['Compass', 'Tap for the map']])
+                : rows([['W A S D', 'Move'], ['Shift', 'Sprint'], ['Click', 'Hold to gather or attack; cast a line'], ['Right-click', 'Heavy sweep; cancels building'], ['E', 'Drink, sleep, open chests, plant, take doors and stairs'], ['Space', 'Jump; double tap to fly'], ['Ctrl', 'Descend or dive'], ['Q', 'Dodge'], ['H', 'Quick heal'], ['R', 'Hold to draw the bow; rotates a build preview'], ['F', 'Torch'], ['V', 'Change view; mouse wheel zooms'], ['T', 'Dog: stay or follow'], ['C B G', 'Craft, Build, Gear'], ['K N', 'Perks, Map'], ['M P', 'Mute, Save'], ['Esc', 'Pause']]);
             const progression = this.game.progression;
             if (progression) this.$('stats').innerHTML = `<div><dt>Day</dt><dd>${this.game.dayCount}</dd></div><div><dt>Field notes</dt><dd>${progression.completed.size}</dd></div>` +
                 Object.entries(STAT_LABELS).map(([key, label]) => `<div><dt>${label}</dt><dd>${progression.stats[key]}</dd></div>`).join('');
         }
         this.$('save-now').hidden = !menu || title;
-        this.$('panel-title').innerHTML = storage ? 'Safe until<br>you need it.' : map ? 'The country<br>so far.' : perks ? 'What the wilds<br>taught you.' : gear ? 'What the dark<br>gave up.' : build
-            ? 'Make this place<br>your own.'
-            : craft ? 'Make something<br>that matters.' : title ? 'Leave a little<br>less to chance.' : 'The wilds can wait.';
-        this.$('panel-kicker').textContent = storage ? 'STORAGE CHEST' : map ? 'MAP' : perks ? 'PERKS' : gear ? 'GEAR AND LOOT' : build ? 'BASE CAMP CONSTRUCTION' : craft ? 'FIELD CRAFTING' : title ? 'WELCOME TO THE WILDS' : 'EXPEDITION PAUSED';
+        // The heading names the panel; the line under it says what it is for.
+        this.$('panel-title').textContent = storage ? 'Storage chest' : map ? 'Map' : perks ? 'Perks' : gear ? 'Gear'
+            : build ? 'Build' : craft ? 'Craft' : title ? 'The Wilds' : 'Paused';
+        this.$('panel-kicker').textContent = '';
+        for (const tab of this.$('panel-tabs').children) {
+            const current = tab.dataset.panel === this.panel;
+            tab.classList.toggle('current', current);
+            if (current) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
+        }
+        this.$('panel-tabs').hidden = title || !this.panel;
+        this.$('modal').dataset.panel = this.panel || '';
+        // Controls are open on a first visit and folded away after that.
+        this.$('controls-wrap').hidden = !menu;
+        if (menu) this.$('controls-wrap').open = title || !this.game.touchControls?.enabled;
         this.$('panel-copy').textContent = storage
             ? 'Move things between your pack and this chest. Whatever is in a chest stays there if you die.'
             : map
@@ -222,23 +272,21 @@ export class UISystem {
             : gear
             ? 'Gear is graded by the bonuses it rolled, from Common to Legendary. You keep it when you fall.'
             : build
-            ? 'Choose a structure, then aim where it should stand. Click to place it, R to rotate, Esc to cancel.'
+            ? (this.game.touchControls?.enabled
+                ? 'Choose a structure, then aim where it should stand. HIT places it and SKILL cancels.'
+                : 'Choose a structure, then aim where it should stand. Click to place it, R to rotate, Esc to cancel.')
             : craft ? 'Better tools gather faster. Food and dressings work straight from your pack.'
             : title ? 'Gather, craft and build before nightfall. The cold, hunger and wolves will not wait.'
             : 'Follow your field notes, keep a fire going, and rest in a shelter at night. Progress saves on this device.';
         const returning = this.game.dayCount > 1 || this.game.progression?.completed.size > 0;
-        this.$('resume').textContent = build || craft || gear || perks || map || storage ? 'Back to the wilds →'
-            : title ? (returning ? `Continue expedition · Day ${this.game.dayCount} →` : 'Enter the wilds →') : 'Return to the wilds →';
+        this.$('resume').textContent = build || craft || gear || perks || map || storage ? 'Back to the wilds'
+            : title ? (returning ? `Continue expedition · Day ${this.game.dayCount}` : 'Enter the wilds') : 'Return to the wilds';
         if (this.panel) {
             // Focus the way out without scrolling the long crafting list to its end.
             this.$('resume').focus({preventScroll: true});
-            this.$('modal').querySelector('.panel').scrollTop = 0;
+            this.$('modal').querySelector('.panel-body').scrollTop = 0;
         }
-        const touch = Boolean(this.game.touchControls?.enabled);
-        this.$('menu-button').textContent = touch ? 'Pause' : 'Esc · Pause';
-        this.$('view-button').textContent = touch ? 'View' : 'V · View';
-        this.$('craft-button').textContent = touch ? 'Craft' : 'C · Craft';
-        this.$('building-button').textContent = touch ? 'Build' : 'B · Build';
+        this.$('hud').classList.toggle('touch', Boolean(this.game.touchControls?.enabled));
         this.updateGearButton();
     }
     // --- Storage ------------------------------------------------------------
@@ -249,7 +297,7 @@ export class UISystem {
             `<button type="button" data-move="${action}" data-item="${item}" data-amount="${amount}"${enabled ? '' : ' disabled'} aria-label="${action === 'store' ? 'Store' : 'Take'} ${amount === 'all' ? 'all' : 'one'} ${ITEMS[item].toLowerCase()}">${label}</button>`;
         this.$('storage-panel').innerHTML = `<h3>${used} of ${CHEST_CAPACITY} stored</h3>`
             + (rows.length ? `<table class="storage-table"><thead><tr><th>Item</th><th>Pack</th><th></th><th>Chest</th></tr></thead><tbody>${rows.map(row =>
-                `<tr><th scope="row">${row.name}</th><td>${row.carried}</td><td class="storage-moves">${move('take', row.item, 'all', '«', row.stored > 0)}${move('take', row.item, 1, '‹', row.stored > 0)}${move('store', row.item, 1, '›', row.carried > 0)}${move('store', row.item, 'all', '»', row.carried > 0)}</td><td>${row.stored}</td></tr>`).join('')}</tbody></table>`
+                `<tr><th scope="row">${row.name}</th><td>${row.carried}</td><td class="storage-moves">${move('take', row.item, 'all', this.icons.takeAll, row.stored > 0)}${move('take', row.item, 1, this.icons.take, row.stored > 0)}${move('store', row.item, 1, this.icons.store, row.carried > 0)}${move('store', row.item, 'all', this.icons.storeAll, row.carried > 0)}</td><td>${row.stored}</td></tr>`).join('')}</tbody></table>`
                 : '<p class="empty-pack">Nothing to store yet · the chest and your pack are both empty</p>');
     }
     // --- Map ----------------------------------------------------------------
@@ -279,17 +327,20 @@ export class UISystem {
             context.fillStyle = MAP_COLORS[cells[n]];
             context.fillRect((n % MAP_CELLS) * cell, Math.floor(n / MAP_CELLS) * cell, Math.ceil(cell), Math.ceil(cell));
         }
-        const style = {site: ['#f4e3a1', '◆'], dungeon: ['#c9a2ff', '▼'], lair: ['#ff6a55', '☠'], slain: ['#9aa39c', '☠'], camp: ['#ffb23e', '⌂'], home: ['#ffffff', '★']};
-        context.font = '600 15px system-ui, sans-serif'; context.textAlign = 'center'; context.textBaseline = 'middle';
         const shown = new Map();
         for (const mark of this.mapMarks()) {
             const point = toSheet(mark.x, mark.z, position.x, position.z, size);
-            if (!onSheet(point, size, 8)) continue;
-            const [colour, glyph] = style[mark.kind];
-            context.lineWidth = 3; context.strokeStyle = '#0d1512cc'; context.strokeText(glyph, point.px, point.py);
-            context.fillStyle = colour; context.fillText(glyph, point.px, point.py);
-            if (!shown.has(mark.kind)) shown.set(mark.kind, {colour, glyph, labels: []});
-            shown.get(mark.kind).labels.push(mark.label);
+            if (!onSheet(point, size, 10)) continue;
+            const [colour, path, outline] = MAP_MARKS[mark.kind];
+            context.save(); context.translate(point.px, point.py); context.scale(7.5, 7.5);
+            const shape = new Path2D(path);
+            context.lineJoin = 'round'; context.lineCap = 'round';
+            context.lineWidth = outline ? .62 : .44; context.strokeStyle = '#0d1512'; context.stroke(shape);
+            if (outline) { context.lineWidth = .3; context.strokeStyle = colour; context.stroke(shape); }
+            else { context.fillStyle = colour; context.fill(shape); }
+            context.restore();
+            if (!shown.has(mark.kind)) shown.set(mark.kind, []);
+            shown.get(mark.kind).push(mark.label);
         }
         // You: an arrowhead pointing the way you face.
         const yaw = game.playerSystem.camera.rotation.y;
@@ -297,9 +348,10 @@ export class UISystem {
         context.beginPath(); context.moveTo(0, -11); context.lineTo(7, 8); context.lineTo(0, 4); context.lineTo(-7, 8); context.closePath();
         context.fillStyle = '#ffffff'; context.strokeStyle = '#0d1512'; context.lineWidth = 2; context.fill(); context.stroke(); context.restore();
         const names = {site: 'Places found', dungeon: 'Ways underground', lair: 'Lairs', slain: 'Lairs, emptied', camp: 'Your camp', home: 'The clearing'};
-        this.$('map-legend').innerHTML = `<li><b style="color:#fff">▲</b> You · ${game.regions.def.name}</li>`
-            + [...shown].map(([kind, entry]) => `<li><b style="color:${entry.colour}">${entry.glyph}</b> ${names[kind]}${['lair', 'slain'].includes(kind) ? ' · ' + [...new Set(entry.labels)].join(', ') : ''}</li>`).join('')
-            + `<li class="map-scale">The sheet is ${MAP_SPAN}m across</li>`;
+        const key = (path, colour, outline) => `<svg viewBox="-1.5 -1.5 3 3" width="14" height="14" aria-hidden="true"><path d="${path}" ${outline ? `fill="none" stroke="${colour}" stroke-width=".34" stroke-linecap="round"` : `fill="${colour}"`}/></svg>`;
+        this.$('map-legend').innerHTML = `<li>${key('M0 -1.2L.8 1L0 .55L-.8 1Z', '#fff')} You · ${game.regions.def.name}</li>`
+            + [...shown].map(([kind, labels]) => `<li>${key(MAP_MARKS[kind][1], MAP_MARKS[kind][0], MAP_MARKS[kind][2])} ${names[kind]}${['lair', 'slain'].includes(kind) ? ' · ' + [...new Set(labels)].join(', ') : ''}</li>`).join('')
+            + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} places found</li>`;
     }
     // --- Perks --------------------------------------------------------------
     updatePerkUI() {
@@ -362,8 +414,10 @@ export class UISystem {
         const gear = this.game.gear, button = this.$('gear-button');
         if (!gear || !button) return;
         const upgrades = gear.bag.filter(item => gear.isUpgrade(item)).length;
-        const touch = Boolean(this.game.touchControls?.enabled);
-        button.textContent = (touch ? 'Gear' : 'G · Gear') + (upgrades ? ` (${upgrades})` : '');
+        const count = this.$('gear-count');
+        count.hidden = !upgrades;
+        count.textContent = upgrades || '';
+        button.setAttribute('aria-label', upgrades ? `Gear, ${upgrades} upgrade${upgrades === 1 ? '' : 's'} in the bag` : 'Gear');
         button.classList.toggle('has-upgrade', upgrades > 0);
     }
     // A found item, announced in its rarity colour.
@@ -471,7 +525,7 @@ export class UISystem {
     }
     updateExperienceUI() {
         const c = this.game.combatSystem;
-        this.$('level').textContent = `LEVEL ${c.level} · ${c.experience} / ${c.expToNextLevel} XP`;
+        this.$('level').textContent = `Level ${c.level} · ${c.experience} / ${c.expToNextLevel} XP`;
         this.$('experience').value = c.experience / c.expToNextLevel * 100;
         this.updatePerkButton();
     }
@@ -485,7 +539,7 @@ export class UISystem {
         } else {
             title.textContent = 'Scout farther along the trails';
         }
-        progress.textContent = discoveredCount + ' locations discovered · Get within 8m to salvage supplies';
+        progress.textContent = discoveredCount ? `${discoveredCount} place${discoveredCount === 1 ? '' : 's'} found` : 'Walk up to a place to search it';
     }
     updateWeatherUI(label) {
         this.$('weather-status').textContent = label;
@@ -630,7 +684,8 @@ export class UISystem {
         if (dog && dogButton.textContent !== dog) dogButton.textContent = dog;
         this.$('world-clock').textContent = `DAY ${this.game.dayCount} · ${clockTime(this.game.dayTime, this.game.dayLength)}`;
         if (this.game.paused) return;
-        this.$('compass-facing').textContent = 'FACING ' + compass(p.camera.rotation.y);
+        const facing = compass(p.camera.rotation.y);
+        if (this.$('compass-facing').textContent !== facing) this.$('compass-facing').textContent = facing;
         let hint = this.targetHint(p);
         if (this.game.touchControls?.enabled) hint = hint
             .replace('Hold click', 'Hold HIT').replace('Click to place', 'HIT to place')
