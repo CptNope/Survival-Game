@@ -135,9 +135,11 @@ export class SurvivalSystem {
         if (dt <= 0) return;
         const sprinting = Boolean(player.keys?.sprint && !player.isFlying);
         const gear = this.game.gear;
-        const appetite = 1 - (gear?.stat('endurance') || 0) / 100;
+        const perks = this.game.perks, regions = this.game.regions;
+        const appetite = (1 - (gear?.stat('endurance') || 0) / 100) * (1 - (perks?.value('appetite') || 0));
         this.hunger = Math.max(0, this.hunger - dt * (sprinting ? .065 : .045) * appetite);
-        this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09) * appetite);
+        // The desert sun doubles thirst; its nights are no worse than anywhere.
+        this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09) * appetite * (regions?.thirstFactor(this.isNight()) || 1));
         // Underground there is no weather: the cold neither bites nor lifts.
         const underground = Boolean(this.game.dungeonSystem?.active);
         const safe = !underground && (this.game.buildSystem?.isProtected(player.camera.position) || false);
@@ -149,8 +151,14 @@ export class SurvivalSystem {
         const torch = this.game.effects?.torchLit ? .7 : 1;
         // Most dungeons are merely cool; a frozen vault chills unless a torch is lit.
         const chill = this.game.dungeonSystem?.theme?.chill ?? -.25;
-        const coldRate = underground ? (chill > 0 ? chill * (torch < 1 ? .15 : 1) * (1 - (gear?.stat('warmth') || 0) / 100) : chill) : exposed && (night || storm || rain)
-            ? (.65 + (storm ? .85 : rain ? .3 : 0)) * torch * (1 - (gear?.stat('warmth') || 0) / 100) : -1.4;
+        // Whatever keeps the cold out: gear, a fur cloak and the Insulated perk.
+        const shield = (1 - (gear?.stat('warmth') || 0) / 100) * (this.game.inventorySystem?.inventory?.furCloak > 0 ? .5 : 1)
+            * (1 - (perks?.value('insulation') || 0));
+        // Weather chills anywhere; Frostfell chills even on a clear day.
+        const weather = night || storm || rain ? .65 + (storm ? .85 : rain ? .3 : 0) : 0;
+        const surface = exposed ? weather + (regions?.coldRate(night) || 0) : 0;
+        const coldRate = underground ? (chill > 0 ? chill * (torch < 1 ? .15 : 1) * shield : chill)
+            : surface > 0 ? surface * torch * shield : -1.4;
         this.cold = SurvivalSystem.clamp(this.cold + dt * coldRate, 0);
         if (this.hunger <= 0) player.takeDamage(.65 * dt, 'starvation');
         if (this.thirst <= 0) player.takeDamage(1.2 * dt, 'thirst');

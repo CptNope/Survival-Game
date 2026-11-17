@@ -4,15 +4,26 @@
 export const CREATURES = Object.freeze({
     deer: {label: 'Deer', health: 30, xp: 20, loot: {rawMeat: 2}, stat: 'hunted'},
     rabbit: {label: 'Rabbit', health: 12, xp: 10, loot: {rawMeat: 1, fiber: 1}, stat: 'hunted'},
-    wolf: {label: 'Wolf', health: 45, xp: 35, loot: {rawMeat: 1}, stat: 'wolves'},
+    wolf: {label: 'Wolf', health: 45, xp: 35, loot: {rawMeat: 1, pelt: 1}, stat: 'wolves'},
 
     // Surface threats.
     boar: {label: 'Boar', brain: 'charger', health: 55, xp: 30, loot: {rawMeat: 3}, stat: 'hunted',
         damage: 13, speed: 2.2, charge: 8.5, aggro: 7, reach: 2.2, cooldown: 2.4, windup: .5, radius: .8,
         cause: 'a boar', sound: 'grunt', gear: {chance: .12, luck: 0}},
-    bear: {label: 'Bear', brain: 'melee', health: 130, xp: 90, loot: {rawMeat: 4}, stat: 'hunted',
+    bear: {label: 'Bear', brain: 'melee', health: 130, xp: 90, loot: {rawMeat: 4, pelt: 2}, stat: 'hunted',
         damage: 22, speed: 3.4, aggro: 13, reach: 3.3, cooldown: 2.1, windup: .6, radius: 1.1,
         cause: 'a bear', sound: 'roar', gear: {chance: 1, luck: .25}},
+
+    // Frontier wildlife: each region has one thing that hunts you there.
+    icewolf: {label: 'Ice wolf', brain: 'melee', health: 60, xp: 40, loot: {rawMeat: 1, pelt: 1}, stat: 'hunted',
+        damage: 11, speed: 4.5, aggro: 18, reach: 2.4, cooldown: 1.5, windup: .35, radius: .7, chill: 10,
+        cause: 'an ice wolf', sound: 'howl', gear: {chance: .1, luck: .05}},
+    scorpion: {label: 'Scorpion', brain: 'lunger', health: 38, xp: 28, stat: 'hunted',
+        damage: 8, speed: 3.6, lunge: 9, aggro: 12, reach: 2, cooldown: 1.7, windup: .32, radius: .6,
+        venom: {rate: 2.5, seconds: 4}, cause: 'a scorpion', sound: 'hiss', gear: {chance: .1, luck: .05}},
+    toad: {label: 'Bog toad', brain: 'caster', health: 42, xp: 30, loot: {rawMeat: 1}, stat: 'hunted',
+        damage: 10, speed: 2.2, aggro: 17, reach: 11, keep: 6, cooldown: 2.6, windup: .55, radius: .7,
+        bolt: [.5, .95, .3], cause: 'a bog toad', sound: 'croak', gear: {chance: .1, luck: .05}},
 
     // Dungeon dwellers.
     spider: {label: 'Cave spider', brain: 'lunger', health: 18, xp: 8, damage: 6, speed: 4.4, lunge: 11,

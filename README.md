@@ -60,6 +60,8 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - V: Switch between first-person, third-person and overhead views · Mouse
   wheel: zoom the two outside views
 - Q: Dodge (a short dash that blows miss) · H: Quick heal
+- Hold R: Draw the bow, release to loose (R still rotates a build preview)
+- K: Perks
 - F: Torch · M: Mute · P: Save · Esc: Pause
 
 ## Codebase Structure
@@ -567,6 +569,78 @@ your torch is lit. The Old Barrow is always a crypt.
 - Not verified here: how third-person and overhead play with real hands on the
   controls, pinch zoom on a real phone, the new sounds, and frame rate on real
   phones.
+
+## Frontiers: regions, the bow and perks
+
+### Three regions beyond the meadow
+
+The meadow now ends. Everything within 170 m of the clearing is unchanged, so
+an existing camp, its trees and its gathered nodes stay exactly as they were.
+Beyond that the country is one of four regions, blending across each border.
+The compass card names the region you are in and points to the nearest one you
+have not visited; reaching a new region is worth experience.
+
+| Region | Nearest (from the clearing) | What it does to you | What grows | What hunts |
+| --- | --- | --- | --- | --- |
+| The Greenwood (meadow) | Home | Nothing | Pine, oak, berries | Wolves at night |
+| Frostfell (snow) | About 360 m south | Cold builds even at noon, faster at night | Snowy pines, thinner forest | Ice wolves; a bite adds cold |
+| Sunscar (desert) | About 240 m north-west | Thirst builds about twice as fast by day | Cactus, bleached deadwood | Scorpions; a sting poisons for 4 s |
+| Mirefen (marsh) | About 360 m west | Thick fog | Bog trees, mushrooms | Bog toads that spit from range |
+
+- **Fur cloak** (3 pelts, 2 fiber) halves the cold everywhere. Wolves, ice
+  wolves and bears now drop pelts.
+- **Cactus fruit** restores 35 thirst and a little hunger straight from the
+  pack. **Mushrooms** roast at a campfire into a meal that heals 25.
+- Venom cannot be dodged or armoured against once it is in you, but dodging
+  the sting avoids it entirely.
+
+### The bow
+
+Craft a **bow** (3 wood, 3 fiber) and **arrows** (1 wood + 1 stone makes 4).
+Hold **R** (or the **BOW** button) to draw and release to loose.
+
+- A full draw takes 0.8 s. A snap shot does 40% of the damage and flies 70%
+  as far.
+- Arrows are real projectiles: they fly straight, stop at walls and ground, and
+  hit the first creature in the way. A full-draw arrow reaches 46 m.
+- First person aims with the crosshair, third person at the middle of the
+  screen, and overhead at whatever stands in front of you. A near miss is
+  steered on to the target.
+- Arrow damage grows with level and weapon power from gear, and can crit.
+
+### Perks
+
+Every level after the first earns a perk point. Press **K** (or tap **Perk
+ready**) and choose one of three perks; the offer is fixed until you choose,
+so reopening the panel cannot reroll it. A save from before this update has
+all of its points waiting.
+
+Brawler (+12% melee damage) · Marksman (+15% bow damage) · Tough (+20 health) ·
+Fleet (+6% speed) · Hardy (hunger and thirst 15% slower) · Insulated (cold 20%
+slower) · Forager (20% chance of an extra item) · Fletcher (25% of arrows not
+used up) · Acrobat (dodge ready 20% sooner) · Field medic (remedies heal 25%
+more) · Treasure hunter (dropped gear rolls better). Most stack two or three
+times.
+
+### Notes for developers
+
+- `js/regions.js` is pure: two slow noise fields give each spot a weight per
+  region. Terrain colour, tree and plant choice, wildlife, survival rates and
+  fog all read from it, so they agree at every border.
+- Region choices never draw from the seeded sequence that places things, and a
+  cactus standing in a tree slot keeps the slot's id (`x,z:tree:n`), so
+  gathered nodes in existing saves stay gathered.
+- `js/archery.js` (pure maths) and `js/components/archery.js` (projectiles);
+  `js/perks.js` and `js/components/perks.js`. Other systems ask for bonuses
+  through `game.perks?.value(stat)`.
+- Saves stay at version 1 with optional `perks` and `regions` fields.
+- `tests/frontiers.test.mjs` covers region maths and placement, a generated
+  desert chunk, region weather with and without preparation, venom and chill,
+  bow maths and flight (including walls and each view), every perk's effect,
+  the new recipes and quests, and the save round trip.
+- Not verified here: whether the regions' pressures and the bow's damage are
+  balanced in real play, how the bow feels under real hands and on a real
+  phone, and the five new sounds.
 
 ---
 

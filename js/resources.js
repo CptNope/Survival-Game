@@ -3,7 +3,9 @@ export const ITEMS = {
     wood: 'Wood', stone: 'Stone', planks: 'Planks', tools: 'Stone tools',
     ironOre: 'Iron ore', iron: 'Iron ingots', fiber: 'Fiber', herbs: 'Herbs',
     berries: 'Berries', ironTools: 'Iron tools', rawMeat: 'Raw meat', cookedMeat: 'Cooked meat',
-    spear: 'Spear', torch: 'Torch', waterskin: 'Waterskin'
+    spear: 'Spear', torch: 'Torch', waterskin: 'Waterskin',
+    bow: 'Bow', arrows: 'Arrows', pelt: 'Pelts', furCloak: 'Fur cloak',
+    cactusFruit: 'Cactus fruit', mushrooms: 'Mushrooms'
 };
 // `hits` is the number of swings a node takes by tool tier. A missing tier
 // means that tier cannot gather the node at all (bare hands on ore).
@@ -13,10 +15,13 @@ export const RESOURCES = {
     ore: { label: 'iron ore', verb: 'mine', sound: 'mine', debris: 'ore', yields: { ironOre: 2 }, requiresTool: true, hits: { stone: 3, iron: 2 } },
     fiber: { label: 'fiber', verb: 'gather', sound: 'pluck', debris: 'leaf', yields: { fiber: 3 }, hits: { hand: 1, stone: 1, iron: 1 } },
     herb: { label: 'medicinal herbs', verb: 'gather', sound: 'pluck', debris: 'leaf', yields: { herbs: 2 }, hits: { hand: 1, stone: 1, iron: 1 } },
-    berry: { label: 'berries', verb: 'pick', sound: 'pluck', debris: 'leaf', yields: { berries: 3 }, hits: { hand: 1, stone: 1, iron: 1 } }
+    berry: { label: 'berries', verb: 'pick', sound: 'pluck', debris: 'leaf', yields: { berries: 3 }, hits: { hand: 1, stone: 1, iron: 1 } },
+    // Frontier plants: cactus in the desert, mushrooms in the marsh.
+    cactus: { label: 'cactus fruit', verb: 'cut', sound: 'chop', debris: 'leaf', yields: { cactusFruit: 2, fiber: 1 }, hits: { hand: 2, stone: 1, iron: 1 } },
+    mushroom: { label: 'mushrooms', verb: 'pick', sound: 'pluck', debris: 'leaf', yields: { mushrooms: 2 }, hits: { hand: 1, stone: 1, iron: 1 } }
 };
 // Days until a gathered node grows back, so a settled camp stays supplied.
-export const REGROW_DAYS = { tree: 3, rock: 4, ore: 5, fiber: 2, herb: 2, berry: 2 };
+export const REGROW_DAYS = { tree: 3, rock: 4, ore: 5, fiber: 2, herb: 2, berry: 2, cactus: 3, mushroom: 2 };
 
 export function toolTier(inventory) {
     return inventory?.ironTools > 0 ? 'iron' : inventory?.tools > 0 ? 'stone' : 'hand';
@@ -36,18 +41,24 @@ export const RECIPES = {
     spear: { group: 'gear', name: 'Spear', note: '+12 damage · longer reach', cost: { wood: 2, stone: 1, fiber: 1 }, output: 'spear', amount: 1, unique: true },
     torch: { group: 'gear', name: 'Torch', note: 'Light and a little warmth at night', cost: { wood: 1, fiber: 1 }, output: 'torch', amount: 1, unique: true },
     waterskin: { group: 'gear', name: 'Waterskin', note: 'Carries three drinks from any lake', cost: { fiber: 4 }, output: 'waterskin', amount: 1, unique: true },
+    bow: { group: 'gear', name: 'Bow', note: 'Hold R to draw, release to loose · needs arrows', cost: { wood: 3, fiber: 3 }, output: 'bow', amount: 1, unique: true },
+    arrows: { group: 'gear', name: 'Arrows', note: 'Four to a bundle', cost: { wood: 1, stone: 1 }, output: 'arrows', amount: 4 },
+    furCloak: { group: 'gear', name: 'Fur cloak', note: 'Halves the cold · pelts come from wolves and bears', cost: { pelt: 3, fiber: 2 }, output: 'furCloak', amount: 1, unique: true },
     ironTools: { group: 'gear', name: 'Iron tool', note: 'Fastest gathering · +8 damage', cost: { iron: 2, planks: 1, fiber: 2 }, output: 'ironTools', amount: 1 },
     bandage: { group: 'food', name: 'Field dressing', cost: { wood: 3 }, heal: 30 },
     herbalWrap: { group: 'food', name: 'Herbal wrap', cost: { fiber: 2, herbs: 2 }, heal: 50 },
     snack: { group: 'food', name: 'Eat berries', cost: { berries: 2 }, heal: 15, hunger: 28 },
     cookMeat: { group: 'food', name: 'Roast meat at campfire', cost: { rawMeat: 1 }, output: 'cookedMeat', amount: 1, requiresFire: true },
-    eatMeat: { group: 'food', name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50, meal: true }
+    eatMeat: { group: 'food', name: 'Eat cooked meat', cost: { cookedMeat: 1 }, heal: 10, hunger: 50, meal: true },
+    eatCactus: { group: 'food', name: 'Eat cactus fruit', cost: { cactusFruit: 1 }, hunger: 8, thirst: 35 },
+    roastMushrooms: { group: 'food', name: 'Roast mushrooms at campfire', cost: { mushrooms: 2 }, heal: 25, hunger: 32, requiresFire: true, meal: true }
 };
 export function itemAmount(item, count) {
-    const singular = {planks: 'plank', tools: 'stone tool', iron: 'iron ingot', herbs: 'herb', berries: 'berry', ironTools: 'iron tool'};
+    const singular = {planks: 'plank', tools: 'stone tool', iron: 'iron ingot', herbs: 'herb', berries: 'berry', ironTools: 'iron tool',
+        arrows: 'arrow', pelt: 'pelt', mushrooms: 'mushroom'};
     return `${count} ${count === 1 && singular[item] ? singular[item] : ITEMS[item].toLowerCase()}`;
 }
 export function recipeDescription(recipe) {
     const cost = Object.entries(recipe.cost).map(([item, count]) => itemAmount(item, count)).join(' + ');
-    return `${cost} → ${recipe.heal || recipe.hunger ? [recipe.heal && `${recipe.heal} health`, recipe.hunger && `${recipe.hunger} hunger`].filter(Boolean).join(' + ') : itemAmount(recipe.output, recipe.amount)}`;
+    return `${cost} → ${recipe.heal || recipe.hunger ? [recipe.heal && `${recipe.heal} health`, recipe.hunger && `${recipe.hunger} hunger`, recipe.thirst && `${recipe.thirst} thirst`].filter(Boolean).join(' + ') : itemAmount(recipe.output, recipe.amount)}`;
 }

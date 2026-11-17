@@ -19,6 +19,9 @@ import { DungeonSystem } from './components/dungeon.js';
 import { GearSystem } from './components/equipment.js';
 import { ViewSystem } from './components/view.js';
 import { BuffSystem } from './components/buffs.js';
+import { PerkSystem } from './components/perks.js';
+import { RegionSystem } from './components/regions.js';
+import { ArcherySystem } from './components/archery.js';
 import { loadSettings, saveSettings } from './settings.js';
 
 export class SurvivalGame {
@@ -123,6 +126,8 @@ export class SurvivalGame {
             // Found equipment, and the dungeons it is found in.
             this.gear = new GearSystem(this);
             this.buffs = new BuffSystem(this);
+            this.perks = new PerkSystem(this);
+            this.regions = new RegionSystem(this);
             this.dungeonSystem = new DungeonSystem(this);
 
             // UI is created before restoring state so it can refresh all meters.
@@ -131,6 +136,7 @@ export class SurvivalGame {
             this.effects = new EffectsSystem(this);
             // First-person, third-person and overhead cameras, and the avatar.
             this.viewSystem = new ViewSystem(this);
+            this.archery = new ArcherySystem(this);
             this.skySystem = new SkySystem(this);
             this.saveSystem.load();
             this.progression.check();
@@ -212,6 +218,7 @@ export class SurvivalGame {
     setPaused(value) {
         this.paused = value;
         this.primaryHeld = false;
+        this.archery?.cancel();
         const camera = this.playerSystem.camera;
         this.playerSystem.keys.jump = false;
         this.playerSystem.keys.descend = false;
@@ -305,6 +312,7 @@ export class SurvivalGame {
             }
             if (event.code === 'KeyC') this.uiSystem.toggleCrafting();
             if (event.code === 'KeyG') this.uiSystem.toggleGear();
+            if (event.code === 'KeyK') this.uiSystem.togglePerks();
             if (event.code === 'KeyB') {
                 if (!this.paused && this.buildSystem.cancelPlacement()) return;
                 this.uiSystem.toggleBuilding();
@@ -323,9 +331,16 @@ export class SurvivalGame {
             if (event.code === 'KeyV') this.viewSystem.cycle();
             if (event.code === 'KeyQ') this.playerSystem.dodge();
             if (event.code === 'KeyH') this.inventorySystem.quickHeal();
-            if (event.code === 'KeyR') this.buildSystem.rotatePlacement(1);
+            // R rotates a build preview; otherwise it draws the bow until released.
+            if (event.code === 'KeyR') {
+                if (this.buildSystem.placing) this.buildSystem.rotatePlacement(1);
+                else this.archery.beginDraw();
+            }
         });
-        window.addEventListener('keyup', event => this.playerSystem.updateKeyState(event.keyCode, false));
+        window.addEventListener('keyup', event => {
+            this.playerSystem.updateKeyState(event.keyCode, false);
+            if (event.code === 'KeyR') this.archery.release();
+        });
         // Browsers swallow the Esc press that releases the mouse, so losing the
         // pointer lock is treated as that Esc: cancel a build, otherwise pause.
         document.addEventListener('pointerlockerror', () => { this.pointerLockRefusals++; });
@@ -369,6 +384,8 @@ export class SurvivalGame {
             this.viewSystem.update(dt);
             this.gear.update(dt);
             this.buffs.update(dt);
+            this.regions.update(dt);
+            this.archery.update(dt);
             this.survivalSystem.update(dt);
             this.saveSystem.update(dt);
             this.updateAmbience(dt);

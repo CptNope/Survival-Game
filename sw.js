@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v13-views-and-dangers';
+const CACHE_NAME = 'survival-game-v14-frontiers';
 const ASSETS = [
   './',
   './index.html',
@@ -39,6 +39,12 @@ const ASSETS = [
   './js/components/equipment.js',
   './js/components/view.js',
   './js/components/buffs.js',
+  './js/regions.js',
+  './js/archery.js',
+  './js/perks.js',
+  './js/components/regions.js',
+  './js/components/archery.js',
+  './js/components/perks.js',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png'
 ];

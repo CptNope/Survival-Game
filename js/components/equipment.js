@@ -118,7 +118,8 @@ export class GearSystem {
 
     // --- Items lying in the world -----------------------------------------
     dropRoll(position, options = {}) {
-        return this.drop(rollGear(Math.random, options), position);
+        const luck = (options.luck || 0) + (this.game.perks?.value('luck') || 0);
+        return this.drop(rollGear(Math.random, {...options, luck}), position);
     }
 
     drop(item, position) {

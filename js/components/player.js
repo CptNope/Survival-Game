@@ -3,7 +3,7 @@
 export const DODGE = Object.freeze({distance: 3.4, invulnerable: 340, cooldown: 1100, speed: 14});
 
 // Harm that armour cannot turn aside.
-const ENVIRONMENTAL = new Set(['drowning', 'starvation', 'thirst', 'the cold', 'a long fall']);
+const ENVIRONMENTAL = new Set(['drowning', 'starvation', 'thirst', 'the cold', 'a long fall', 'venom']);
 
 export class PlayerSystem {
     constructor(game) {
@@ -159,7 +159,7 @@ export class PlayerSystem {
         this.dodgeX = dx; this.dodgeZ = dz;
         this.dodgeLeft = DODGE.distance;
         this.invulnerableUntil = now + DODGE.invulnerable;
-        this.dodgeReadyAt = now + DODGE.cooldown;
+        this.dodgeReadyAt = now + DODGE.cooldown * (1 - (this.game.perks?.value('dodge') || 0));
         this.game.audio?.play('dodge');
         return true;
     }
@@ -229,7 +229,13 @@ export class PlayerSystem {
         this.camera.speed = (this.isSwimming ? this.swimSpeed
             : depth > 0.35 ? 0.27 // Wading through the shallows is slow going.
             : this.keys.sprint ? 0.58 : 0.36) * (1 + (this.game.gear?.stat('swiftness') || 0) / 100)
-            * (this.game.buffs?.factor('speed') || 1);
+            * (this.game.buffs?.factor('speed') || 1) * (1 + (this.game.perks?.value('speed') || 0));
+        // Venom works on its own clock and cannot be dodged or armoured against.
+        if (this.poisonLeft > 0) {
+            const seconds = Math.min(.05, (this.game.engine?.getDeltaTime?.() ?? 16) / 1000);
+            this.poisonLeft -= seconds;
+            this.takeDamage(this.poisonRate * seconds, 'venom');
+        }
         // A jump cannot carry the player through a dungeon ceiling.
         if (dungeon && this.camera.position.y > dungeon.floorY + dungeon.ceiling - .5) {
             this.camera.position.y = dungeon.floorY + dungeon.ceiling - .5;
@@ -310,6 +316,14 @@ export class PlayerSystem {
     }
 
     // Handle player taking damage. `cause` names what hurt the player and is
+    // A sting: `rate` health a second for `seconds`. A fresh sting restarts the clock.
+    poison(rate, seconds) {
+        if (this.isDead) return;
+        if (!(this.poisonLeft > 0)) this.game.uiSystem?.showNotification?.('Poisoned · It will pass');
+        this.poisonRate = Math.max(this.poisonLeft > 0 ? this.poisonRate || 0 : 0, rate);
+        this.poisonLeft = Math.max(this.poisonLeft || 0, seconds);
+    }
+
     // shown on the death screen.
     takeDamage(amount, cause = 'the wilds') {
         if (this.isDead || !(amount > 0)) return;

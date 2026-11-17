@@ -495,3 +495,32 @@ body.view-third #target-hint,body.view-overhead #target-hint{top:auto;bottom:112
   body.view-third #target-hint,body.view-overhead #target-hint{bottom:230px}
   #buffs{left:18px;bottom:auto;top:430px}
 }
+
+/* --- Frontiers: the bow, perks and regions ------------------------------ */
+/* How far the bow is drawn, just under the crosshair. */
+#draw-meter{position:absolute;left:50%;top:calc(50% + 26px);width:74px;height:5px;transform:translateX(-50%);
+  background:#0f1c17b0;border:1px solid #c5dd8a66;border-radius:3px;opacity:0;transition:opacity .12s;overflow:hidden}
+#draw-meter i{display:block;height:100%;width:0;background:#c5dd8a}
+#draw-meter.full i{background:#ffd27a}
+/* A point to spend: sits above the boons, out of the way of the vitals. */
+#perk-button{position:absolute;left:34px;bottom:204px;pointer-events:auto;padding:8px 14px;font-size:12px;
+  background:#3b3413ee;border:1px solid #ffd27a;color:#ffe6ad;animation:perk-pulse 1.8s ease-in-out infinite}
+@keyframes perk-pulse{50%{box-shadow:0 0 0 5px #ffd27a2e}}
+.perk-list{margin:6px 0 14px;padding-left:18px;font-size:13px;line-height:1.7;color:#d5dcc4}
+.perk-list strong{color:#ffe6ad}
+#perk-panel h3{margin:14px 0 8px}
+#region-line{display:block;margin-top:6px;color:#bcd0c6;font-size:10px;letter-spacing:.3px}
+#region-line:empty{display:none}
+/* Ten touch actions: four narrow columns upright, five across in landscape. */
+.touch-actions{grid-template-columns:repeat(4,46px);gap:5px}
+.touch-actions button{width:46px;font-size:9px}
+.touch-actions [data-action="bow"]{background:#5b4a2a;border-color:#e6c98a}
+@media (any-pointer:coarse){
+  /* Under the vitals card, clear of the compass, the toast and the sticks. */
+  #perk-button{left:12px;bottom:auto;top:calc(240px + env(safe-area-inset-top));padding:7px 10px;font-size:11px}
+}
+@media (any-pointer:coarse) and (max-height:480px){
+  .touch-actions{grid-template-columns:repeat(5,46px)}
+  #perk-button{top:156px}
+}
+@media(prefers-reduced-motion:reduce){#perk-button{animation:none}}

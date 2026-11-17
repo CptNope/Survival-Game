@@ -95,22 +95,37 @@ export function createTreeModel(scene, seed = 1, kind = 'pine') {
         const a = i * Math.PI * 2 / 5;
         pieces.push(branch(scene, V(0, 0.6, 0), V(Math.cos(a) * 0.9, 0.06, Math.sin(a) * 0.9), 0.28, palette.bark, random, 0.06));
     }
-    if (kind === 'pine') {
+    if (kind === 'pine' || kind === 'snowpine') {
+        // Frostfell pines carry snow on every other tier and a white cap.
+        const snowy = kind === 'snowpine', snow = [.90, .93, .96], frosted = [.20, .34, .32];
         for (let i = 0; i < 5; i++) {
             const y = 1.65 + i * height * 0.12;
             const radius = (2.1 - i * 0.32) * (0.9 + random() * 0.18);
-            pieces.push(crown(scene, radius, height * 0.39, V((random() - .5) * .3, y, (random() - .5) * .3), random, i % 2 ? palette.pineLight : palette.pine));
+            const needles = snowy ? (i % 2 || i === 4 ? snow : frosted) : i % 2 ? palette.pineLight : palette.pine;
+            pieces.push(crown(scene, radius, height * 0.39, V((random() - .5) * .3, y, (random() - .5) * .3), random, needles));
             if (i < 3) {
                 const a = i * 2.4;
                 pieces.push(branch(scene, V(0, y + .3, 0), V(Math.cos(a) * radius * .9, y + .1, Math.sin(a) * radius * .9), .15, palette.barkLight, random, .04));
             }
         }
+    } else if (kind === 'deadwood') {
+        // Sun-bleached and bare: the desert's only timber.
+        const bleached = [.55, .47, .36];
+        for (let i = 0; i < 6; i++) {
+            const a = i * 2.4, r = .9 + random() * 1.1, from = V(0, 2 + i * height * .09, 0);
+            const end = V(Math.cos(a) * r, from.y + .8 + random() * 1.3, Math.sin(a) * r);
+            pieces.push(branch(scene, from, end, .2, bleached, random, .05));
+            pieces.push(branch(scene, end, end.add(V(Math.cos(a + 1) * .6, .5, Math.sin(a + 1) * .6)), .08, bleached, random, .02));
+        }
     } else {
+        // Marsh trees are darker, and trail moss from their boughs.
+        const bog = kind === 'bogtree', leaf = bog ? [.19, .29, .17] : palette.leaf, moss = [.33, .40, .24];
         for (let i = 0; i < 8; i++) {
             const a = i * 2.4, r = i === 7 ? 0 : 1.3 + random() * .5;
             const end = V(Math.cos(a) * r, height * .65 + random() * 1.7, Math.sin(a) * r);
             pieces.push(branch(scene, V(0, 2.8, 0), end, .23, palette.barkLight, random, .07));
-            pieces.push(ellipsoid(scene, 'leaf-cluster', end, V(1.5 + random() * .5, 1.15 + random() * .5, 1.4), palette.leaf.map(c => c * (.85 + random() * .3)), random));
+            pieces.push(ellipsoid(scene, 'leaf-cluster', end, V(1.5 + random() * .5, (bog ? .85 : 1.15) + random() * .5, 1.4), leaf.map(c => c * (.85 + random() * .3)), random));
+            if (bog && i % 2 === 0) pieces.push(branch(scene, end.add(V(.5, -.5, .2)), end.add(V(.55, -2.1 - random(), .25)), .13, moss, random, .02));
         }
     }
     const tree = finish(scene, pieces, `${kind}-tree`);
@@ -186,9 +201,8 @@ export function animateDeer(animal, dt, speed) {
 
 // Small wildlife shares the same procedural geometry/material pipeline as deer,
 // but merges into just one mesh and needs no per-leg draw calls.
-export function createWolfModel(scene, seed = 1) {
+export function createWolfModel(scene, seed = 1, coat = [.27,.29,.29], lighter = [.44,.43,.38]) {
     const random=seededRandom(seed), pieces=[];
-    const coat=[.27,.29,.29], lighter=[.44,.43,.38];
     pieces.push(ellipsoid(scene,'wolf-body',V(0,1.00,0),V(.45,.43,.87),coat,random));
     pieces.push(ellipsoid(scene,'wolf-chest',V(0,1.13,.57),V(.47,.48,.43),lighter,random));
     pieces.push(ellipsoid(scene,'wolf-head',V(0,1.45,.9),V(.38,.34,.42),coat,random));
@@ -197,7 +211,7 @@ export function createWolfModel(scene, seed = 1) {
     pieces.push(branch(scene,V(0,1.1,-.7),V(0,1.5,-1.3),.22,coat,random,.04));
     for(const side of [-1,1]) {
         pieces.push(ellipsoid(scene,'wolf-ear',V(side*.29,1.81,.8),V(.16,.30,.14),coat,random));
-        pieces.push(ellipsoid(scene,'wolf-eye',V(side*.29,1.56,1.12),V(.065,.07,.065),[.76,.67,.35],random));
+        pieces.push(ellipsoid(scene,'wolf-eye',V(side*.29,1.56,1.12),V(.065,.07,.065),coat[0] > .6 ? [.35,.75,.95] : [.76,.67,.35],random));
         for(const z of [-.60,.57]) {
             pieces.push(branch(scene,V(side*.32, .98,z),V(side*.32,.12,z+.08),.20,coat,random,.13));
             pieces.push(ellipsoid(scene,'wolf-paw',V(side*.32,.13,z+.15),V(.14,.13,.23),palette.dark,random));
@@ -297,8 +311,44 @@ export function createOreModel(scene, seed = 1) {
     return model;
 }
 
+// A barrel cactus with an arm or two and fruit on top.
+function cactus(scene, random) {
+    const skin = [.25, .46, .26], rib = [.19, .36, .21], fruit = [.82, .22, .38];
+    const height = 1.5 + random() * .9, pieces = [];
+    pieces.push(branch(scene, V(0, 0, 0), V(0, height, 0), .62, skin, random, .5));
+    pieces.push(ellipsoid(scene, 'cactus-top', V(0, height, 0), V(.26, .2, .26), rib, random));
+    const arms = 1 + Math.floor(random() * 2);
+    for (let i = 0; i < arms; i++) {
+        const a = random() * Math.PI * 2, y = height * (.35 + random() * .25), out = V(Math.cos(a) * .62, y + .1, Math.sin(a) * .62);
+        pieces.push(branch(scene, V(0, y, 0), out, .3, rib, random, .28));
+        pieces.push(branch(scene, out, out.add(V(0, .55 + random() * .4, 0)), .3, skin, random, .22));
+    }
+    for (let i = 0; i < 3; i++) {
+        const a = i * 2.1 + random();
+        pieces.push(ellipsoid(scene, 'cactus-fruit', V(Math.cos(a) * .2, height + .2, Math.sin(a) * .2), V(.11, .13, .11), fruit, random));
+    }
+    const mesh = finish(scene, pieces, 'cactus-plant');
+    mesh.checkCollisions = true;
+    return mesh;
+}
+
+// A cluster of pale-stalked, red-capped mushrooms.
+function mushroomPatch(scene, random) {
+    const stalk = [.86, .82, .70], cap = [.66, .25, .18], spot = [.93, .90, .80], pieces = [];
+    for (let i = 0; i < 4; i++) {
+        const a = i * 1.9 + random(), r = i ? .2 + random() * .28 : 0, tall = .28 + random() * .3, size = .16 + random() * .12;
+        const base = V(Math.cos(a) * r, 0, Math.sin(a) * r);
+        pieces.push(branch(scene, base, base.add(V(0, tall, 0)), .1, stalk, random, .07));
+        pieces.push(ellipsoid(scene, 'mushroom-cap', base.add(V(0, tall + size * .25, 0)), V(size, size * .55, size), cap, random));
+        pieces.push(ellipsoid(scene, 'mushroom-spot', base.add(V(size * .4, tall + size * .62, 0)), V(.035, .02, .035), spot, random));
+    }
+    return finish(scene, pieces, 'mushroom-plant');
+}
+
 export function createPlantModel(scene, seed = 1, kind = 'fiber') {
     const random = seededRandom(seed), pieces = [];
+    if (kind === 'cactus') return cactus(scene, random);
+    if (kind === 'mushroom') return mushroomPatch(scene, random);
     const green = kind === 'herb' ? [.30, .48, .32] : [.22, .40, .19];
     const count = kind === 'berry' ? 7 : 5;
     for (let i = 0; i < count; i++) {
@@ -324,6 +374,30 @@ export function createPlantModel(scene, seed = 1, kind = 'fiber') {
         }
     }
     return finish(scene, pieces, `${kind}-plant`);
+}
+
+// A simple recurve bow, lying along Y with the string toward -Z, and its arrow.
+export function createBowModel(scene) {
+    const random = seededRandom(57), wood = [.42, .28, .15], string = [.86, .83, .74], pieces = [];
+    const curve = [[0, -1, -.34], [0, -.62, -.08], [0, -.2, .04], [0, .2, .04], [0, .62, -.08], [0, 1, -.34]];
+    for (let i = 0; i < curve.length - 1; i++)
+        pieces.push(branch(scene, V(...curve[i]), V(...curve[i + 1]), i === 2 ? .12 : .085, wood, random, i === 2 ? .12 : .07));
+    pieces.push(branch(scene, V(0, -1, -.34), V(0, 1, -.34), .018, string, random, .018));
+    return finish(scene, pieces, 'bow');
+}
+
+export function createArrowModel(scene) {
+    const random = seededRandom(58), pieces = [
+        branch(scene, V(0, 0, -.55), V(0, 0, .5), .035, palette.barkLight, random, .035),
+        branch(scene, V(0, 0, .48), V(0, 0, .68), .075, palette.stone, random, .004)
+    ];
+    for (const angle of [0, 2.09, 4.19]) {
+        const vane = BABYLON.MeshBuilder.CreateBox('fletching', {width: .012, height: .09, depth: .2}, scene);
+        vane.position = V(Math.cos(angle) * .04, Math.sin(angle) * .04, -.44);
+        vane.rotation.z = angle + Math.PI / 2;
+        pieces.push(colorMesh(vane, palette.cream, random));
+    }
+    return finish(scene, pieces, 'arrow');
 }
 
 // Held and dropped gear added with the expedition overhaul.
