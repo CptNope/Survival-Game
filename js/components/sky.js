@@ -210,9 +210,14 @@ export class SkySystem {
         // Below the surface there is only murk: no sky, sun or clouds.
         if (this.dome && this.dome.isEnabled() === submerged) this.dome.setEnabled(!submerged);
         const fog = submerged ? this.underwater : new BABYLON.Color3(...s.horizon);
+        // Each region colours and thickens the haze as far as you are into it.
+        const regions = game.regions, tint = regions?.def?.tint, depth = regions?.strength || 0;
+        if (!submerged && tint && depth > 0) {
+            fog.r *= lerp(1, tint[0], depth); fog.g *= lerp(1, tint[1], depth); fog.b *= lerp(1, tint[2], depth);
+        }
         this.scene.clearColor = new BABYLON.Color4(fog.r, fog.g, fog.b, 1);
         this.scene.fogColor = fog;
-        this.scene.fogDensity = submerged ? .11 : s.fogDensity;
+        this.scene.fogDensity = submerged ? .11 : s.fogDensity * lerp(1, regions?.def?.fog || 1, depth);
 
         if (this.material) {
             const m = this.material;

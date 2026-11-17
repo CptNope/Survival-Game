@@ -51,6 +51,12 @@ export const SOUNDS = Object.freeze({
     trap: [{f: 1900, to: 1200, type: 'square', d: .07, g: .09}, {n: 3600, q: 4, d: .1, g: .3}, {f: 150, to: 90, type: 'triangle', d: .12, g: .3, at: .03}],
     shrine: [{f: 392, type: 'sine', d: .5, g: .14}, {f: 587, type: 'sine', d: .6, g: .14, at: .15}, {f: 784, type: 'sine', d: .9, g: .14, at: .3}, {f: 1175, type: 'sine', d: 1.2, g: .1, at: .45}],
     dodge: [{n: 1200, q: .6, d: .2, g: .26}, {n: 500, q: .8, d: .14, g: .16, at: .04}],
+    // Frontiers: the bow, the marsh and choosing a perk.
+    draw: [{n: 900, q: 5, d: .32, g: .1}, {f: 180, to: 260, type: 'triangle', d: .3, g: .05}],
+    loose: [{f: 420, to: 150, type: 'triangle', d: .11, g: .22}, {n: 2600, q: 1.2, d: .16, g: .22, at: .01}],
+    arrow: [{n: 1700, q: 2.5, d: .05, g: .3}, {f: 190, to: 110, type: 'triangle', d: .1, g: .26}],
+    croak: [{f: 130, to: 95, type: 'square', d: .16, g: .1, vib: 34}, {f: 150, to: 100, type: 'square', d: .2, g: .1, vib: 30, at: .2}],
+    perk: [{f: 523, type: 'triangle', d: .18, g: .16}, {f: 784, type: 'triangle', d: .22, g: .16, at: .1}, {f: 1047, type: 'sine', d: .5, g: .14, at: .2}],
     drip: [{f: 1500, to: 900, type: 'sine', d: .07, g: .08}, {f: 1000, to: 700, type: 'sine', d: .12, g: .04, at: .08}],
     bird: [{f: 2400, to: 3100, type: 'sine', d: .07, g: .05}, {f: 2900, to: 2300, type: 'sine', d: .09, g: .05, at: .1}, {f: 2600, to: 3300, type: 'sine', d: .06, g: .045, at: .24}]
 });

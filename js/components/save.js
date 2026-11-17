@@ -43,6 +43,8 @@ export class SaveSystem {
             health:p.health, maxHealth:p.maxHealth-(g.gear?.appliedVitality || 0),
             gear:g.gear?.capture?.() || null,
             buffs:g.buffs?.capture?.() || null,
+            perks:g.perks?.capture?.() || null,
+            regions:g.regions?.capture?.() || null,
             dungeons:g.dungeonSystem?.capture?.() || null,
             inventory:Object.fromEntries(Object.keys(ITEMS).map(key=>[key,items[key] || 0])),
             combat:{level:c.level,experience:c.experience,expToNextLevel:c.expToNextLevel,attackPower:c.attackPower},
@@ -132,6 +134,8 @@ export class SaveSystem {
             // Gear adds its health on top of the player's own maximum.
             g.gear.restore(saved.gear);
             g.buffs?.restore?.(saved.buffs);
+            g.perks?.restore?.(saved.perks);
+            g.regions?.restore?.(saved.regions);
             p.health=finite(saved.health,p.maxHealth,1,p.maxHealth);
         }
         g.explorationSystem.discovered=new Set((Array.isArray(saved.discovered)?saved.discovered:[])

@@ -77,6 +77,27 @@ export const QUESTS = Object.freeze([
         progress: g => `${g.progression.stats.monsters} monsters slain`
     },
     {
+        id: 'archer', xp: 60, title: 'Take up the bow',
+        text: 'Craft a bow and a bundle of arrows, then land a shot. Hold R to draw, release to loose.',
+        done: g => g.progression.stats.arrowHits > 0,
+        progress: g => {
+            const pack = g.inventorySystem.inventory;
+            return pack.bow > 0 ? `${pack.arrows} arrows · ${g.progression.stats.arrowHits} hits` : 'No bow yet · 3 wood and 3 fiber';
+        }
+    },
+    {
+        id: 'frontier', xp: 90, title: 'Cross a frontier',
+        text: 'The meadow ends. Snow lies to the south, desert to the north-west and marsh to the west: reach any of them.',
+        done: g => (g.regions?.discovered.size || 1) > 1,
+        progress: g => g.regions?.guide ? `${g.regions.guide.name} · ${Math.round(g.regions.guide.distance)}m away` : 'Keep walking'
+    },
+    {
+        id: 'cloak', xp: 90, title: 'Dress for the cold',
+        text: 'Wolves and bears leave pelts. Three pelts and two fiber make a fur cloak that halves the cold.',
+        done: g => g.inventorySystem.inventory.furCloak > 0,
+        progress: g => `${g.inventorySystem.inventory.pelt} of 3 pelts`
+    },
+    {
         id: 'veteran', xp: 150, title: 'Outlast the wilds',
         text: 'Keep the expedition alive through five full days.',
         done: g => g.dayCount >= 6,
@@ -89,7 +110,8 @@ export const STAT_LABELS = Object.freeze({
     hunted: 'Animals hunted', wolves: 'Wolves defeated', meals: 'Hot meals eaten',
     nights: 'Nights survived', slept: 'Nights slept', deaths: 'Deaths',
     delves: 'Dungeons entered', monsters: 'Monsters slain', bosses: 'Wardens defeated',
-    chests: 'Chests opened', gearFound: 'Gear found', shrines: 'Shrines touched'
+    chests: 'Chests opened', gearFound: 'Gear found', shrines: 'Shrines touched',
+    arrows: 'Arrows loosed', arrowHits: 'Arrows on target'
 });
 
 export class ProgressionSystem {

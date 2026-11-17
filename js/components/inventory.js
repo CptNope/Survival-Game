@@ -3,7 +3,7 @@ import { ITEMS, RESOURCES, RECIPES, hitsNeeded } from '../resources.js';
 
 const SWING_COOLDOWN_MS = 330;
 const QUICK_HEALS = ['herbalWrap', 'bandage', 'snack', 'eatMeat']; // Strongest first.
-const AIM_ASSISTED = new Set(['fiber', 'herb', 'berry']);
+const AIM_ASSISTED = new Set(['fiber', 'herb', 'berry', 'mushroom']);
 const AIM_ASSIST_RADIUS = .8;
 const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -93,7 +93,9 @@ export class InventorySystem {
             return true;
         }
 
-        const bonus = obj.type === 'ore' && this.inventory.ironTools > 0 ? 1 : 0;
+        // Iron tools pull extra ore; the Forager perk sometimes finds one more of anything.
+        const bonus = (obj.type === 'ore' && this.inventory.ironTools > 0 ? 1 : 0)
+            + (Math.random() < (this.game.perks?.value('forage') || 0) ? 1 : 0);
         const gained = Object.entries(resource.yields).map(([item, amount]) => {
             this.inventory[item] += amount + bonus;
             return `+${amount + bonus} ${ITEMS[item].toLowerCase()}`;
@@ -155,12 +157,14 @@ export class InventorySystem {
         if (!this.canCraft(type)) return false;
         for (const [item, count] of Object.entries(recipe.cost)) this.inventory[item] -= count;
         if (recipe.heal || recipe.hunger) {
-            const player = this.game.playerSystem;
-            const healed = recipe.heal ? Math.min(recipe.heal, player.maxHealth - player.health) : 0;
+            const player = this.game.playerSystem, survival = this.game.survivalSystem;
+            const strength = recipe.heal ? Math.round(recipe.heal * (1 + (this.game.perks?.value('healing') || 0))) : 0;
+            const healed = Math.min(strength, player.maxHealth - player.health);
             player.health += healed;
-            if (recipe.hunger) this.game.survivalSystem?.eatBerries(recipe.hunger);
-            this.game.uiSystem.showNotification(recipe.hunger
-                ? (recipe.meal ? 'Ate a hot meal · Hunger restored' : 'Ate berries · Hunger restored')
+            if (recipe.hunger) survival?.eatBerries(recipe.hunger);
+            if (recipe.thirst && survival) survival.thirst = Math.min(100, survival.thirst + recipe.thirst);
+            this.game.uiSystem.showNotification(recipe.thirst ? 'Ate cactus fruit · Thirst eased'
+                : recipe.hunger ? (recipe.meal ? 'Ate a hot meal · Hunger restored' : 'Ate berries · Hunger restored')
                 : `Recovered ${healed} health`);
             this.game.audio?.play(recipe.hunger ? 'eat' : 'heal');
             if (recipe.meal) this.game.progression?.record('meals');

@@ -1,4 +1,5 @@
 import { ITEMS, RESOURCES, RECIPES, RECIPE_GROUPS, recipeDescription, hitsNeeded } from '../resources.js';
+import { PERKS } from '../perks.js';
 import { BUILDINGS } from './building.js';
 import { STAT_LABELS } from './progression.js';
 import { clockTime } from './sky.js';
@@ -34,16 +35,17 @@ export class UISystem {
             <header class="hud-top"><div><small>THE WILDS</small><strong>Survival expedition</strong></div><div id="world-clock"></div><div id="weather-status">Clear skies</div><div id="save-status" role="status">Autosave · Every 30s</div><div class="hud-buttons"><button id="view-button" type="button" aria-label="Change camera view">V · View</button><button id="menu-button">Esc · Pause</button></div></header>
             <div id="buffs" aria-live="off"></div>
             <aside class="objective"><small id="objective-kicker">FIELD NOTES / 01</small><h2 id="objective-title">Make your first tool</h2><p id="objective-text"></p><span id="objective-progress"></span></aside>
-            <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / <span id="compass-facing">N</span></small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span><span id="dungeon-next"></span></div>
+            <div class="exploration-card" id="exploration-card" aria-live="off"><small>FIELD COMPASS / <span id="compass-facing">N</span></small><strong id="location-next">Finding the trail…</strong><span id="location-progress">0 locations discovered</span><span id="dungeon-next"></span><span id="region-line"></span></div>
             <canvas id="minimap" width="186" height="186" hidden aria-label="Dungeon map"></canvas>
             <div id="boss-bar" hidden><small></small><progress max="100" value="100"></progress></div>
-            <div id="crosshair">+</div><div id="target-hint"></div>
+            <div id="crosshair">+</div><div id="draw-meter" aria-hidden="true"><i></i></div><div id="target-hint"></div>
+            <button id="perk-button" type="button" hidden></button>
             <div id="toast" role="status" aria-live="polite"></div>
             <div id="day-banner" aria-live="polite"><strong></strong><span></span></div>
             <footer class="hud-bottom"><section class="vitals"><small id="level"></small><label>Health <span id="health-value"></span></label><progress id="health" max="100"></progress><div id="oxygen-row" hidden><label>Oxygen <span id="oxygen-value"></span></label><progress id="oxygen" max="100"></progress></div><label>Hunger <span id="hunger-value"></span></label><progress id="hunger" max="100"></progress><label>Thirst <span id="thirst-value"></span></label><progress id="thirst" max="100"></progress><label>Cold <span id="cold-value"></span></label><progress id="cold" max="100"></progress><progress id="experience" max="100"></progress></section><section id="inventory" class="inventory"></section><button id="craft-button">C · Craft</button><button id="building-button">B · Build</button><button id="gear-button">G · Gear</button><button id="inventory-toggle" type="button" aria-expanded="false" aria-controls="inventory">Pack</button></footer>
             <div id="fade" aria-hidden="true"></div>
             <div id="death-screen" hidden role="alert"><div><small id="death-kicker"></small><h1>The wilds claimed you.</h1><p id="death-cause"></p><p>Your supplies lie where you fell. Returning to the clearing…</p></div></div>
-            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="controls"></div>
+            <div id="modal" class="modal"><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"><small id="panel-kicker">WELCOME TO THE WILDS</small><h1 id="panel-title">Leave a little<br>less to chance.</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p><div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="controls"></div>
                 <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span></div>
                 <dl id="stats"></dl>
                 <button id="save-now">Save expedition (P)</button><button id="new-game" type="button">Start a new expedition</button><button id="resume" class="primary">Enter the wilds →</button></section></div>`;
@@ -54,6 +56,11 @@ export class UISystem {
         this.$('building-button').onclick = () => this.toggleBuilding();
         this.$('gear-button').onclick = () => this.toggleGear();
         this.$('view-button').onclick = () => { if (!game.paused) game.viewSystem?.cycle(); };
+        this.$('perk-button').onclick = () => this.togglePerks();
+        this.$('perk-panel').onclick = event => {
+            const button = event.target.closest('button[data-perk]');
+            if (button && game.perks.choose(button.dataset.perk)) this.updatePerkUI();
+        };
         // One listener serves every button in the gear panel.
         this.$('gear-panel').onclick = event => {
             const button = event.target.closest('button[data-gear]');
@@ -139,6 +146,7 @@ export class UISystem {
     toggleCrafting() { this.panel === 'craft' ? this.closePanel() : this.openPanel('craft'); }
     toggleBuilding() { this.panel === 'build' ? this.closePanel() : this.openPanel('build'); }
     toggleGear() { this.panel === 'gear' ? this.closePanel() : this.openPanel('gear'); }
+    togglePerks() { this.panel === 'perks' ? this.closePanel() : this.openPanel('perks'); }
     setSaveStatus(message) { this.$('save-status').textContent = message; }
     syncSettings() {
         const settings = this.game.settings;
@@ -150,10 +158,12 @@ export class UISystem {
         this.$('set-mute').setAttribute('aria-pressed', String(settings.muted));
     }
     renderPanel() {
-        const build = this.panel === 'build', craft = this.panel === 'craft', gear = this.panel === 'gear';
-        const menu = !build && !craft && !gear;
+        const build = this.panel === 'build', craft = this.panel === 'craft', gear = this.panel === 'gear', perks = this.panel === 'perks';
+        const menu = !build && !craft && !gear && !perks;
         this.$('gear-panel').hidden = !gear;
         if (gear) this.updateGearUI();
+        this.$('perk-panel').hidden = !perks;
+        if (perks) this.updatePerkUI();
         const title = menu && !this.started;
         this.$('modal').hidden = !this.panel;
         this.$('recipes').hidden = !craft;
@@ -166,18 +176,20 @@ export class UISystem {
         this.$('new-game').textContent = 'Start a new expedition';
         if (menu) {
             this.$('controls').innerHTML = this.game.touchControls?.enabled
-                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks, rests in a shelter at night, opens chests and takes doorways and stairs · TORCH lights the dark.</p><p>VIEW switches between first-person, third-person and overhead · DODGE sidesteps a blow · HEAL uses your best remedy.</p><p>Tap Craft, Build, Gear, or Pack to manage supplies. Progress saves automatically.</p>'
-                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>G</kbd> Gear · <kbd>R</kbd> Rotate</p><p><kbd>E</kbd> Drink, rest, open chests, use doorways and stairs</p><p><kbd>V</kbd> First-person, third-person or overhead view · Mouse wheel zooms</p><p><kbd>Q</kbd> Dodge · <kbd>H</kbd> Quick heal · <kbd>F</kbd> Torch · Right click: heavy sweep</p><p><kbd>M</kbd> Mute · <kbd>P</kbd> Save</p>';
+                ? '<p>Use the left stick to move, and drag the open scene to look around.</p><p>Hold HIT to gather or attack · JUMP flies on double tap · RUN sprints.</p><p>USE drinks, rests in a shelter at night, opens chests and takes doorways and stairs · TORCH lights the dark.</p><p>VIEW switches between first-person, third-person and overhead · DODGE sidesteps a blow · HEAL uses your best remedy.</p><p>Hold BOW to draw and let go to loose an arrow · Tap Perk ready when it appears to spend a point.</p><p>Tap Craft, Build, Gear, or Pack to manage supplies. Progress saves automatically.</p>'
+                : '<p><kbd>W A S D</kbd> Move · <kbd>Shift</kbd> Sprint · Hold click to gather / attack</p><p><kbd>Space</kbd> Jump · Double tap to fly · <kbd>Ctrl</kbd> Descend or dive</p><p><kbd>C</kbd> Craft · <kbd>B</kbd> Build · <kbd>G</kbd> Gear · <kbd>R</kbd> Rotate</p><p><kbd>E</kbd> Drink, rest, open chests, use doorways and stairs</p><p><kbd>V</kbd> First-person, third-person or overhead view · Mouse wheel zooms</p><p>Hold <kbd>R</kbd> to draw the bow, release to loose · <kbd>K</kbd> Perks</p><p><kbd>Q</kbd> Dodge · <kbd>H</kbd> Quick heal · <kbd>F</kbd> Torch · Right click: heavy sweep</p><p><kbd>M</kbd> Mute · <kbd>P</kbd> Save</p>';
             const progression = this.game.progression;
             if (progression) this.$('stats').innerHTML = `<div><dt>Day</dt><dd>${this.game.dayCount}</dd></div><div><dt>Field notes</dt><dd>${progression.completed.size}</dd></div>` +
                 Object.entries(STAT_LABELS).map(([key, label]) => `<div><dt>${label}</dt><dd>${progression.stats[key]}</dd></div>`).join('');
         }
         this.$('save-now').hidden = !menu || title;
-        this.$('panel-title').innerHTML = gear ? 'What the dark<br>gave up.' : build
+        this.$('panel-title').innerHTML = perks ? 'What the wilds<br>taught you.' : gear ? 'What the dark<br>gave up.' : build
             ? 'Make this place<br>your own.'
             : craft ? 'Make something<br>that matters.' : title ? 'Leave a little<br>less to chance.' : 'The wilds can wait.';
-        this.$('panel-kicker').textContent = gear ? 'GEAR AND LOOT' : build ? 'BASE CAMP CONSTRUCTION' : craft ? 'FIELD CRAFTING' : title ? 'WELCOME TO THE WILDS' : 'EXPEDITION PAUSED';
-        this.$('panel-copy').textContent = gear
+        this.$('panel-kicker').textContent = perks ? 'PERKS' : gear ? 'GEAR AND LOOT' : build ? 'BASE CAMP CONSTRUCTION' : craft ? 'FIELD CRAFTING' : title ? 'WELCOME TO THE WILDS' : 'EXPEDITION PAUSED';
+        this.$('panel-copy').textContent = perks
+            ? 'Every level after the first earns a point. Spend it on one of three perks; the choice is permanent.'
+            : gear
             ? 'Gear is graded by the bonuses it rolled, from Common to Legendary. You keep it when you fall.'
             : build
             ? 'Choose a structure, then aim where it should stand. Click to place it, R to rotate, Esc to cancel.'
@@ -185,7 +197,7 @@ export class UISystem {
             : title ? 'Gather, craft and build before nightfall. The cold, hunger and wolves will not wait.'
             : 'Follow your field notes, keep a fire going, and rest in a shelter at night. Progress saves on this device.';
         const returning = this.game.dayCount > 1 || this.game.progression?.completed.size > 0;
-        this.$('resume').textContent = build || craft || gear ? 'Back to the wilds →'
+        this.$('resume').textContent = build || craft || gear || perks ? 'Back to the wilds →'
             : title ? (returning ? `Continue expedition · Day ${this.game.dayCount} →` : 'Enter the wilds →') : 'Return to the wilds →';
         if (this.panel) {
             // Focus the way out without scrolling the long crafting list to its end.
@@ -198,6 +210,26 @@ export class UISystem {
         this.$('craft-button').textContent = touch ? 'Craft' : 'C · Craft';
         this.$('building-button').textContent = touch ? 'Build' : 'B · Build';
         this.updateGearButton();
+    }
+    // --- Perks --------------------------------------------------------------
+    updatePerkUI() {
+        const perks = this.game.perks, points = perks.available(), offer = perks.offer();
+        const numeral = rank => 'I'.repeat(rank);
+        const cards = offer.map(id => {
+            const perk = PERKS[id], rank = perks.ranks[id] || 0;
+            return `<button class="recipe perk" data-perk="${id}"><strong>${perk.name}${perk.max > 1 ? ' ' + numeral(rank + 1) : ''}</strong><span>${perk.text}${rank ? ` · you have ${numeral(rank)}` : ''}</span><b>Choose +</b></button>`;
+        }).join('');
+        const owned = perks.list().map(perk => `<li><strong>${perk.name}${perk.rank > 1 ? ' ' + numeral(perk.rank) : ''}</strong> ${perk.text}${perk.rank > 1 ? ` (×${perk.rank})` : ''}</li>`).join('');
+        this.$('perk-panel').innerHTML = (points
+            ? `<h3>${points} point${points === 1 ? '' : 's'} to spend · choose one</h3>${cards}`
+            : `<p class="empty-pack">No points to spend · the next comes at level ${this.game.combatSystem.level + 1}</p>`)
+            + (owned ? `<h3>Your perks</h3><ul class="perk-list">${owned}</ul>` : '');
+        this.updatePerkButton();
+    }
+    updatePerkButton() {
+        const points = this.game.perks?.available() || 0, button = this.$('perk-button');
+        button.hidden = !points;
+        button.textContent = this.game.touchControls?.enabled ? `Perk ready${points > 1 ? ' ×' + points : ''}` : `K · Perk ready${points > 1 ? ' ×' + points : ''}`;
     }
     // --- Gear ---------------------------------------------------------------
     gearCard(item, worn, equipped) {
@@ -350,6 +382,7 @@ export class UISystem {
         const c = this.game.combatSystem;
         this.$('level').textContent = `LEVEL ${c.level} · ${c.experience} / ${c.expToNextLevel} XP`;
         this.$('experience').value = c.experience / c.expToNextLevel * 100;
+        this.updatePerkButton();
     }
     updateExplorationUI(nearest, discoveredCount) {
         const title = this.$('location-next');
@@ -480,7 +513,15 @@ export class UISystem {
         this.updateDungeonUI();
         // Shrine boons and how long they have left.
         const boons = this.game.buffs?.list() || [];
-        const chips = boons.map(boon => `${boon.label} ${Math.floor(boon.left / 60)}:${String(Math.floor(boon.left % 60)).padStart(2, '0')}`).join(' · ');
+        const chips = boons.map(boon => `${boon.label} ${Math.floor(boon.left / 60)}:${String(Math.floor(boon.left % 60)).padStart(2, '0')}`)
+            .concat(p.poisonLeft > 0 ? [`Poisoned 0:${String(Math.ceil(p.poisonLeft)).padStart(2, '0')}`] : []).join(' · ');
+        // Where you are, and the way to somewhere you have not been.
+        const regions = this.game.regions;
+        if (regions) {
+            const guide = regions.guide, place = this.game.dungeonSystem?.active ? '' : regions.def.name
+                + (guide ? ` · ${guide.name} lies ${Math.round(guide.distance)}m ${compass(guide.bearing)}` : '');
+            if (this.$('region-line').textContent !== place) this.$('region-line').textContent = place;
+        }
         if (this.$('buffs').textContent !== chips) this.$('buffs').textContent = chips;
         this.$('world-clock').textContent = `DAY ${this.game.dayCount} · ${clockTime(this.game.dayTime, this.game.dayLength)}`;
         if (this.game.paused) return;

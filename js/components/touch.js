@@ -72,6 +72,7 @@ export class TouchControls {
             '  <button type="button" data-action="torch" aria-label="Light or put away the torch">TORCH</button>',
             '  <button type="button" data-action="dodge" aria-label="Dodge out of the way">DODGE</button>',
             '  <button type="button" data-action="heal" aria-label="Use the best healing item">HEAL</button>',
+            '  <button type="button" data-action="bow" aria-label="Hold to draw the bow, release to loose">BOW</button>',
             '</div>'
         ].join('');
         document.getElementById('hud').append(root);
@@ -202,6 +203,7 @@ export class TouchControls {
                     player.jump();
                 } else if (name === 'sprint') player.keys.sprint = true;
                 else if (name === 'descend') player.keys.descend = true;
+                else if (name === 'bow') this.game.archery?.beginDraw();
                 else action(name);
             });
             const release = event => {
@@ -212,6 +214,8 @@ export class TouchControls {
                 else if (name === 'sprint') player.keys.sprint = false;
                 else if (name === 'descend') player.keys.descend = false;
                 else if (name === 'attack') this.game.primaryHeld = false;
+                // Letting go looses the arrow; a cancelled touch just lowers the bow.
+                else if (name === 'bow') event.type === 'pointerup' ? this.game.archery?.release() : this.game.archery?.cancel();
             };
             for (const type of ['pointerup','pointercancel','lostpointercapture'])
                 button.addEventListener(type, release);

@@ -63,7 +63,11 @@ export class CreatureAI {
     hurtPlayer(animal, def, amount = def.damage) {
         const player = this.game.playerSystem;
         if (player.isDead) return;
+        const before = player.health;
         player.takeDamage(amount * (animal.damageScale || 1), def.cause);
+        if (player.health >= before) return; // Dodged: nothing else lands either.
+        if (def.venom) player.poison?.(def.venom.rate, def.venom.seconds);
+        if (def.chill && this.game.survivalSystem) this.game.survivalSystem.cold = Math.min(100, this.game.survivalSystem.cold + def.chill);
     }
 
     update(animal, dt) {
@@ -198,15 +202,19 @@ export class CreatureAI {
     fireBolt(animal, def) {
         const scene = this.game.scene, target = this.game.playerSystem.camera.position;
         const from = animal.mesh.position;
-        if (!this.boltMaterial) {
-            this.boltMaterial = new BABYLON.StandardMaterial('wraith-bolt', scene);
-            this.boltMaterial.emissiveColor = new BABYLON.Color3(.55, .9, 1);
-            this.boltMaterial.diffuseColor = BABYLON.Color3.Black();
-            this.boltMaterial.specularColor = BABYLON.Color3.Black();
-            this.boltMaterial.disableLighting = true;
+        // One glowing material per colour of bolt: wraith blue, toad green.
+        const colour = def.bolt || [.55, .9, 1], key = colour.join(',');
+        this.boltMaterials = this.boltMaterials || new Map();
+        if (!this.boltMaterials.has(key)) {
+            const material = new BABYLON.StandardMaterial('bolt-' + key, scene);
+            material.emissiveColor = new BABYLON.Color3(...colour);
+            material.diffuseColor = BABYLON.Color3.Black();
+            material.specularColor = BABYLON.Color3.Black();
+            material.disableLighting = true;
+            this.boltMaterials.set(key, material);
         }
         const mesh = BABYLON.MeshBuilder.CreateIcoSphere('bolt', {radius: .22, subdivisions: 1}, scene);
-        mesh.material = this.boltMaterial;
+        mesh.material = this.boltMaterials.get(key);
         mesh.isPickable = false;
         mesh.position.set(from.x, from.y + 1.25, from.z);
         const dx = target.x - from.x, dz = target.z - from.z, length = Math.hypot(dx, dz) || 1;

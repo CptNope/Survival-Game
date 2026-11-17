@@ -2,6 +2,7 @@
 import { seededRandom } from '../models/wilderness.js';
 import { createTreeModel, createRockModel, createOreModel, createPlantModel } from '../models/wilderness.js';
 import { REGROW_DAYS } from '../resources.js';
+import { REGIONS, regionAt, groundColor, treeFor, plantFor } from '../regions.js';
 
 const smooth = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
 const mix = (a, b, t) => a + (b - a) * t;
@@ -280,8 +281,9 @@ export class TerrainSystem {
     // dim lake bed. Multiplied with the neutral detail texture.
     terrainColor(x, z, height) {
         const patch = .5 + .5 * Math.sin(x * .031 + 1.7) * Math.cos(z * .027 - .6);
-        let r = mix(.30, .43, patch), g = mix(.44, .53, patch), b = mix(.23, .27, patch);
-        const dry = smooth((height - 4.9) / 2.4) * .65;
+        // Meadow green, snow, sand or bog, blended across each border.
+        let [r, g, b] = groundColor(x, z, patch);
+        const dry = smooth((height - 4.9) / 2.4) * .65 * (regionAt(x, z) === 'meadow' ? 1 : .25);
         r = mix(r, .50, dry); g = mix(g, .50, dry); b = mix(b, .44, dry);
         const lake = this.waterNoise(x, z);
         const sand = smooth((lake - (SHORE_START - .03)) / .09);
@@ -386,7 +388,13 @@ export class TerrainSystem {
             }
 
             const y = this.getPerlinHeight(x, z);
-            this.createTree(x, y, z, `${key}:tree:${i}`);
+            // The frontier decides what stands here: a snowy pine, a cactus,
+            // bleached deadwood, a bog tree or bare ground. The id keeps its
+            // slot name so gathered nodes in old saves stay gathered.
+            const growth = treeFor(x, z);
+            if (!growth) continue;
+            if (growth.type === 'cactus') this.createResource('cactus', x, y, z, `${key}:tree:${i}`);
+            else this.createTree(x, y, z, `${key}:tree:${i}`, growth.model);
         }
 
         // Add rocks - REDUCED NUMBER significantly
@@ -417,7 +425,8 @@ export class TerrainSystem {
                 const x = worldX + random() * this.chunkSize;
                 const z = worldZ + random() * this.chunkSize;
                 if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
-                this.createResource(type, x, this.getPerlinHeight(x, z), z, `${key}:${type}:${index}`);
+                const plant = plantFor(type, x, z);
+                if (plant) this.createResource(plant, x, this.getPerlinHeight(x, z), z, `${key}:${type}:${index}`);
                 break;
             }
         }
@@ -472,10 +481,10 @@ export class TerrainSystem {
     }
 
     // One merged mesh per asset keeps picking, disposal, and draw calls simple.
-    createTree(x, y, z, resourceId) {
+    createTree(x, y, z, resourceId, model = null) {
         if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 73856093) ^ Math.floor(z * 19349663);
-        const mesh = createTreeModel(this.scene, seed, Math.abs(seed % 4) === 0 ? 'oak' : 'pine');
+        const mesh = createTreeModel(this.scene, seed, model || (Math.abs(seed % 4) === 0 ? 'oak' : 'pine'));
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
         mesh.receiveShadows = true;
@@ -539,7 +548,9 @@ export class TerrainSystem {
         const random = seededRandom((Math.imul(chunkX, 1013904223) ^ Math.imul(chunkZ, 1664525) ^ 0x5144) | 0);
         const mesh = new BABYLON.Mesh(`groundcover_${chunkX}_${chunkZ}`, this.scene);
         const positions = [], indices = [], colors = [];
-        const greens = [[.27,.43,.19],[.35,.49,.21],[.44,.51,.24],[.24,.36,.19]];
+        // Each chunk's ground cover takes the colours and thickness of its region.
+        const region = REGIONS[regionAt(chunkX * this.chunkSize, chunkZ * this.chunkSize)];
+        const greens = region.grass;
         for (let i = 0; i < 4; i++) {
             const angle = i * Math.PI / 2;
             const dx = Math.cos(angle), dz = Math.sin(angle);
@@ -567,7 +578,8 @@ export class TerrainSystem {
             const z = z0 + random() * this.chunkSize;
             if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
             const size = .65 + random() * 1.2;
-            scale.set(size, size, size);
+            if (region.tufts < 1 && (i % 20) / 20 >= region.tufts) continue; // Sparse where little grows.
+            scale.set(size, size * (region.tufts > 1 ? 1.5 : 1), size);
             pos.set(x, this.getPerlinHeight(x, z) + .04, z);
             const m = BABYLON.Matrix.Compose(scale, BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, random() * Math.PI * 2), pos);
             matrices.push(...m.m);

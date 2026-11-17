@@ -1,7 +1,7 @@
 // Procedural models for hostile creatures and dungeon props. Same pipeline as
 // the wildlife: a handful of low-poly primitives merged into one mesh with
 // per-face vertex colours, so each creature is a single draw call.
-import { V, palette, ellipsoid, branch, finish, colorMesh, seededRandom } from './wilderness.js';
+import { V, palette, ellipsoid, branch, finish, colorMesh, seededRandom, createWolfModel } from './wilderness.js';
 
 function box(scene, name, position, size, color, random, rotationY = 0) {
     const mesh = BABYLON.MeshBuilder.CreateBox(name, {width: size.x, height: size.y, depth: size.z}, scene);
@@ -181,7 +181,52 @@ function mimic(scene, random) {
     return finish(scene, pieces, 'mimic');
 }
 
-const BUILDERS = {boar, bear, skeleton, spider, bat, wraith, warden, slime, slimelet, mimic};
+// --- Frontier wildlife ------------------------------------------------------
+function scorpion(scene, random) {
+    const shell = [.45, .30, .16], dark = [.27, .17, .10], sting = [.72, .16, .12];
+    const pieces = [
+        ellipsoid(scene, 'scorpion-body', V(0, .34, 0), V(.38, .2, .62), shell, random),
+        ellipsoid(scene, 'scorpion-head', V(0, .34, .62), V(.3, .17, .26), dark, random)
+    ];
+    // The tail arches up and over, ending in the sting.
+    const tail = [[0, .4, -.55], [0, .75, -.95], [0, 1.2, -.9], [0, 1.45, -.5], [0, 1.4, -.12]];
+    for (let i = 0; i < tail.length - 1; i++) pieces.push(branch(scene, V(...tail[i]), V(...tail[i + 1]), .2 - i * .025, i % 2 ? dark : shell, random, .17 - i * .025));
+    pieces.push(branch(scene, V(0, 1.4, -.12), V(0, 1.16, .16), .13, sting, random, .005));
+    for (const side of [-1, 1]) {
+        pieces.push(branch(scene, V(side * .22, .34, .7), V(side * .55, .36, 1.15), .1, shell, random, .08));
+        pieces.push(ellipsoid(scene, 'scorpion-claw', V(side * .58, .36, 1.34), V(.16, .1, .24), dark, random));
+        pieces.push(ellipsoid(scene, 'scorpion-eye', V(side * .12, .48, .8), V(.04, .04, .04), [.9, .75, .2], random));
+        for (const z of [-.3, 0, .3]) {
+            const knee = V(side * .7, .42, z + side * 0);
+            pieces.push(branch(scene, V(side * .3, .32, z), knee, .06, dark, random, .05));
+            pieces.push(branch(scene, knee, V(side * .88, 0, z + .05), .05, dark, random, .02));
+        }
+    }
+    return finish(scene, pieces, 'scorpion');
+}
+
+function toad(scene, random) {
+    const skin = [.30, .40, .20], belly = [.62, .62, .38], wart = [.22, .30, .15];
+    const pieces = [
+        ellipsoid(scene, 'toad-body', V(0, .52, -.05), V(.66, .5, .74), skin, random),
+        ellipsoid(scene, 'toad-belly', V(0, .38, .2), V(.52, .34, .5), belly, random),
+        ellipsoid(scene, 'toad-head', V(0, .72, .6), V(.5, .32, .42), skin, random),
+        ellipsoid(scene, 'toad-throat', V(0, .48, .72), V(.36, .24, .28), belly, random)
+    ];
+    for (let n = 0; n < 5; n++) pieces.push(ellipsoid(scene, 'toad-wart', V((random() - .5) * .8, .9 + random() * .1, -.3 + random() * .5), V(.09, .06, .09), wart, random));
+    for (const side of [-1, 1]) {
+        pieces.push(ellipsoid(scene, 'toad-eye-bulge', V(side * .3, 1, .62), V(.15, .14, .15), skin, random));
+        pieces.push(ellipsoid(scene, 'toad-eye', V(side * .34, 1.03, .72), V(.08, .08, .06), [.95, .7, .1], random));
+        pieces.push(ellipsoid(scene, 'toad-thigh', V(side * .62, .3, -.4), V(.3, .26, .46), skin, random));
+        pieces.push(ellipsoid(scene, 'toad-foot', V(side * .72, .07, -.05), V(.2, .07, .36), wart, random));
+        pieces.push(branch(scene, V(side * .4, .4, .5), V(side * .5, .05, .72), .15, skin, random, .1));
+    }
+    return finish(scene, pieces, 'toad');
+}
+
+const icewolf = (scene, random) => createWolfModel(scene, Math.floor(random() * 1e6) + 1, [.82, .86, .90], [.94, .96, .98]).mesh;
+
+const BUILDERS = {boar, bear, skeleton, spider, bat, wraith, warden, slime, slimelet, mimic, scorpion, toad, icewolf};
 
 export function createCreatureModel(scene, kind, seed = 1) {
     const build = BUILDERS[kind];

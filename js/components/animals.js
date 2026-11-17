@@ -1,3 +1,5 @@
+import { regionAt, wildlifeFor } from '../regions.js';
+import { ITEMS } from '../resources.js';
 import { createDeerModel, createRabbitModel, createWolfModel, animateDeer, animateRabbit } from '../models/wilderness.js';
 import { createCreatureModel } from '../models/creatures.js';
 import { CREATURES, ELITE, scaleFor } from '../creatures.js';
@@ -146,7 +148,12 @@ export class AnimalSystem {
                 const fromHome=Math.hypot(spawnX, spawnZ);
                 const roll=Math.random();
                 // Boars root about by day; bears keep to the country well away from camp.
-                const kind = this.isNight() && wolfCount < this.maxWolves && roll < .45 ? 'wolf'
+                // Beyond the meadow each region has wildlife of its own.
+                const region = regionAt(spawnX, spawnZ);
+                const frontier = wildlifeFor(region, this.isNight(), roll);
+                const hostile = frontier && CREATURES[frontier]?.brain;
+                const kind = frontier ? (hostile && count(frontier) >= 3 ? 'rabbit' : frontier)
+                    : this.isNight() && wolfCount < this.maxWolves && roll < .45 ? 'wolf'
                     : !this.isNight() && fromHome > 110 && count('bear') < 1 && roll < .07 ? 'bear'
                     : !this.isNight() && fromHome > 45 && count('boar') < 2 && roll < .24 ? 'boar'
                     : Math.random() < .38 ? 'rabbit' : 'deer';
@@ -169,7 +176,8 @@ export class AnimalSystem {
         if (game.inventorySystem && def.loot) {
             const inv = game.inventorySystem.inventory;
             for (const [item, amount] of Object.entries(def.loot)) inv[item] += amount;
-            game.uiSystem?.showNotification?.('Hunted ' + animal.kind + ' · Raw meat recovered');
+            const haul = Object.entries(def.loot).map(([item, amount]) => `+${amount} ${ITEMS[item].toLowerCase()}`).join(' · ');
+            game.uiSystem?.showNotification?.(`Hunted ${(def.label || animal.kind).toLowerCase()} · ${haul}`);
         } else if (def.brain) {
             game.uiSystem?.showNotification?.('Defeated ' + (animal.elite ? 'an elite ' : '') + def.label.toLowerCase());
         }

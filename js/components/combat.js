@@ -28,7 +28,7 @@ export class CombatSystem {
 
     damage() {
         return (this.attackPower + (this.level - 1) * 2 + this.weaponBonus() + (this.game.gear?.stat('power') || 0))
-            * (this.game.buffs?.factor('damage') || 1);
+            * (this.game.buffs?.factor('damage') || 1) * (1 + (this.game.perks?.value('melee') || 0));
     }
 
     // Swing-speed bonuses from gear shorten every cooldown.
