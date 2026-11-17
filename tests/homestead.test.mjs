@@ -458,6 +458,7 @@ test('build a bed, plant it, wait, harvest more than you sowed, and keep it acro
         assert.equal(raw.version, SAVE_VERSION);
         assert.equal(raw.gardens.length, 1);
         gardens.beds.clear();
+        game.buildSystem.restore([]); // As on a fresh page: no buildings until the save brings them back.
         assert.equal(saves.load(), true);
         assert.equal(gardens.beds.get(bed.id).crop, 'berries');
         const restored = game.buildSystem.structures.find(item => item.id === bed.id);

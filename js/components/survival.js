@@ -110,6 +110,11 @@ export class SurvivalSystem {
         // A garden bed underfoot: plant it, or pick what has ripened.
         const garden = this.game.gardens?.interaction?.();
         if (garden?.act) return garden.act() !== false;
+        // A stray at the fire, or a storage chest.
+        const stray = this.game.companion?.interaction?.();
+        if (stray?.act) return stray.act() !== false;
+        const chest = this.game.storage?.interaction?.();
+        if (chest?.act) return chest.act() !== false;
         const sleep = this.sleepStatus();
         const thirsty = this.thirst < 60 && (this.nearWater() || (this.hasWaterskin() && this.water > 0));
         if (sleep.ok && !thirsty) return this.sleep();
@@ -156,7 +161,7 @@ export class SurvivalSystem {
         const chill = this.game.dungeonSystem?.theme?.chill ?? -.25;
         // Whatever keeps the cold out: gear, a fur cloak and the Insulated perk.
         const shield = (1 - (gear?.stat('warmth') || 0) / 100) * (this.game.inventorySystem?.inventory?.furCloak > 0 ? .5 : 1)
-            * (1 - (perks?.value('insulation') || 0));
+            * (1 - (perks?.value('insulation') || 0)) * (this.game.buffs?.factor('cold') || 1);
         // Weather chills anywhere; Frostfell chills even on a clear day.
         const weather = night || storm || rain ? .65 + (storm ? .85 : rain ? .3 : 0) : 0;
         const surface = exposed ? weather + (regions?.coldRate(night) || 0) : 0;

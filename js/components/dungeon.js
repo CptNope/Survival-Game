@@ -6,7 +6,7 @@ import {
     flowField, cellOf, centreOf, isOpen, lineOfSight, resolveCircle, themeFor, trapState, THEMES
 } from '../dungeon.js';
 import { createEntranceModel, createChestModel, createBrazierModel, createStairsModel, createTrapModel, createShrineModel } from '../models/creatures.js';
-import { BOONS } from './buffs.js';
+import { BOONS, SHRINE_BOONS } from './buffs.js';
 import { seededRandom } from '../models/wilderness.js';
 
 export const DUNGEON_DEPTH = -240; // World height of every dungeon floor.
@@ -527,7 +527,7 @@ export class DungeonSystem {
         const player = game.playerSystem;
         // Healing is only on offer to someone who needs it, and likelier the worse off they are.
         const hurt = player.health < player.maxHealth * .7 ? 2 : player.health < player.maxHealth ? 1 : 0;
-        const options = [...Object.keys(BOONS), ...Array(hurt).fill('vigor')];
+        const options = [...SHRINE_BOONS, ...Array(hurt).fill('vigor')];
         const boon = options[Math.floor(Math.random() * options.length)];
         if (boon === 'vigor') {
             player.health = player.maxHealth;

@@ -113,6 +113,18 @@ export const QUESTS = Object.freeze([
         }
     },
     {
+        id: 'friend', xp: 80, title: 'Make a friend',
+        text: 'Sit by a campfire you built and a stray dog will come to watch. Offer it cooked meat.',
+        done: g => Boolean(g.companion?.tamed),
+        progress: g => g.companion?.stray ? (g.inventorySystem.inventory.cookedMeat > 0 ? 'It is waiting by the fire' : 'It wants cooked meat') : 'Stand near your campfire'
+    },
+    {
+        id: 'stock', xp: 50, title: 'Put something by',
+        text: 'Build a storage chest. What is inside it stays safe even if you die.',
+        done: g => (g.storage?.capture().length || 0) > 0,
+        progress: g => g.buildSystem.structures.some(item => item.type === 'chest') ? 'Press E at the chest and store something' : 'No chest yet · 4 planks and 2 fiber'
+    },
+    {
         id: 'legend', xp: 200, title: 'Hunt a legend',
         text: 'Each frontier region hides a lair ringed with standing stones. Whatever lives there carries a named, legendary prize.',
         done: g => g.progression.stats.legends > 0,
@@ -136,7 +148,8 @@ export const STAT_LABELS = Object.freeze({
     delves: 'Dungeons entered', monsters: 'Monsters slain', bosses: 'Wardens defeated',
     chests: 'Chests opened', gearFound: 'Gear found', shrines: 'Shrines touched',
     arrows: 'Arrows loosed', arrowHits: 'Arrows on target',
-    fish: 'Fish caught', harvests: 'Crops harvested', legends: 'Legends slain'
+    fish: 'Fish caught', harvests: 'Crops harvested', legends: 'Legends slain',
+    tonics: 'Tonics brewed', befriended: 'Strays befriended'
 });
 
 export class ProgressionSystem {

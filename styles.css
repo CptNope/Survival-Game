@@ -534,3 +534,23 @@ body.view-third #target-hint,body.view-overhead #target-hint{top:auto;bottom:112
 #map-legend .map-scale{color:#9fb0a6}
 /* The compass card opens the map. */
 #exploration-card{pointer-events:auto;cursor:pointer}
+
+/* --- Companions and comforts -------------------------------------------- */
+/* The dog's state; tapping it tells the dog to stay or come. */
+#dog-button{position:absolute;left:34px;bottom:240px;pointer-events:auto;padding:6px 12px;font-size:11px;
+  background:#1a2a24e6;border:1px solid #c5dd8a66;color:#dfe9cf}
+.storage-table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 14px}
+.storage-table th,.storage-table td{padding:6px 8px;border-bottom:1px solid #ffffff14;text-align:right}
+.storage-table th:first-child{text-align:left;font-weight:600;color:#e9efdc}
+.storage-table thead th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#9fb0a6;font-weight:600}
+.storage-moves{white-space:nowrap;text-align:center!important}
+.storage-moves button{min-width:34px;min-height:34px;margin:0 2px;padding:0;font-size:16px;line-height:1}
+.storage-moves button:disabled{opacity:.3}
+#storage-panel h3{margin:10px 0 6px}
+@media (any-pointer:coarse){
+  #dog-button{left:12px;bottom:auto;top:calc(274px + env(safe-area-inset-top));padding:6px 9px;font-size:10px}
+}
+@media (any-pointer:coarse) and (max-height:480px){
+  #dog-button{top:156px;left:112px}
+}
+@media (any-pointer:coarse){.storage-moves button{min-width:40px;min-height:40px}}

@@ -63,6 +63,7 @@ A 3D survival game built with Babylon.js featuring procedural terrain generation
 - Hold R: Draw the bow, release to loose (R still rotates a build preview)
 - K: Perks
 - N: Map (or tap the compass card)
+- T: Tell your dog to stay or follow (or tap its status on the screen)
 - F: Torch · M: Mute · P: Save · Esc: Pause
 
 ## Codebase Structure
@@ -710,6 +711,70 @@ home. Sleeping through the night counts toward ripening.
   to harvest across a save.
 - Not verified here: whether the legends are beatable at a fair level with
   real play, fishing's timing under real hands, and the three new sounds.
+
+## Companions and comforts: a dog, storage chests and tonics
+
+### A dog
+
+Stand within 12 m of a campfire you built and a stray dog comes to sit at the
+edge of the firelight. Walk up to it and press **E** with cooked meat in your
+pack: it is yours from then on.
+
+- It trots at heel a few metres behind you, and comes into dungeons with you.
+- It **defends**: it goes for anything that is chasing you, or that you have
+  just struck, within 15 m of you. It leaves grazing animals and creatures
+  that have not noticed you alone.
+- Each bite does 9 damage, about once a second. Its kills count as yours.
+- It can be hurt. At zero health it goes down for 45 seconds and then gets
+  back up at half health; it never dies. It mends on its own once a fight has
+  been over for a few seconds.
+- Press **T** (or tap its status on the screen) to tell it to stay or to
+  follow. It will not swim; if you get more than 36 m ahead it appears at
+  your side.
+
+### Storage chests
+
+A new building (4 planks, 2 fiber). Press **E** beside it to open it and move
+things between pack and chest, one at a time or all at once. A chest holds 300
+items of any kind, tools included. Dying drops what you carry, never what is in
+a chest.
+
+### Tonics
+
+| Tonic | Made from | Where | Effect |
+| --- | --- | --- | --- |
+| Warming draught | 2 mushrooms, 1 herb | Campfire | The cold builds 60% slower for 3 minutes |
+| Antivenom | 1 cactus fruit, 2 herbs | Anywhere | Cures venom, and immunity for 2½ minutes |
+| Hunter's broth | 1 fish, 2 berries | Campfire | 30 hunger and +30% damage for 2 minutes |
+
+The draught stacks with a fur cloak. Antivenom stops the venom, not the sting.
+
+### Fixed in this update
+
+- **Garden beds lost their crops on reload.** In the previous update, a
+  planted bed came back empty after closing and reopening the game, because
+  crops were restored before the buildings they belong to. Fixed, with a test
+  that loads a save into a game with no buildings yet.
+- **Cactus fruit could not be eaten for thirst alone.** It was refused when
+  you were at full health and not hungry. It now works whenever you are
+  thirsty.
+- Dungeon shrines still grant only their own three boons, not the new tonics.
+
+### Notes for developers
+
+- `js/companion.js` and `js/storage.js` are pure rules;
+  `js/components/companion.js` and `js/components/storage.js` apply them.
+- Chest contents, like garden crops, are kept beside the building records and
+  keyed by structure id, and are restored after `buildSystem.restore`.
+- A recipe with `buff` starts that boon when crafted; `BuffSystem.factor`
+  now also answers for `cold`.
+- Saves stay at version 1 with optional `companion` and `storage` fields.
+- `tests/companions.test.mjs` covers the dog's choices, taming, following,
+  staying, water, fighting, going down and mending, dungeons, storage rules
+  and a chest across death and a fresh-page load, each tonic, and shrines.
+- Not verified here: how the dog behaves over a long real session (getting
+  stuck, getting in the way), whether its damage is balanced, and how the
+  storage panel feels on a real phone.
 
 ---
 
