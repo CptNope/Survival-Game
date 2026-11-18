@@ -776,6 +776,98 @@ The draught stacks with a fur cloak. Antivenom stops the venom, not the sting.
   stuck, getting in the way), whether its damage is balanced, and how the
   storage panel feels on a real phone.
 
+## Smooth and sharp: an interface for every screen, and steadier frames
+
+### The interface
+
+The HUD and menus were rebuilt. The look is the same dark forest green; the
+layout and sizing are new.
+
+- **One scale.** Every size hangs off the root font size, which steps up on
+  large screens: a 1440p monitor draws the interface about 1.4 times larger
+  and a 4K monitor about twice as large, instead of leaving it tiny in the
+  corners.
+- **A grid, not stacked boxes.** Field note top left, clock and weather top
+  centre, View and Pause top right with the compass under them, condition
+  bottom left, the pack as a belt along the bottom, and Craft, Build, Gear
+  and Map bottom right. Where the window is too narrow for the belt
+  (1180 px and under) it folds behind a **Pack** button.
+- **Phones.** Condition and the compass share the top, the menu bar sits just
+  above the thumb controls, and messages appear above the menu bar instead of
+  over the compass. On its side, a phone gets the menu along the top, two
+  rows of action buttons and nothing over the middle of the view.
+- **Touch targets** are at least 44 px everywhere on touch screens, and no
+  text is smaller than 12 px on any screen.
+- **Menus** have tabs (Paused, Craft, Build, Gear, Perks, Map), so you can
+  move between them without closing one first. The body scrolls and the
+  button that takes you back to the game stays pinned at the bottom. On
+  phones a menu fills the screen.
+- A **Map** button joins the menu bar (it was key **N** or a tap on the
+  compass only). Clicking the compass still opens the map.
+- Controls are a list of keys beside what they do, folded away on phones.
+- The map and its key are drawn with small shapes instead of text symbols.
+
+### Graphics setting
+
+**Pause → Graphics** offers Auto, Low, Medium and High.
+
+| Level | Resolution cap | Shadows | Ground cover |
+| --- | --- | --- | --- |
+| Low | 1× | off | 45% |
+| Medium | 1.5× | every other frame | 75% |
+| High | 2× | every frame | all |
+
+**Auto** (the default) starts at High on a computer and Medium on a touch
+screen and watches the frame rate while you play. Under 42 frames a second
+for a few seconds it lowers the drawing resolution in steps, down to 60%,
+and then drops a level; above 57 it climbs back just as carefully, and never
+above where it started. Menus, loading and a hidden tab are not counted. The
+setting shows what Auto has chosen ("Now: Medium, 85% resolution").
+
+### Smoother play
+
+- **Trees, rocks, ore and plants are instances** of a few shared models
+  (six pines, five oaks, six rocks and so on), turned and sized per object.
+  A walk through the forest used to create a new model and material for
+  every prop. Measured in a headless browser: materials in the starting area
+  fell from 383 to 68, building a strip of world from 13.5 ms to 6.6 ms on
+  average, and the worst single hitch from 55 ms to 12 ms.
+- The common models are built while the game loads rather than the first
+  time one comes into view.
+- The world is drawn at one frame in eight behind a menu, which keeps a
+  phone cool while you read.
+- The engine no longer tests what is under the pointer on every mouse move,
+  and anti-aliasing is off on touch screens, where the pixels are small
+  enough not to need it.
+- The HUD has no blurred glass: blurring a 3D view behind a panel costs a
+  full-screen pass every frame.
+
+### Notes for developers
+
+- `js/quality.js` is the pure rule set (levels, `hardwareScale`,
+  `autoStep`); `js/components/quality.js` applies it. `js/models/pool.js`
+  is the instance pool that `TerrainSystem` draws from.
+- Pooled materials must not be frozen: a frozen material keeps its
+  shadow-reading shader when shadows are switched off and the draw is
+  rejected. Instances also must not dispose the shared material; the pool
+  guards both and `tests/smooth.test.mjs` checks them.
+- `styles.css` is laid out by the `.touch` class the game sets on `#hud`,
+  not by guessing from width. The old `.hud-top` and `.hud-bottom` wrappers
+  are gone; every HUD block is a direct child of `#hud` with a grid area.
+- Settings gained `quality` (`auto` by default). Saves are unchanged.
+- `tests/smooth.test.mjs` covers the pool, chunk build time, the quality
+  rules and system, and the stylesheet's floor (12 px text, 44 px targets,
+  large-screen steps, no blur, safe areas).
+- Checked in a headless browser at 360×640, 412×915, 740×360 and 820×1180
+  with touch, and 1024×700, 1366×768, 2560×1440 and 3840×2160 without: no
+  overlapping or off-screen HUD blocks, and every menu's back button on
+  screen.
+- Not verified here: frame rate on real hardware (the headless browser
+  renders in software, so only relative numbers mean anything), how Auto
+  behaves on a real phone over a long session, how the layout sits around a
+  real notch or home indicator, and whether the new sizes feel right in the
+  hand.
+
 ---
 
 Built by [Jeremy Anderson Tech](https://jeremyanderson.tech/), a web development and security practice in Shrewsbury, MA. Read more on the [project page](https://jeremyanderson.tech/project/babylon-js-survival-game/). [Services](https://jeremyanderson.tech/services/)

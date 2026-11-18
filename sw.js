@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v16-companions-and-comforts';
+const CACHE_NAME = 'survival-game-v17-smooth-and-sharp';
 const ASSETS = [
   './',
   './index.html',
@@ -54,6 +54,9 @@ const ASSETS = [
   './js/storage.js',
   './js/components/companion.js',
   './js/components/storage.js',
+  './js/quality.js',
+  './js/models/pool.js',
+  './js/components/quality.js',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png'
 ];

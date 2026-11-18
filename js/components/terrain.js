@@ -2,6 +2,7 @@
 import { seededRandom } from '../models/wilderness.js';
 import { createTreeModel, createRockModel, createOreModel, createPlantModel } from '../models/wilderness.js';
 import { REGROW_DAYS } from '../resources.js';
+import { ModelPool, VARIANTS } from '../models/pool.js';
 import { REGIONS, regionAt, groundColor, treeFor, plantFor } from '../regions.js';
 
 const smooth = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
@@ -27,6 +28,8 @@ export class TerrainSystem {
         this.pendingChunkKeys = new Set();
         this.currentChunkX = 0;
         this.currentChunkZ = 0;
+        this.coverScale = game.quality?.preset.cover ?? 1;
+        this.warmModels();
 
         // Player spawn parameters
         this.spawnPosition = { x: 0, y: 0, z: 0 };
@@ -470,24 +473,31 @@ export class TerrainSystem {
     createResource(type, x, y, z, resourceId) {
         if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 73856093) ^ Math.floor(z * 19349663);
-        const mesh = type === 'ore' ? createOreModel(this.scene, seed) : createPlantModel(this.scene, seed, type);
+        const mesh = this.models().spawn(type, seed);
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
-        mesh.receiveShadows = true;
         // Settle the transform now: until its first render a new mesh would
         // otherwise still sit at the world origin for picking.
         mesh.computeWorldMatrix(true);
         this.game.inventorySystem.harvestableObjects.push({mesh, type, resourceId});
     }
 
-    // One merged mesh per asset keeps picking, disposal, and draw calls simple.
+    // Trees, rocks and plants are instances drawn from a shared pool of models.
+    models() { return this.pool || (this.pool = new ModelPool(this.scene)); }
+
+    // Build the meadow's models up front, during loading, so the first steps
+    // into the world are not spent making them.
+    warmModels(kinds = ['pine', 'oak', 'rock', 'ore', 'fiber', 'herb', 'berry']) {
+        const pool = this.models();
+        for (const kind of kinds) for (let variant = 0; variant < VARIANTS[kind]; variant++) pool.source(kind, variant);
+    }
+
     createTree(x, y, z, resourceId, model = null) {
         if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 73856093) ^ Math.floor(z * 19349663);
-        const mesh = createTreeModel(this.scene, seed, model || (Math.abs(seed % 4) === 0 ? 'oak' : 'pine'));
+        const mesh = this.models().spawn(model || (Math.abs(seed % 4) === 0 ? 'oak' : 'pine'), seed);
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
-        mesh.receiveShadows = true;
         // Settle the transform now: until its first render a new mesh would
         // otherwise still sit at the world origin for picking.
         mesh.computeWorldMatrix(true);
@@ -498,10 +508,9 @@ export class TerrainSystem {
     createRock(x, y, z, resourceId) {
         if (this.harvestedIds.has(resourceId) || (this._only && !this._only.has(resourceId))) return;
         const seed = Math.floor(x * 83492791) ^ Math.floor(z * 2971215073);
-        const mesh = createRockModel(this.scene, seed);
+        const mesh = this.models().spawn('rock', seed);
         mesh.position.set(x, y, z);
         mesh.rotation.y = (seed % 360) * Math.PI / 180;
-        mesh.receiveShadows = true;
         // Settle the transform now: until its first render a new mesh would
         // otherwise still sit at the world origin for picking.
         mesh.computeWorldMatrix(true);
@@ -578,7 +587,9 @@ export class TerrainSystem {
             const z = z0 + random() * this.chunkSize;
             if (this.isWithinSpawnArea(x, z) || this.isShore(x, z) || this.game.explorationSystem?.isClearing(x, z)) continue;
             const size = .65 + random() * 1.2;
-            if (region.tufts < 1 && (i % 20) / 20 >= region.tufts) continue; // Sparse where little grows.
+            // Sparse where little grows, and thinner still on lower graphics settings.
+            const keep = Math.min(1, region.tufts) * (this.coverScale ?? 1);
+            if (keep < 1 && (i % 20) / 20 >= keep) continue;
             scale.set(size, size * (region.tufts > 1 ? 1.5 : 1), size);
             pos.set(x, this.getPerlinHeight(x, z) + .04, z);
             const m = BABYLON.Matrix.Compose(scale, BABYLON.Quaternion.RotationAxis(BABYLON.Axis.Y, random() * Math.PI * 2), pos);
