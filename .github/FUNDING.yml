@@ -1,0 +1,3 @@
+# Shows a "Sponsor" button on the repository once Sponsorships is switched on
+# in the repository settings. Donations go through the game's itch.io page.
+custom: ["https://cptnope.itch.io/survival-game-web-demo/donate"]

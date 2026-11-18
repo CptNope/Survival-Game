@@ -6,6 +6,8 @@ A 3D survival game for the browser, built with Babylon.js. Gather, craft and bui
 
 What changed and when is in the [changelog](CHANGELOG.md).
 
+The game is free. If you want to support it, you can [donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate).
+
 ## Features
 
 - Procedurally generated terrain using Perlin noise
@@ -930,7 +932,11 @@ rebuilt.
   length against ground speed was tuned by eye from those strips; some foot
   slide is likely.
 
-## Support
+## Support the project
+
+The Wilds is free to play and open source. If you enjoy it, you can [donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate). Any amount helps keep it growing.
+
+## Getting help
 
 Stuck, found a bug, or the game will not load? Email [info@jeremyanderson.tech](mailto:info@jeremyanderson.tech) or [open an issue](https://github.com/CptNope/Survival-Game/issues). More in [SUPPORT.md](SUPPORT.md).
 

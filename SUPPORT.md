@@ -1,4 +1,4 @@
-# Support
+# Getting help
 
 Stuck, found a bug, or the game will not load? Here is where to ask.
 
@@ -7,3 +7,7 @@ Stuck, found a bug, or the game will not load? Here is where to ask.
 - **Comments:** the [itch.io page](https://cptnope.itch.io/survival-game-web-demo) has a comment thread for quick questions.
 
 The Wilds is made by [Jeremy Anderson Tech](https://jeremyanderson.tech/).
+
+## Supporting the project
+
+The game is free. If you want to support it with money, you can [donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate).
