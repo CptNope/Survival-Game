@@ -1,7 +1,7 @@
 {
-  "name": "Survival Game",
-  "short_name": "Survival",
-  "description": "A 3D survival game with procedural terrain, crafting, and combat",
+  "name": "The Wilds",
+  "short_name": "The Wilds",
+  "description": "A free 3D survival game: gather, build and survive, then delve procedurally generated dungeons for graded loot.",
   "start_url": "./index.html",
   "display": "fullscreen",
   "background_color": "#000000",
