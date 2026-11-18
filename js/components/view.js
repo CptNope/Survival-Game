@@ -5,6 +5,7 @@
 import { VIEW_LABELS, ZOOM, isView, nextView, clampZoom, cameraRig, clampRig, coneTarget } from '../view.js';
 import { cellOf, isOpen, lineOfSight } from '../dungeon.js';
 import { createAvatarModel } from '../models/avatar.js';
+import { AVATAR, avatarPose, gait, ease } from '../avatar.js';
 import { createAxeModel, createSpearModel, createTorchModel } from '../models/wilderness.js';
 import { CREATURES } from '../creatures.js';
 
@@ -26,7 +27,8 @@ export class ViewSystem {
         this.heldKind = null;
         this.held = null;
         this.torch = null;
-        this.walk = 0;
+        this.gait = {phase: 0, stride: 0, speed: 0, turn: 0, forward: 0, right: 0};
+        this.clock = 0;
         this.last = {x: this.body.position.x, z: this.body.position.z};
         this.target = null;
         this.marker = this.createMarker();
@@ -122,8 +124,9 @@ export class ViewSystem {
                 const mesh = kind === 'spear' ? createSpearModel(this.scene) : createAxeModel(this.scene, kind === 'ironTools');
                 mesh.parent = this.avatar.rightHand;
                 mesh.isPickable = false;
-                if (kind === 'spear') { mesh.scaling.setAll(.75); mesh.rotation.x = -.25; mesh.position.z = .35; }
-                else { mesh.scaling.setAll(.85); mesh.rotation.x = 1.2; mesh.position.set(0, .05, .25); }
+                // Gripped a third of the way up the haft; the pose tilts the hand, not the tool.
+                if (kind === 'spear') { mesh.scaling.setAll(.62); mesh.position.set(0, 0, .2); }
+                else { mesh.scaling.setAll(.62); mesh.position.set(0, .15, 0); }
                 this.held = mesh;
             }
         }
@@ -132,9 +135,8 @@ export class ViewSystem {
             this.torch = createTorchModel(this.scene);
             this.torch.parent = this.avatar.leftHand;
             this.torch.isPickable = false;
-            this.torch.scaling.setAll(.9);
-            this.torch.rotation.x = .5;
-            this.torch.position.set(0, .15, .1);
+            this.torch.scaling.setAll(.7);
+            this.torch.position.set(0, .17, 0);
             this.torch.material.emissiveColor = new BABYLON.Color3(.5, .32, .14);
         }
         this.torch?.setEnabled(lit);
@@ -142,32 +144,50 @@ export class ViewSystem {
 
     animate(dt) {
         const game = this.game, player = game.playerSystem, body = this.body, avatar = this.avatar;
-        const moved = Math.hypot(body.position.x - this.last.x, body.position.z - this.last.z);
+        const step = Math.max(dt, .001), yaw = body.rotation.y, sin = Math.sin(yaw), cos = Math.cos(yaw);
+        // A jump of more than a few metres in one frame is a teleport (stairs, respawn), not a sprint.
+        let dx = body.position.x - this.last.x, dz = body.position.z - this.last.z;
+        if (Math.hypot(dx, dz) > 4) dx = dz = 0;
         this.last.x = body.position.x; this.last.z = body.position.z;
-        const speed = Math.min(12, moved / Math.max(dt, .001));
+        const cap = value => Math.max(-14, Math.min(14, value / step));
+        this.gait = gait(this.gait, cap(dx * sin + dz * cos), cap(dx * cos - dz * sin), dt, Boolean(player.isGrounded) && !player.isSwimming && !player.isFlying);
+        this.clock += dt;
         avatar.root.position.set(body.position.x, body.position.y - EYE_HEIGHT, body.position.z);
-        avatar.root.rotation.y = body.rotation.y;
+        avatar.root.rotation.y = yaw;
         // Lean into flight and lie flatter in the water.
         const lean = player.isFlying ? .55 : player.isSwimming ? 1.1 : 0;
-        avatar.root.rotation.x += (lean - avatar.root.rotation.x) * Math.min(1, dt * 8);
+        avatar.root.rotation.x = ease(avatar.root.rotation.x, lean, 8, dt);
         if (player.isSwimming) avatar.root.position.y += .9;
-        const striding = player.isGrounded && speed > .4;
-        if (striding) this.walk += dt * (4 + speed * 1.3);
-        const stride = striding ? Math.min(.75, .25 + speed * .06) : 0;
-        const swim = player.isSwimming ? Math.sin(performance.now() * .006) * .6 : 0;
-        avatar.legs.forEach((leg, n) => {
-            const wanted = Math.sin(this.walk + n * Math.PI) * stride + (player.isGrounded ? 0 : .25 - n * .5) + swim * (n ? 1 : -1);
-            leg.rotation.x += (wanted - leg.rotation.x) * Math.min(1, dt * 14);
-        });
         // The right arm follows the same swing timing as the first-person tool.
-        const effects = game.effects;
-        const t = effects ? (performance.now() - effects.swingStart) / (effects.swingHeavy ? 420 : 300) : 1;
-        const swing = t > 0 && t < 1 ? Math.sin(Math.min(1, t * 1.6) * Math.PI) : 0;
+        const effects = game.effects, archery = game.archery;
+        const attack = effects?.swingStart ? (performance.now() - effects.swingStart) / (effects.swingHeavy ? 420 : 300) / 1.25 : 1;
+        const pose = avatarPose({
+            ...this.gait, time: this.clock, grounded: Boolean(player.isGrounded), swimming: Boolean(player.isSwimming), flying: Boolean(player.isFlying),
+            dodging: (player.dodgeLeft || 0) > 0, attack: attack >= 0 && attack < 1 ? attack : null, heavy: Boolean(effects?.swingHeavy),
+            held: this.heldKind, torch: Boolean(this.torch?.isEnabled()), draw: archery?.drawing ? archery.amount() : null, look: body.rotation.x
+        });
+        // Both hands are on the bow while it is drawn, so what they carried is put away.
+        this.held?.setEnabled(!archery?.drawing);
+        if (this.torch && archery?.drawing) this.torch.setEnabled(false);
+        else if (this.torch && !this.firstPerson) this.torch.setEnabled(Boolean(effects?.torchLit));
+        this.applyPose(pose, dt);
+    }
+
+    // Ease every joint toward the pose. A swing or a drawn bow moves faster than a stroll.
+    applyPose(pose, dt) {
+        const avatar = this.avatar, quick = 26, calm = 16;
+        const to = (node, axis, value, rate = calm) => { node.rotation[axis] = ease(node.rotation[axis], value, rate, dt); };
+        avatar.hips.position.y = ease(avatar.hips.position.y, AVATAR.hips + pose.hipsY, calm, dt);
+        to(avatar.hips, 'y', pose.hipsYaw, 10);
+        to(avatar.torso, 'x', pose.torsoPitch); to(avatar.torso, 'y', pose.torsoYaw, quick);
+        to(avatar.head, 'x', pose.headPitch, 12); to(avatar.head, 'y', pose.headYaw, 12);
+        avatar.legs.forEach((leg, n) => { to(leg.hip, 'x', pose.legs[n].hip, quick); to(leg.knee, 'x', pose.legs[n].knee, quick); });
         avatar.arms.forEach((arm, n) => {
-            let wanted = Math.sin(this.walk + (n ? 0 : Math.PI)) * stride * .8 - swim * (n ? 1 : -1);
-            if (n === 1) wanted = this.heldKind ? -.55 - swing * 1.5 + wanted * .3 : wanted - swing * 1.6;
-            if (n === 0 && this.torch?.isEnabled()) wanted = -1.15;
-            arm.rotation.x += (wanted - arm.rotation.x) * Math.min(1, dt * 18);
+            const wanted = pose.arms[n];
+            to(arm.shoulder, 'x', wanted.shoulder, quick); to(arm.elbow, 'x', wanted.elbow, quick);
+            to(arm.shoulder, 'z', wanted.spread * arm.side, calm);
+            // A carried thing keeps its own tilt whatever the arm is doing.
+            arm.hand.rotation.x = wanted.hand === null ? ease(arm.hand.rotation.x, 0, calm, dt) : wanted.hand - arm.shoulder.rotation.x - arm.elbow.rotation.x;
         });
     }
 
