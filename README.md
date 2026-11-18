@@ -868,6 +868,67 @@ setting shows what Auto has chosen ("Now: Medium, 85% resolution").
   real notch or home indicator, and whether the new sizes feel right in the
   hand.
 
+## The explorer: a rebuilt player model
+
+The figure you see in third-person and overhead views was a stack of round
+blobs with straight sticks for limbs: the arms hung clear of the body, the
+pack floated behind it, and it walked like a pair of compasses. It has been
+rebuilt.
+
+### The model
+
+- A hooded coat with a belt, trousers, tall boots, a pack with a bedroll
+  across the top and straps over the chest, and a face under the brim.
+- Shoulders, elbows, hips and knees are real joints, and each part overlaps
+  the next so nothing floats or gaps when it moves.
+- Eleven rigid parts share one material (the old model had five parts with a
+  material each). It is about 1,200 triangles, up from about 450; the scene
+  around it draws roughly 75,000, so the cost is small.
+
+### How it moves
+
+- **Walking** bends the knee as each leg swings through, sinks a little as
+  the feet land, swings each arm against its leg and turns the chest
+  against the hips. **Sprinting** lengthens the stride, leans in and pumps
+  the arms.
+- **Backing up** steps backwards instead of moonwalking, and a **sidestep**
+  turns the hips the way you are going while the chest and head stay with
+  the camera.
+- The **head** follows where you look, up and down.
+- Standing still, the figure breathes; arms hang with a relaxed elbow.
+- **Jumping, flying, swimming and dodging** each have their own pose.
+- A **tool** is carried in a bent arm with the head of the axe up, and a
+  swing goes up over the shoulder and down. A **spear** is carried low and
+  thrust straight out. Bare hands punch.
+- The **torch** is held up in front and stays upright whatever the arm is
+  doing.
+- **Drawing the bow** puts the bow arm straight out and brings the string
+  hand back as the draw builds; the axe and torch are put away while you aim.
+- Motion is eased at a rate that does not depend on frame rate, and a jump
+  of the body by stairs or respawn is no longer read as a sprint.
+
+### Notes for developers
+
+- `js/avatar.js` is pure: proportions (`AVATAR`), `gait` (speed, stride,
+  phase, hip turn from this frame's movement), `attackCurve`, `avatarPose`
+  (every joint angle for a moment) and `ease`.
+- `js/models/avatar.js` builds the parts with a small `loft` helper (a
+  faceted solid through a stack of cross-sections) on plain transform nodes.
+  Ends that are buried in the next part are not drawn.
+- `ViewSystem.animate` measures movement relative to where the body faces,
+  asks for a pose and `applyPose` eases the joints toward it. Carried things
+  hang from a hand node whose tilt the pose sets directly, so mounts are
+  simple offsets.
+- `tests/avatar.test.mjs` covers the rules (no knee or elbow ever bends the
+  wrong way in any state), the model (parts, one material, soles on the
+  ground, facets facing out) and the view (walking in step, stopping,
+  teleports, swings, sidesteps, the bow).
+- Not verified here: how the motion reads at full speed. The headless
+  browser draws a few frames a second, so the cycles were checked as
+  frame-by-frame strips stepped at 60 a second, not watched live. Stride
+  length against ground speed was tuned by eye from those strips; some foot
+  slide is likely.
+
 ---
 
 Built by [Jeremy Anderson Tech](https://jeremyanderson.tech/), a web development and security practice in Shrewsbury, MA. Read more on the [project page](https://jeremyanderson.tech/project/babylon-js-survival-game/). [Services](https://jeremyanderson.tech/services/)
