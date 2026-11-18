@@ -930,6 +930,10 @@ rebuilt.
   length against ground speed was tuned by eye from those strips; some foot
   slide is likely.
 
+## Support
+
+Stuck, found a bug, or the game will not load? Email [info@jeremyanderson.tech](mailto:info@jeremyanderson.tech) or [open an issue](https://github.com/CptNope/Survival-Game/issues). More in [SUPPORT.md](SUPPORT.md).
+
 ---
 
 Built by [Jeremy Anderson Tech](https://jeremyanderson.tech/), a web development and security practice in Shrewsbury, MA. Read more on the [project page](https://jeremyanderson.tech/project/babylon-js-survival-game/). [Services](https://jeremyanderson.tech/services/)
