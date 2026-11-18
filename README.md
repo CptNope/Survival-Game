@@ -1,9 +1,10 @@
-# Survival Game
+# The Wilds
 
-> **Play the live game:** https://cptnope.github.io/Survival-Game/ — the GitHub Pages project path is case-sensitive. The lowercase `/survival-game/` URL is not the deployed project path.
+> **Play it:** on [itch.io](https://cptnope.itch.io/survival-game-web-demo) or on [GitHub Pages](https://cptnope.github.io/Survival-Game/). The GitHub Pages project path is case-sensitive: the lowercase `/survival-game/` URL is not the deployed project path.
 
+A 3D survival game for the browser, built with Babylon.js. Gather, craft and build a camp, explore four procedural regions, and delve generated dungeons for graded loot. It plays with keyboard and mouse or touch, and installs as a Progressive Web App.
 
-A 3D survival game built with Babylon.js featuring procedural terrain generation, resource harvesting, crafting, and combat.
+What changed and when is in the [changelog](CHANGELOG.md).
 
 ## Features
 
