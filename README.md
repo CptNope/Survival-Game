@@ -1,103 +1,530 @@
 # The Wilds
 
-> **Play it:** on [itch.io](https://cptnope.itch.io/survival-game-web-demo) or on [GitHub Pages](https://cptnope.github.io/Survival-Game/). The GitHub Pages project path is case-sensitive: the lowercase `/survival-game/` URL is not the deployed project path.
+[![Checks](https://github.com/CptNope/Survival-Game/actions/workflows/checks.yml/badge.svg)](https://github.com/CptNope/Survival-Game/actions/workflows/checks.yml)
+[![Version](https://img.shields.io/github/package-json/v/CptNope/Survival-Game?label=version)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Play on itch.io](https://img.shields.io/badge/play-itch.io-fa5c5c.svg)](https://cptnope.itch.io/survival-game-web-demo)
+[![Donate on itch.io](https://img.shields.io/badge/donate-itch.io-3f7a45.svg)](https://cptnope.itch.io/survival-game-web-demo/donate)
 
-A 3D survival game for the browser, built with Babylon.js. Gather, craft and build a camp, explore four procedural regions, and delve generated dungeons for graded loot. It plays with keyboard and mouse or touch, and installs as a Progressive Web App.
+[![The Wilds: an explorer with a torch beside a campfire at dusk](icons/the-wilds-social.jpg)](https://cptnope.itch.io/survival-game-web-demo)
 
-What changed and when is in the [changelog](CHANGELOG.md).
+A free 3D survival game that runs in the browser, built with Babylon.js. You
+wake in a meadow with nothing. Gather, craft and build a camp, explore four
+procedural regions, hunt three legends, and delve generated dungeons for gear
+graded from Common to Legendary. It plays with a keyboard and mouse or on a
+touch screen, and installs as an app.
 
-The game is free. If you want to support it, you can [donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate).
+> **Play it now:** [on itch.io](https://cptnope.itch.io/survival-game-web-demo)
+> or [on GitHub Pages](https://cptnope.github.io/Survival-Game/). Nothing to
+> install and no account needed.
+>
+> **Enjoying it?** The game is free and open source. You can
+> [support it with a donation on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate).
 
-## Features
+## Contents
 
-- Procedurally generated terrain using Perlin noise
-- Chunk-based terrain generation for better performance
-- Day/night cycle with changing lighting
-- Harvestable trees and rocks for resources
-- Flying mechanics with double-jump activation
-- Physics-enabled objects with realistic placement
-- Safe spawn area with flat terrain and no obstacles
-- Crafting system for creating tools and planks
-- Animal spawning and AI movement
-- Combat system with experience and leveling
-- Health and experience tracking
-- User interface for inventory and crafting
-- Progressive Web App (PWA) support for offline play
-- Procedural sound, a day/night sky with weather, swimmable lakes, field-note
-  goals, sleeping, and a build preview (see *Expedition overhaul* below)
-- Procedurally generated dungeons, new enemies and a boss, and found gear with
-  rolled bonuses graded Common to Legendary (see *Depths and loot* below)
+- [Links](#links)
+- [About](#about)
+- [How a session goes](#how-a-session-goes)
+- [What is in the game](#what-is-in-the-game)
+- [The world](#the-world)
+- [Gear, perks and tonics](#gear-perks-and-tonics)
+- [Building and crafting](#building-and-crafting)
+- [Controls](#controls)
+- [How it is built](#how-it-is-built)
+- [Project layout](#project-layout)
+- [Run it yourself](#run-it-yourself)
+- [Tests and checks](#tests-and-checks)
+- [Release history](#release-history)
+- [Support the project](#support-the-project)
+- [Getting help](#getting-help)
+- [Contributing](#contributing)
+- [License](#license)
+- [Update notes](#update-notes)
 
-## Setup
+## Links
 
-1. Start a local web server in the project directory
-   - Python: `python -m http.server 8000`
-   - Node.js: `npx serve`
-2. Open `http://localhost:8000` in a modern web browser
-3. Use mouse to look around and WASD keys (W=forward, A=left, S=backward, D=right) to move
+| | Link | What it is |
+| --- | --- | --- |
+| **Play** | [cptnope.itch.io/survival-game-web-demo](https://cptnope.itch.io/survival-game-web-demo) | The game on itch.io, with comments and the devlog |
+| **Play** | [cptnope.github.io/Survival-Game](https://cptnope.github.io/Survival-Game/) | The same build on GitHub Pages, deployed from `main`. The path is case-sensitive: the lowercase `/survival-game/` URL does not work |
+| **Donate** | [Support This Game on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate) | Pay what you like through itch.io, by card or PayPal |
+| **Devlog** | [The Wilds devlog](https://cptnope.itch.io/survival-game-web-demo/devlog) | One post per release, from the first prototype on |
+| **Changelog** | [CHANGELOG.md](CHANGELOG.md) | Every release and the pull requests in it |
+| **Project page** | [jeremyanderson.tech/project/babylon-js-survival-game](https://jeremyanderson.tech/project/babylon-js-survival-game/) | Overview, screenshots and how it is built |
+| **Build story** | [Vibe Coding a Babylon.js Survival Game](https://jeremyanderson.tech/vibe-coding-a-babylon-js-survival-game/) | The write-up: from a Windsurf prototype to The Wilds with Claude Fable |
+| **Source** | [github.com/CptNope/Survival-Game](https://github.com/CptNope/Survival-Game) | This repository |
+| **Issues** | [Report a bug or suggest something](https://github.com/CptNope/Survival-Game/issues) | The issue tracker |
+| **Pull requests** | [Merged and open pull requests](https://github.com/CptNope/Survival-Game/pulls?q=is%3Apr) | How every change went in, with its notes |
+| **Checks** | [GitHub Actions](https://github.com/CptNope/Survival-Game/actions) | Unit tests and a real-browser startup check on every change to the game |
+| **Help** | [SUPPORT.md](SUPPORT.md) or [info@jeremyanderson.tech](mailto:info@jeremyanderson.tech) | Where to ask when something goes wrong |
+| **Model workshop** | [models.html](https://cptnope.github.io/Survival-Game/models.html) | The low-poly wilderness models on their own |
+| **Resource field guide** | [resources.html](https://cptnope.github.io/Survival-Game/resources.html) | What can be gathered and what it makes |
+| **Engine** | [babylonjs.com](https://www.babylonjs.com/) | The 3D engine the game runs on |
 
-## Dependencies
+The maker:
 
-- Babylon.js (loaded from CDN)
-- Babylon.js Loaders
-- Babylon.js Procedural Textures
-- Babylon.js Serializers
-- Babylon.js GUI
+| | Link |
+| --- | --- |
+| **Website** | [jeremyanderson.tech](https://jeremyanderson.tech/) |
+| **Services** | [jeremyanderson.tech/services](https://jeremyanderson.tech/services/) |
+| **More projects** | [jeremyanderson.tech/projects](https://jeremyanderson.tech/projects/) |
+| **Blog** | [jeremyanderson.tech/blog](https://jeremyanderson.tech/blog/) |
+| **Book a call** | [jeremyanderson.tech/book-a-call](https://jeremyanderson.tech/book-a-call/) |
+| **itch.io** | [cptnope.itch.io](https://cptnope.itch.io/) |
+| **GitHub** | [github.com/CptNope](https://github.com/CptNope) |
+| **X** | [@JAndersonTech](https://x.com/JAndersonTech) |
+| **YouTube** | [@JeremyAndersonTech](https://www.youtube.com/@JeremyAndersonTech) |
+| **LinkedIn** | [Jeremy Anderson Tech](https://www.linkedin.com/company/jeremyanderson-tech/) |
+| **Email** | [info@jeremyanderson.tech](mailto:info@jeremyanderson.tech) |
+
+## About
+
+The Wilds is made by [Jeremy Anderson Tech](https://jeremyanderson.tech/), a
+web development and security practice in Shrewsbury, MA.
+
+It began on 9 May 2025 as a prototype called Survival Game, built with
+Windsurf, an AI coding tool, to see how far a 3D browser game could get with
+Babylon.js: Perlin-noise terrain, trees and rocks to harvest, a few animals
+and a crafting panel. It then sat untouched for more than a year.
+
+Work started again in late October 2026 with survival needs, building,
+weather and touch controls. Since 16 November 2026 it has been built with
+Claude Fable working as a coding agent: each change arrives as a pull request
+with unit tests and a headless-browser playthrough, and is merged after
+review. That is where the dungeons, graded gear, three camera views, frontier
+regions, legends, the dog, the rebuilt interface and the explorer model came
+from. The game took its name, The Wilds, in November 2026.
+
+It is free to play, has no ads and no accounts, and keeps your save in your
+own browser. The code is open source under the MIT license.
+
+## How a session goes
+
+```mermaid
+flowchart TD
+    wake([Wake in the Greenwood]) --> gather[Gather wood, stone and fiber]
+    gather --> craft[Craft tools, a spear, a torch]
+    craft --> camp[Build a camp: fire, shelter, chest, garden]
+    camp --> night{Night falls}
+    night -->|Stay in| rest[Cook, eat, sleep, save]
+    night -->|Head out| explore[Follow trails to landmarks and new regions]
+    rest --> explore
+    explore --> dungeon[Delve a dungeon, three floors down]
+    explore --> legend[Find a lair and fight a legend]
+    dungeon --> gear[Bring back graded gear]
+    legend --> gear
+    gear --> level[Level up and pick a perk]
+    level --> gather
+```
+
+Hunger, thirst and cold tick the whole time. A day lasts five minutes, wolves
+come out at night, and each region beyond the meadow adds its own pressure.
+
+## What is in the game
+
+| Area | What you get |
+| --- | --- |
+| **Survival** | Health, hunger, thirst and cold. Eat, drink at a lake or from a waterskin, and warm up at a fire or under a roof. Sleep through the night in a shelter |
+| **Gathering** | Trees, rocks, iron ore, fiber plants, herbs, berries, mushrooms and cactus fruit. Gathered nodes stay gathered and grow back over days |
+| **Crafting** | 22 recipes: planks, stone and iron tools, a spear, a torch, a waterskin, a fishing rod, a bow and arrows, a fur cloak, remedies, cooked food and three tonics |
+| **Building** | A lean-to, a campfire, floors, walls and roofs that snap together, garden beds and storage chests, with a preview before you place |
+| **Combat** | Tools, spear and bow. Every enemy attack has a wind-up you can see. A dodge with a moment of safety, a heavy sweep, and a quick heal |
+| **Exploration** | Trails, landmarks, a field compass and a map. Four regions that blend into each other, each with its own weather, plants and hunters |
+| **Dungeons** | Stone doorways lead to three generated floors of rooms, corridors, traps, shrines and chests, with a boss at the bottom. Layouts redraw every three days |
+| **Loot** | Found weapons, armor, boots and charms with rolled bonuses, graded Common to Legendary. Compare, equip or break them down |
+| **Progression** | Experience and levels, a perk to choose at each level, and field notes that teach the game one goal at a time |
+| **Legends** | Three great beasts, one in each frontier region, each with a lair and a named legendary prize |
+| **Homestead** | Fishing, garden beds that grow four crops, and chests to store what you cannot carry |
+| **Companion** | A stray dog to tame with cooked meat. It follows, fights beside you, and can be told to stay |
+| **Views** | First-person, third-person and overhead cameras, with a jointed explorer who walks, sprints, swims, swings and draws a bow |
+| **World feel** | A day and night sky, rain and storms, swimmable lakes, and sound made in code |
+| **Any screen** | An interface that scales from a small phone to a 4K monitor, touch controls, and a Graphics setting with an automatic mode |
+| **Offline** | Installs as an app and plays offline once it has loaded online at least once. Saves live in your browser |
+
+## The world
+
+Everything within about 170 m of the starting clearing is the Greenwood.
+Beyond it the country is one of four regions, blending across each border.
+
+| Region | Where | What it does to you | What grows | What hunts |
+| --- | --- | --- | --- | --- |
+| **The Greenwood** (meadow) | Home | Nothing | Pine, oak, berries | Wolves at night |
+| **Frostfell** (snow) | About 360 m south | Cold builds even at noon | Snowy pines | Ice wolves; a bite adds cold |
+| **Sunscar** (desert) | About 240 m north-west | Thirst builds about twice as fast by day | Cactus, deadwood | Scorpions; a sting poisons |
+| **Mirefen** (marsh) | About 360 m west | Thick fog | Bog trees, mushrooms | Bog toads that spit from range |
+
+### Creatures
+
+| Creature | Where | How it behaves |
+| --- | --- | --- |
+| Deer, rabbit | The Greenwood | Graze, and run when you come close. Hunt them for meat |
+| Wolf | The surface, at night | Hunts you in the dark |
+| Boar | The surface, by day | Leaves you alone until you come close, then charges |
+| Bear | The surface, far from camp | Rare and dangerous; always drops a piece of gear |
+| Ice wolf | Frostfell | Fast; its bite chills |
+| Scorpion | Sunscar | Lunges, and its sting poisons |
+| Bog toad | Mirefen | Keeps its distance and spits |
+| Cave spider | Dungeons | Fast and fragile; lunges from a few metres away |
+| Bat | Dungeons | Weaves through the air, bites and retreats |
+| Skeleton | Dungeons | Walks you down and swings |
+| Wraith | Dungeons, floors 2 and 3 | Keeps its distance and throws bolts down corridors |
+| Slime | Dungeons, any floor | Slow and sturdy; splits into two quick slimelets when it dies |
+| Mimic | Dungeons, floors 2 and 3 | Looks like a chest until you open it; always drops gear when beaten |
+| Stone Warden | Dungeons, floor 3 | Boss. A slow, telegraphed slam; enrages and calls spiders at half health |
+
+### Legends
+
+| Legend | Region | How it fights | Prize |
+| --- | --- | --- | --- |
+| **Old Rime**, the white alpha | Frostfell | A huge ice wolf; its bite chills, and it calls ice wolves as it weakens | Rime's Fang (weapon) |
+| **The Sand Tyrant**, king of scorpions | Sunscar | A huge scorpion that lunges and poisons, and calls scorpions at half health | Tyrant's Carapace (armor) |
+| **Mother of the Mire**, the great toad | Mirefen | A huge toad that keeps its distance and spits three bolts in a fan | Mirewalkers (boots) |
+
+Each legend is killed once, and its prize is always legendary.
+
+## Gear, perks and tonics
+
+Found gear rolls its bonuses when it drops. The total decides its grade.
+
+| Grade | Colour |
+| --- | --- |
+| Common | Grey-green |
+| Uncommon | Green |
+| Rare | Blue |
+| Epic | Purple |
+| Legendary | Gold |
+
+Bonuses a piece can carry: damage, critical chance, swing speed, health per
+hit, max health, damage reduction, cold resistance, slower hunger and thirst,
+move speed and bonus experience.
+
+| Perk | What a rank gives | Ranks |
+| --- | --- | --- |
+| Brawler | +12% damage with tools and spears | 3 |
+| Marksman | +15% damage with the bow | 3 |
+| Tough | +20 maximum health | 3 |
+| Fleet | +6% movement speed | 3 |
+| Hardy | Hunger and thirst build 15% slower | 3 |
+| Insulated | The cold builds 20% slower | 2 |
+| Forager | 20% chance of an extra item when gathering | 3 |
+| Fletcher | 25% of loosed arrows are not used up | 2 |
+| Acrobat | Dodge is ready 20% sooner | 2 |
+| Field medic | Remedies heal 25% more | 2 |
+| Treasure hunter | Dropped gear rolls better | 2 |
+
+You earn one perk point per level after the first, and choose from three
+perks each time.
+
+| Tonic | Made from | Where | Effect |
+| --- | --- | --- | --- |
+| Warming draught | 2 mushrooms, 1 herb | Campfire | The cold builds 60% slower for 3 minutes |
+| Antivenom | 1 cactus fruit, 2 herbs | Anywhere | Cures venom, and immunity for 2½ minutes |
+| Hunter's broth | 1 fish, 2 berries | Campfire | 30 hunger and +30% damage for 2 minutes |
+
+## Building and crafting
+
+| Piece | Cost | What it is for |
+| --- | --- | --- |
+| Lean-to shelter | 6 wood, 2 planks, 3 fiber | Somewhere to rest through the night |
+| Campfire | 3 wood, 3 stone | Warmth, light and cooking |
+| Wooden floor | 2 planks | The base of a cabin; pieces snap together |
+| Log wall | 4 wood | The sides of a cabin |
+| Wooden roof | 3 planks, 2 fiber | The top of a cabin |
+| Garden bed | 4 wood, 2 fiber | Grows berries, herbs, mushrooms or cactus fruit |
+| Storage chest | 4 planks, 2 fiber | Holds what you cannot carry |
+
+Recipes are in the Craft menu (**C**), and the
+[resource guide](https://cptnope.github.io/Survival-Game/resources.html) shows
+what each material makes.
 
 ## Controls
 
-- Mouse: Look around
-- WASD: Move player (W=forward, A=left, S=backward, D=right), Shift to sprint
-- Space: Jump (tap twice quickly to activate flying)
-- While Flying:
-  - Hold Space: Ascend higher
-  - Hold Ctrl: Descend
-  - Press Space again: Deactivate flying and fall
-- In deep water: you float at the surface; hold Ctrl to dive, Space to rise
-- Left Click (hold): Gather resources / Attack animals / Confirm a build
-- Right Click: Heavy sweep (uses a stone tool) / Cancel a build
-- C: Craft · B: Build · R or mouse wheel: Rotate the build preview
-- E: Drink at a lake or from the waterskin; rest in a shelter at night
-- G: Gear (equip, compare and break down found equipment)
-- E at a stone doorway, stairs or chest: descend, climb out, open
-- V: Switch between first-person, third-person and overhead views · Mouse
-  wheel: zoom the two outside views
-- Q: Dodge (a short dash that blows miss) · H: Quick heal
-- Hold R: Draw the bow, release to loose (R still rotates a build preview)
-- K: Perks
-- N: Map (or tap the compass card)
-- T: Tell your dog to stay or follow (or tap its status on the screen)
-- F: Torch · M: Mute · P: Save · Esc: Pause
+### Keyboard and mouse
 
-## Codebase Structure
+| Key | Action |
+| --- | --- |
+| **W A S D** | Move |
+| **Mouse** | Look around |
+| **Shift** | Sprint |
+| **Click** (hold) | Gather or attack; cast a fishing line; confirm a build |
+| **Right-click** | Heavy sweep; cancels building |
+| **E** | Drink, sleep, open chests, plant, take doors and stairs |
+| **Space** | Jump; double tap to fly, hold to rise |
+| **Ctrl** | Descend while flying, or dive in deep water |
+| **Q** | Dodge |
+| **H** | Quick heal |
+| **R** | Hold to draw the bow; rotates a build preview |
+| **F** | Torch |
+| **V** | Change view; the mouse wheel zooms the outside views |
+| **T** | Dog: stay or follow |
+| **C** / **B** / **G** | Craft, Build, Gear |
+| **K** / **N** | Perks, Map |
+| **M** / **P** | Mute, Save |
+| **Esc** | Pause |
 
-The game is organized into a modular component-based architecture:
+### Touch
 
-### Core Files
-- `index.html`: Main HTML file with canvas and script imports
-- `js/main.js`: Entry point that initializes the game
-- `js/game.js`: Core game class that coordinates all systems
-- `js/utils.js`: Utility functions used across the game
+| Control | Action |
+| --- | --- |
+| **Stick** | Move. Half a push is half the pace |
+| **Drag** | Look around; pinch to zoom the outside views |
+| **HIT** | Hold to gather or attack; tap to cast a line |
+| **USE** | Drink, sleep, open chests, plant, take doors and stairs |
+| **JUMP** | Jump; double tap to fly |
+| **RUN** | Hold to sprint |
+| **DODGE** | A short dash that blows miss |
+| **HEAL** | Use your best remedy |
+| **BOW** | Hold to draw, let go to loose |
+| **TORCH** | Light or put away the torch |
+| **SKILL** | Heavy sweep; cancels building |
+| **DOWN** | Descend while flying, or dive |
+| **View** | First-person, third-person or overhead |
+| **Compass** | Tap for the map |
 
-### Component System
-Each game system is separated into its own module:
+**V** steps through the three camera views in order:
 
-- `js/components/terrain.js`: Terrain generation and management
-- `js/components/player.js`: Player movement, physics, and camera
-- `js/components/inventory.js`: Resource management and crafting
-- `js/components/animals.js`: Animal spawning and behavior
-- `js/components/combat.js`: Combat mechanics and experience system
-- `js/components/ui.js`: User interface elements
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> First
+    First --> Third: V
+    Third --> Overhead: V
+    Overhead --> First: V
+    First: First-person
+    Third: Third-person
+    Overhead: Overhead
+```
 
-## Development
+## How it is built
 
-The game is built using Babylon.js, a powerful 3D engine for the web. The modular architecture makes it easy to extend with new features by adding new component systems or enhancing existing ones.
+| Part | Choice |
+| --- | --- |
+| **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
+| **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
+| **Size** | About 10,400 lines of JavaScript in 53 modules |
+| **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
+| **Sound** | Synthesised in the browser with the Web Audio API |
+| **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
+| **Offline** | A service worker caches the game's own files and the engine |
+| **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
+| **Checks** | 169 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+
+### How the code is arranged
+
+`js/game.js` creates one `SurvivalGame`, which owns about thirty systems. The
+rules that can be worked out without a 3D scene (how gear is graded, how a
+dungeon floor is laid out, how fast you walk) live in plain modules under
+`js/`, so they can be unit tested on their own. The systems under
+`js/components/` apply those rules to the scene.
+
+```mermaid
+flowchart TD
+    index["index.html"] --> main["js/main.js"] --> game["SurvivalGame<br/>js/game.js"]
+
+    game --> systems
+
+    subgraph systems["Systems: js/components"]
+        direction LR
+        subgraph world["World"]
+            terrain["Terrain<br/>chunks, water, plants"]
+            regions["Regions"]
+            exploration["Exploration<br/>trails, landmarks"]
+            dungeon["Dungeons"]
+            sky["Sky and weather"]
+        end
+
+        subgraph player["Player"]
+            playersys["Player<br/>movement, jumping, swimming"]
+            touch["Touch controls"]
+            view["Views and avatar"]
+        end
+
+        subgraph life["Survival and progress"]
+            survival["Hunger, thirst, cold"]
+            inventory["Inventory and crafting"]
+            progression["Field notes"]
+            perks["Perks and buffs"]
+            save["Save"]
+        end
+
+        subgraph fight["Combat"]
+            combat["Melee"]
+            archery["Bow"]
+            animals["Animals and creatures"]
+            legends["Legends"]
+            gear["Gear and loot"]
+            companion["The dog"]
+        end
+
+        subgraph home["Homestead"]
+            building["Building"]
+            gardens["Gardens and fishing"]
+            storage["Storage chests"]
+        end
+
+        subgraph face["Interface and feel"]
+            ui["HUD and menus"]
+            effects["Effects"]
+            audio["Audio"]
+            quality["Graphics quality"]
+        end
+
+    end
+
+    systems --> rules
+    systems --> models
+
+    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, avatar, archery, homestead, map"]
+    models["Models built in code<br/>wilderness, creatures, avatar, instance pool"]
+```
+
+### What happens in a frame
+
+```mermaid
+flowchart TD
+    frame([Browser frame]) --> chunks[Build a little of any queued terrain]
+    chunks --> slow[Every 0.65 s: buildings and fires]
+    slow --> paused{Paused?}
+    paused -->|Yes| eighth[Draw one frame in eight]
+    paused -->|No| clock[Day and night, weather]
+    clock --> beasts[Animals and creatures]
+    beasts --> input[Player and touch input]
+    input --> act[Held gather or attack, build preview]
+    act --> governor[Graphics quality governor]
+    governor --> near[Chunks to load, pickups, landmarks, dungeon]
+    near --> camera[Camera view and avatar]
+    camera --> systems[Gear, buffs, regions, legends, fishing, gardens, dog, bow]
+    systems --> needs[Hunger, thirst, cold]
+    needs --> autosave[Autosave]
+    autosave --> draw([Draw the scene])
+    eighth --> draw
+```
+
+The HUD is refreshed every frame, paused or not. Time-based work uses the
+frame's length in seconds, capped at 0.05 s, so a hitch is never read as a
+leap. Walking is set in units a second (walk 6,
+sprint 9.5) for keyboard and touch alike.
+
+## Project layout
+
+| Path | What is in it |
+| --- | --- |
+| `index.html`, `styles.css` | The page, the HUD and menu markup, and the whole interface stylesheet |
+| `js/main.js`, `js/game.js` | Start-up and the `SurvivalGame` class that owns every system |
+| `js/components/` | The systems: terrain, player, touch, view, survival, inventory, building, combat, archery, animals, creatures, dungeon, regions, legends, companion, homestead, storage, gear, perks, buffs, progression, weather, sky, audio, effects, quality, save and the interface |
+| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
+| `js/models/` | Models built in code: `wilderness`, `creatures`, `avatar`, and the instance `pool` |
+| `tests/` | 16 test files, one per area of the game |
+| `scripts/browser-smoke.mjs` | Starts the game in real Chrome, desktop and emulated phone, and checks it reaches play |
+| `sw.js`, `manifest.json`, `icons/` | The service worker, the app manifest and the install icons |
+| `models.html`, `resources.html` | The model workshop and the resource field guide |
+| `CHANGELOG.md`, `SUPPORT.md`, `LICENSE` | Release history, where to get help, and the MIT license |
+| `.github/` | The checks workflow and the funding link |
+
+## Run it yourself
+
+The game is static files, so any local web server will do. It has to be
+served over HTTP: opening `index.html` straight from disk will not load the
+modules.
+
+```bash
+git clone https://github.com/CptNope/Survival-Game.git
+cd Survival-Game
+python -m http.server 8000      # or: npx serve
+```
+
+Then open `http://localhost:8000`. The engine comes from the Babylon.js CDN,
+so the first load needs a connection.
+
+## Tests and checks
+
+```bash
+npm ci
+npm test
+```
+
+`npm test` runs 169 unit tests on Node's built-in test runner. They cover the
+rule modules directly and drive the systems on Babylon's `NullEngine`, which
+needs no browser or graphics card.
+
+`node scripts/browser-smoke.mjs` starts the game in a real Chrome, on a
+desktop page and an emulated phone, and fails if it does not reach play. It
+needs Chrome installed; set `CHROME_BIN` to point at it.
+
+Both run in GitHub Actions, as the `test` and `startup` jobs, on every pull
+request and push to `main` that touches the game code, the tests or the
+package files. See the [checks workflow](https://github.com/CptNope/Survival-Game/actions/workflows/checks.yml).
+
+## Release history
+
+```mermaid
+timeline
+    title The Wilds, release by release
+    May 2025 : v0.1.0 The first prototype, built with Windsurf
+    October 2026 : v0.2.0 Survival needs, building, weather and touch controls
+    16 November 2026 : v0.3.0 Dungeons, new enemies and graded loot
+                     : v0.4.0 Three views, three frontiers, bosses and a dog
+    17 November 2026 : v0.5.0 A new name, a new interface and a new player model
+    18 November 2026 : v0.5.1 One walking pace for keyboard and touch
+```
+
+| Version | Date | What it brought | Pull requests |
+| --- | --- | --- | --- |
+| **v0.5.1** | 18 Nov 2026 | One walking pace for keyboard and touch; the changelog; donation and help links | 20, 21 |
+| **v0.5.0** | 17 Nov 2026 | The name The Wilds, an interface for every screen, a Graphics setting, and the explorer model | 18, 19 |
+| **v0.4.0** | 16 Nov 2026 | Three camera views, a dodge, three frontier regions, a bow, perks, legends, a map, fishing, gardens, a dog, chests and tonics | 14 to 17 |
+| **v0.3.0** | 16 Nov 2026 | Sound, a sky, swimming, field notes, generated dungeons, new enemies and graded gear | 12, 13 |
+| **v0.2.0** | 28 Oct 2026 | Hunger, thirst and cold, shelters and saves, weather, modular building, wolves, cooking, landmarks, touch controls and tests | 1 to 11 |
+| **v0.1.0** | 9 May 2025 | The first prototype: terrain, harvesting, crafting, animals, combat and flying | First commits |
+
+The full list is in the [changelog](CHANGELOG.md), each release has a post in
+the [devlog](https://cptnope.itch.io/survival-game-web-demo/devlog), and the
+detailed notes for every update are [further down this page](#update-notes).
+
+## Support the project
+
+The Wilds is free to play and open source, with no ads. If you enjoy it:
+
+- **[Donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate).**
+  Pay what you like, by card or PayPal. Any amount helps keep it growing.
+- **Rate it or leave a comment** on the
+  [itch.io page](https://cptnope.itch.io/survival-game-web-demo). It helps
+  other players find the game.
+- **Star this repository** and share the game with someone who would like it.
+- **Need something like this built?** [Book a call](https://jeremyanderson.tech/book-a-call/)
+  or see the [services](https://jeremyanderson.tech/services/) page.
+
+## Getting help
+
+Stuck, found a bug, or the game will not load? Email
+[info@jeremyanderson.tech](mailto:info@jeremyanderson.tech) or
+[open an issue](https://github.com/CptNope/Survival-Game/issues). Say which
+browser and device you are on and what you were doing when it went wrong.
+More in [SUPPORT.md](SUPPORT.md).
+
+If you get the old version after an update, reload the page once: the game
+caches itself for offline play.
+
+## Contributing
+
+Bug reports and ideas are welcome in the
+[issue tracker](https://github.com/CptNope/Survival-Game/issues). If you send
+a pull request, run `npm test` first, and add a test for anything you change
+in a rule module. Changes go in through pull requests against `main`, and the
+checks have to pass before a merge.
 
 ## License
 
-MIT License
+[MIT](LICENSE). You can use, change and share the code, including in your own
+projects, as long as the license notice stays with it.
 
-## Expedition update
+## Update notes
+
+Everything below is the detailed record of each update, oldest first, as it
+was written at the time. Newer notes replace older ones where they disagree.
+
+### Expedition update
 
 The desktop interface now includes a pause screen, centered interaction reticle,
 resource quick view, oxygen/health/XP meters, contextual gathering hints, and a
@@ -121,7 +548,7 @@ node --test tests/game.test.mjs
 The world and inventory are session-only. CDN dependencies require an initial
 online load; offline availability depends on successful service-worker caching.
 
-## Wilderness models
+### Wilderness models
 
 Trees, rocks, deer, and dropped supplies are generated locally by
 `js/models/wilderness.js`. The collection uses matte materials and per-face
@@ -147,7 +574,7 @@ The pinned Babylon development dependency is test-only; the game still loads
 its existing CDN engine. Tests cover geometry, deterministic variants, disposal,
 canopy orientation, animation, and hits on nested deer meshes.
 
-## Ore and foraging
+### Ore and foraging
 
 Iron deposits, fiber plants, purple medicinal flowers, and red berry bushes now
 populate dry terrain. A starter group appears just outside the spawn clearing.
@@ -166,7 +593,7 @@ recovered. Resource depletion is session/chunk-local, like the existing trees.
 Open `resources.html` for an orbitable resource field guide. Run `npm test` for
 gathering gates, crafting costs, healing, death drops, and asset cleanup tests.
 
-## Responsive-world improvements
+### Responsive-world improvements
 
 - Lower camera inertia for precise keyboard/mouse movement; hold **Shift** to sprint.
 - Frame-time-clamped jumping, flight, and swimming without excessive vertical drift.
@@ -183,7 +610,7 @@ gathering gates, crafting costs, healing, death drops, and asset cleanup tests.
 The game is still desktop-controlled and the world state is not saved across reloads.
 No network assets or monetized systems were added by this improvement pass.
 
-## Discoverable wilderness
+### Discoverable wilderness
 
 Walk the dirt trails leading out of the spawn clearing to three persistent
 landmarks: Ember Camp (east), Old Watch Post (northwest), and Trapper Shelter
@@ -201,14 +628,14 @@ trail draw calls); trees, rocks, and tall grass avoid paths and site clearings.
 Survival progression remains offline-first after initial asset caching.
 World/expedition discoveries still reset upon reloading the game.
 
-## Wildlife
+### Wildlife
 
 Deer now share the woods with smaller rabbits. Rabbits hop and flee faster,
 take fewer hits to hunt, and provide a little crafting fiber plus experience.
 Both wildlife types are spawned near the player and outside water. Animal
 counts remain capped and distant creatures are released to protect frame rate.
 
-## Camp building, survival needs & saved expeditions
+### Camp building, survival needs & saved expeditions
 
 A new survival loop adds three environmental meters:
 
@@ -253,7 +680,7 @@ merging. The added `tests/survival.test.mjs` exercises starvation,
 warming, drinking, ingredient costs, construction boundaries and
 persistent save/restore.
 
-## Weather, modular construction, cooking and threats
+### Weather, modular construction, cooking and threats
 
 - **Clear, rainy and stormy conditions** cycle with the in-game clock.
   A CSS-only rain overlay keeps draw-call and download overhead low, and
@@ -278,7 +705,7 @@ persistent save/restore.
 The weather cycle uses existing saved day/time so it restores
 deterministically without new save migration.
 
-## Phase 5 — Mobile and PWA touch controls
+### Phase 5 — Mobile and PWA touch controls
 
 Phones and tablets with a coarse pointer now get a dedicated control surface
 while the existing mouse/keyboard game remains unchanged:
@@ -310,7 +737,7 @@ dead-player input gating; use `npm test`.
 and iOS browser playtests remain valuable for multitouch behavior, frame
 rate, PWA installation and orientation changes.
 
-## Installability and offline reliability
+### Installability and offline reliability
 
 The old 1-byte icon placeholders have been replaced with valid 192px and
 512px PNG app icons, referenced by `manifest.json`. A new deterministic
@@ -332,13 +759,13 @@ On phones, after a new deploy, refresh/relaunch once while online before
 going offline. Existing installed copies should update their cached shell
 when their service worker activates.
 
-## Expedition overhaul: feel, world and progression
+### Expedition overhaul: feel, world and progression
 
 This pass gives the existing systems weight, atmosphere and a reason to keep
 going. It adds **no downloads**: sound, sky, particles and new models are all
 generated in the browser, so the game stays offline-first.
 
-### Feel
+#### Feel
 
 - **Sound.** Every effect is synthesised with the Web Audio API
   (`js/components/audio.js`): chopping, mining, picking, crafting, building,
@@ -356,7 +783,7 @@ generated in the browser, so the game stays offline-first.
 - **A tool in hand.** The axe or spear you carry is drawn in view and swings
   with each action.
 
-### World
+#### World
 
 - **Sky.** One procedural dome (a single draw call) with a sun, moon, stars,
   drifting clouds, warm dawns and dusks, and overcast rain and storm skies with
@@ -370,7 +797,7 @@ generated in the browser, so the game stays offline-first.
 - **Fire and torchlight.** Campfires have flames and a flickering light. A
   craftable **torch** (F) lights your way and slows the cold.
 
-### Progression
+#### Progression
 
 - **Field notes.** Ten ordered goals, each paying experience: first tool,
   campfire, hot meal, shelter, first dawn, three landmarks, iron tool, a wolf,
@@ -387,7 +814,7 @@ generated in the browser, so the game stays offline-first.
   **R** or the mouse wheel, click to place, Esc or right click to cancel.
   Floors, walls and roofs keep placing while materials last.
 
-### Fixes
+#### Fixes
 
 - New expeditions open on a clear morning instead of always starting in rain.
 - The heavy sweep no longer breaks a tool when nothing is in reach.
@@ -403,7 +830,7 @@ generated in the browser, so the game stays offline-first.
 - The pack shows only what you carry; the HUD refreshes ten times a second
   instead of every frame.
 
-### Notes for developers
+#### Notes for developers
 
 - New modules: `sky.js`, `audio.js`, `effects.js`, `progression.js` (in
   `js/components/`) and `js/settings.js`. All are precached by `sw.js`.
@@ -419,9 +846,9 @@ generated in the browser, so the game stays offline-first.
 - Not verified here: how the synthesised audio actually sounds, and frame rate
   on real phones. Both need a listen and a playtest on hardware.
 
-## Depths and loot: dungeons, enemies and graded gear
+### Depths and loot: dungeons, enemies and graded gear
 
-### Dungeons
+#### Dungeons
 
 - **Entrances in the world.** Stone doorways are scattered through the hills,
   placed deterministically like the landmarks. The first, the **Old Barrow**,
@@ -443,7 +870,7 @@ generated in the browser, so the game stays offline-first.
 - **Dying underground** ends the run. You wake at camp, your pack is waiting
   outside the entrance, and you keep your gear.
 
-### Enemies
+#### Enemies
 
 | Creature | Where | Behaviour |
 | --- | --- | --- |
@@ -460,7 +887,7 @@ Creatures that cannot see you follow a flow field through the corridors rather
 than walking into walls. The reticle shows the name and health of whatever you
 are looking at, and the boss has its own health bar.
 
-### Loot
+#### Loot
 
 - **Rolled bonuses.** Gear drops from chests, monsters, bears and some
   landmarks. Each piece rolls one to four bonuses from ten stats: damage,
@@ -478,7 +905,7 @@ are looking at, and the boss has its own health bar.
   (and iron ingots from Rare upwards).
 - Gear is separate from the resource pack and is **kept on death**.
 
-### Notes for developers
+#### Notes for developers
 
 - Pure, engine-free modules: `js/gear.js` (rolling and grading),
   `js/dungeon.js` (sites, floor generation, grid collision, line of sight,
@@ -498,9 +925,9 @@ are looking at, and the boss has its own health bar.
 - Not verified here: difficulty and pacing with real hands on the controls,
   how the new sounds actually sound, and frame rate on real phones.
 
-## Views and dangers: three cameras, dodging and deadlier dungeons
+### Views and dangers: three cameras, dodging and deadlier dungeons
 
-### Three ways to look at it
+#### Three ways to look at it
 
 Press **V** (or the **View** button) to cycle the camera. The choice is saved
 with your other settings.
@@ -523,7 +950,7 @@ with your other settings.
   be targeted.
 - On a portrait phone the outside cameras sit further back.
 
-### Dodge and quick heal
+#### Dodge and quick heal
 
 - **Dodge (Q)**: a 3.4 metre dash in the direction you are moving, or
   backwards if you are standing still. Blows miss for a third of a second.
@@ -533,7 +960,7 @@ with your other settings.
   (herbal wrap, then field dressing, then food). Nothing is used at full
   health.
 
-### New in the depths
+#### New in the depths
 
 | Danger | Where | What it does |
 | --- | --- | --- |
@@ -551,7 +978,7 @@ Dungeons now come in three kinds, fixed by where they are: stone **crypts**,
 warm earthen **caverns**, and **frozen vaults**, where the cold builds unless
 your torch is lit. The Old Barrow is always a crypt.
 
-### Notes for developers
+#### Notes for developers
 
 - `js/view.js` is pure camera maths (`cameraRig`, `clampRig`, `coneTarget`).
   `js/components/view.js` owns a second camera that does the drawing in the
@@ -575,9 +1002,9 @@ your torch is lit. The Old Barrow is always a crypt.
   controls, pinch zoom on a real phone, the new sounds, and frame rate on real
   phones.
 
-## Frontiers: regions, the bow and perks
+### Frontiers: regions, the bow and perks
 
-### Three regions beyond the meadow
+#### Three regions beyond the meadow
 
 The meadow now ends. Everything within 170 m of the clearing is unchanged, so
 an existing camp, its trees and its gathered nodes stay exactly as they were.
@@ -599,7 +1026,7 @@ have not visited; reaching a new region is worth experience.
 - Venom cannot be dodged or armoured against once it is in you, but dodging
   the sting avoids it entirely.
 
-### The bow
+#### The bow
 
 Craft a **bow** (3 wood, 3 fiber) and **arrows** (1 wood + 1 stone makes 4).
 Hold **R** (or the **BOW** button) to draw and release to loose.
@@ -613,7 +1040,7 @@ Hold **R** (or the **BOW** button) to draw and release to loose.
   steered on to the target.
 - Arrow damage grows with level and weapon power from gear, and can crit.
 
-### Perks
+#### Perks
 
 Every level after the first earns a perk point. Press **K** (or tap **Perk
 ready**) and choose one of three perks; the offer is fixed until you choose,
@@ -627,7 +1054,7 @@ used up) · Acrobat (dodge ready 20% sooner) · Field medic (remedies heal 25%
 more) · Treasure hunter (dropped gear rolls better). Most stack two or three
 times.
 
-### Notes for developers
+#### Notes for developers
 
 - `js/regions.js` is pure: two slow noise fields give each spot a weight per
   region. Terrain colour, tree and plant choice, wildlife, survival rates and
@@ -647,9 +1074,9 @@ times.
   balanced in real play, how the bow feels under real hands and on a real
   phone, and the five new sounds.
 
-## Legends and homestead: region bosses, a map, fishing and gardens
+### Legends and homestead: region bosses, a map, fishing and gardens
 
-### Legends
+#### Legends
 
 Each frontier region has a lair: a ring of standing stones round a heap of
 bones, deep in the patch of that region nearest the clearing. Once you have
@@ -667,14 +1094,14 @@ found a region, the compass card and the map point to its lair.
 - Each is killed once. The prize is always legendary, carries the legend's
   name, and is rolled at your level.
 
-### The map
+#### The map
 
 Press **N** (or tap the compass card) for a map 1800 m across, centred on you
 with north up. Country of a region you have not yet reached stays dark. It
 marks you, the clearing, your camp, places you have discovered, dungeons you
 have entered, and the lairs of regions you have found.
 
-### Fishing
+#### Fishing
 
 Craft a **fishing rod** (2 wood, 3 fiber). Stand on dry ground facing a lake
 and click to cast. The float bobs for 2.5 to 7.5 seconds, then dips: click
@@ -683,7 +1110,7 @@ nothing, and walking off brings the line in. Most catches are one fish,
 sometimes two, occasionally a clump of weed. **Grill fish** at a campfire for
 15 health and 40 hunger.
 
-### Garden beds
+#### Garden beds
 
 Build a **garden bed** (4 wood, 2 fiber) and press **E** beside it to plant
 whichever of these you carry most of. Press **E** again when it is ripe.
@@ -698,7 +1125,7 @@ whichever of these you carry most of. Press **E** again when it is ripe.
 So one trip to the marsh or the desert can be turned into a steady supply at
 home. Sleeping through the night counts toward ripening.
 
-### Notes for developers
+#### Notes for developers
 
 - `js/legends.js`, `js/map.js` and `js/homestead.js` are pure rules;
   `js/components/legends.js` and `js/components/homestead.js` apply them.
@@ -715,9 +1142,9 @@ home. Sleeping through the night counts toward ripening.
 - Not verified here: whether the legends are beatable at a fair level with
   real play, fishing's timing under real hands, and the three new sounds.
 
-## Companions and comforts: a dog, storage chests and tonics
+### Companions and comforts: a dog, storage chests and tonics
 
-### A dog
+#### A dog
 
 Stand within 12 m of a campfire you built and a stray dog comes to sit at the
 edge of the firelight. Walk up to it and press **E** with cooked meat in your
@@ -735,14 +1162,14 @@ pack: it is yours from then on.
   follow. It will not swim; if you get more than 36 m ahead it appears at
   your side.
 
-### Storage chests
+#### Storage chests
 
 A new building (4 planks, 2 fiber). Press **E** beside it to open it and move
 things between pack and chest, one at a time or all at once. A chest holds 300
 items of any kind, tools included. Dying drops what you carry, never what is in
 a chest.
 
-### Tonics
+#### Tonics
 
 | Tonic | Made from | Where | Effect |
 | --- | --- | --- | --- |
@@ -752,7 +1179,7 @@ a chest.
 
 The draught stacks with a fur cloak. Antivenom stops the venom, not the sting.
 
-### Fixed in this update
+#### Fixed in this update
 
 - **Garden beds lost their crops on reload.** In the previous update, a
   planted bed came back empty after closing and reopening the game, because
@@ -763,7 +1190,7 @@ The draught stacks with a fur cloak. Antivenom stops the venom, not the sting.
   thirsty.
 - Dungeon shrines still grant only their own three boons, not the new tonics.
 
-### Notes for developers
+#### Notes for developers
 
 - `js/companion.js` and `js/storage.js` are pure rules;
   `js/components/companion.js` and `js/components/storage.js` apply them.
@@ -779,9 +1206,9 @@ The draught stacks with a fur cloak. Antivenom stops the venom, not the sting.
   stuck, getting in the way), whether its damage is balanced, and how the
   storage panel feels on a real phone.
 
-## Smooth and sharp: an interface for every screen, and steadier frames
+### Smooth and sharp: an interface for every screen, and steadier frames
 
-### The interface
+#### The interface
 
 The HUD and menus were rebuilt. The look is the same dark forest green; the
 layout and sizing are new.
@@ -810,7 +1237,7 @@ layout and sizing are new.
 - Controls are a list of keys beside what they do, folded away on phones.
 - The map and its key are drawn with small shapes instead of text symbols.
 
-### Graphics setting
+#### Graphics setting
 
 **Pause → Graphics** offers Auto, Low, Medium and High.
 
@@ -827,7 +1254,7 @@ and then drops a level; above 57 it climbs back just as carefully, and never
 above where it started. Menus, loading and a hidden tab are not counted. The
 setting shows what Auto has chosen ("Now: Medium, 85% resolution").
 
-### Smoother play
+#### Smoother play
 
 - **Trees, rocks, ore and plants are instances** of a few shared models
   (six pines, five oaks, six rocks and so on), turned and sized per object.
@@ -845,7 +1272,7 @@ setting shows what Auto has chosen ("Now: Medium, 85% resolution").
 - The HUD has no blurred glass: blurring a 3D view behind a panel costs a
   full-screen pass every frame.
 
-### Notes for developers
+#### Notes for developers
 
 - `js/quality.js` is the pure rule set (levels, `hardwareScale`,
   `autoStep`); `js/components/quality.js` applies it. `js/models/pool.js`
@@ -871,14 +1298,14 @@ setting shows what Auto has chosen ("Now: Medium, 85% resolution").
   real notch or home indicator, and whether the new sizes feel right in the
   hand.
 
-## The explorer: a rebuilt player model
+### The explorer: a rebuilt player model
 
 The figure you see in third-person and overhead views was a stack of round
 blobs with straight sticks for limbs: the arms hung clear of the body, the
 pack floated behind it, and it walked like a pair of compasses. It has been
 rebuilt.
 
-### The model
+#### The model
 
 - A hooded coat with a belt, trousers, tall boots, a pack with a bedroll
   across the top and straps over the chest, and a face under the brim.
@@ -888,7 +1315,7 @@ rebuilt.
   material each). It is about 1,200 triangles, up from about 450; the scene
   around it draws roughly 75,000, so the cost is small.
 
-### How it moves
+#### How it moves
 
 - **Walking** bends the knee as each leg swings through, sinks a little as
   the feet land, swings each arm against its leg and turns the chest
@@ -910,7 +1337,7 @@ rebuilt.
 - Motion is eased at a rate that does not depend on frame rate, and a jump
   of the body by stairs or respawn is no longer read as a sprint.
 
-### Notes for developers
+#### Notes for developers
 
 - `js/avatar.js` is pure: proportions (`AVATAR`), `gait` (speed, stride,
   phase, hip turn from this frame's movement), `attackCurve`, `avatarPose`
@@ -932,7 +1359,7 @@ rebuilt.
   length against ground speed was tuned by eye from those strips; some foot
   slide is likely.
 
-## One walking pace: keyboard and touch now move at the same speed
+### One walking pace: keyboard and touch now move at the same speed
 
 Walking with the keyboard was about four times slower than intended, and the
 touch stick about four times faster. Frame timing was not the cause. The two
@@ -955,7 +1382,7 @@ the camera every frame, about 24 units a second at a full push.
   some pace, where before the player could stick to the ground. It is also why
   RUN on a phone used to feel uneven: a sprint there asked for 0.66 a frame.
 
-### Verification
+#### Verification
 
 - 169 unit tests pass, 8 of them new or rewritten for this: the keyboard and
   the stick reach the stated pace at 30 to 240 frames a second (using the
@@ -966,14 +1393,6 @@ the camera every frame, about 24 units a second at a full push.
   keyboard walked at 3.8 where the uncapped version did not move at all.
 - Not verified here: how the new pace feels in the hand, on a desktop or a
   phone. A phone at full push is about four times slower than it was.
-
-## Support the project
-
-The Wilds is free to play and open source. If you enjoy it, you can [donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate). Any amount helps keep it growing.
-
-## Getting help
-
-Stuck, found a bug, or the game will not load? Email [info@jeremyanderson.tech](mailto:info@jeremyanderson.tech) or [open an issue](https://github.com/CptNope/Survival-Game/issues). More in [SUPPORT.md](SUPPORT.md).
 
 ---
 
