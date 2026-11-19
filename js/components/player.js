@@ -1,4 +1,5 @@
 // Player system for handling player controls and physics
+import { SPEED, MAX_STEP_UNITS, keyboardSpeed, frameFactor } from '../movement.js';
 // Dodge timings (ms) and speed (m/s).
 export const DODGE = Object.freeze({distance: 3.4, invulnerable: 340, cooldown: 1100, speed: 14});
 
@@ -28,7 +29,7 @@ export class PlayerSystem {
         
         // Swimming properties
         this.isSwimming = false;
-        this.swimSpeed = 0.15;
+        this.swimSpeed = 0.15; // Rising and sinking, in height units per normalized frame.
         this.underwaterDrag = 0.7; // Slows movement underwater
         this.oxygenLevel = 100; // Full oxygen
         this.maxOxygen = 100;
@@ -75,8 +76,10 @@ export class PlayerSystem {
         this.camera.ellipsoid = new BABYLON.Vector3(1, 1.8, 1);
         this.camera.checkCollisions = true;
         this.camera.applyGravity = false; // We'll handle gravity manually
-        this.camera.speed = 0.36;
         this.camera.inertia = 0.12; // Prevent persistent camera/movement drift.
+        // Ground speed in units a second; the thumbstick reads it too.
+        this.moveSpeed = SPEED.walk;
+        this.camera.speed = keyboardSpeed(this.moveSpeed, this.camera.inertia);
         this.camera.angularSensibility = 2200;
         this.camera.minZ = 0.1;
         this.camera.keysUp = [87]; // W
@@ -184,7 +187,7 @@ export class PlayerSystem {
         // The dodge covers a fixed distance however fast frames are arriving.
         if (this.dodgeLeft > 0 && this.camera.cameraDirection) {
             const seconds = Math.min(.05, (this.game.engine?.getDeltaTime?.() ?? 16) / 1000);
-            const step = Math.min(this.dodgeLeft, DODGE.speed * seconds);
+            const step = Math.min(this.dodgeLeft, DODGE.speed * seconds, MAX_STEP_UNITS);
             this.dodgeLeft -= step;
             // The camera carries a little of each push into the next frame.
             const push = step * (1 - (this.camera.inertia || 0));
@@ -226,10 +229,13 @@ export class PlayerSystem {
             // Refill oxygen above water
             this.oxygenLevel = Math.min(this.maxOxygen, this.oxygenLevel + this.oxygenRefillRate * deltaTime);
         }
-        this.camera.speed = (this.isSwimming ? this.swimSpeed
-            : depth > 0.35 ? 0.27 // Wading through the shallows is slow going.
-            : this.keys.sprint ? 0.58 : 0.36) * (1 + (this.game.gear?.stat('swiftness') || 0) / 100)
+        this.moveSpeed = (this.isSwimming ? SPEED.swim
+            : depth > 0.35 ? SPEED.wade // Wading through the shallows is slow going.
+            : this.keys.sprint ? SPEED.sprint : SPEED.walk) * (1 + (this.game.gear?.stat('swiftness') || 0) / 100)
             * (this.game.buffs?.factor('speed') || 1) * (1 + (this.game.perks?.value('speed') || 0));
+        const engine = this.game.engine;
+        this.camera.speed = keyboardSpeed(this.moveSpeed, this.camera.inertia,
+            engine?.getFps ? frameFactor(engine.getDeltaTime(), engine.getFps()) : 0);
         // Venom works on its own clock and cannot be dodged or armoured against.
         if (this.poisonLeft > 0) {
             const seconds = Math.min(.05, (this.game.engine?.getDeltaTime?.() ?? 16) / 1000);

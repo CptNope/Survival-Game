@@ -33,23 +33,31 @@ test('touch camera drag respects pitch limits and ignores invalid events',()=>{
     assert.equal(c.rotation.y,y);
 });
 
-test('joystick moves in camera-heading direction and honors delta time',()=>{
+test('joystick moves in camera-heading direction at a pace set in units a second',()=>{
     const c=camera();
-    applyJoystick(c,{x:0,y:-1},1);
-    assert.ok(Math.abs(c.cameraDirection.z-.36)<1e-9);
+    // 6 units a second for a sixtieth of a second is a tenth of a unit.
+    applyJoystick(c,{x:0,y:-1},6,1/60);
+    assert.ok(Math.abs(c.cameraDirection.z-.1)<1e-9);
     assert.ok(Math.abs(c.cameraDirection.x)<1e-9);
     c.cameraDirection.x=0;c.cameraDirection.z=0;
     c.rotation.y=Math.PI/2;
-    applyJoystick(c,{x:0,y:-1},2);
-    assert.ok(Math.abs(c.cameraDirection.x-.72)<1e-9);
+    applyJoystick(c,{x:0,y:-1},6,1/30);
+    assert.ok(Math.abs(c.cameraDirection.x-.2)<1e-9,'twice the time, twice the distance');
     assert.ok(Math.abs(c.cameraDirection.z)<1e-9);
     c.cameraDirection.x=0;c.cameraDirection.z=0;
-    applyJoystick(c,{x:1,y:0},1);
-    assert.ok(Math.abs(c.cameraDirection.z+.36)<1e-9);
+    applyJoystick(c,{x:1,y:0},6,1/60);
+    assert.ok(Math.abs(c.cameraDirection.z+.1)<1e-9);
     c.cameraDirection.x=0;c.cameraDirection.z=0;
-    applyJoystick(c,{x:1,y:1},99);
-    assert.ok(Math.abs(c.cameraDirection.z)<=.9+1e-9);
-    assert.ok(Math.abs(c.cameraDirection.x)<=.9+1e-9);
+    applyJoystick(c,{x:.5,y:0},6,1/60);
+    assert.ok(Math.abs(c.cameraDirection.z+.05)<1e-9,'half a push is half the pace');
+    c.cameraDirection.x=0;c.cameraDirection.z=0;
+    applyJoystick(c,{x:1,y:1},6,99);
+    assert.ok(Math.abs(c.cameraDirection.z)<=.3+1e-9,'a stalled frame is not a leap');
+    assert.ok(Math.abs(c.cameraDirection.x)<=.3+1e-9);
+    c.cameraDirection.x=0;c.cameraDirection.z=0;
+    applyJoystick(c,{x:0,y:-1},undefined,1/60);
+    applyJoystick(c,{x:0,y:-1},6,NaN);
+    assert.equal(c.cameraDirection.z,0,'no pace or no time moves nothing');
 });
 
 test('touch movement stops immediately while paused or dead',()=>{
@@ -59,8 +67,8 @@ test('touch movement stops immediately while paused or dead',()=>{
     t.axes={x:0,y:-1};
     t.game={
         paused:true,
-        playerSystem:{isDead:false,camera:c},
-        scene:{getAnimationRatio:()=>1}
+        playerSystem:{isDead:false,camera:c,moveSpeed:6},
+        engine:{getDeltaTime:()=>1000/60}
     };
     t.update();
     assert.equal(c.cameraDirection.z,0);

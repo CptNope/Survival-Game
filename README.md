@@ -932,6 +932,41 @@ rebuilt.
   length against ground speed was tuned by eye from those strips; some foot
   slide is likely.
 
+## One walking pace: keyboard and touch now move at the same speed
+
+Walking with the keyboard was about four times slower than intended, and the
+touch stick about four times faster. Frame timing was not the cause. The two
+ways of steering did different sums: the keyboard went through the engine's
+own camera speed, which works out at about 1.3 units a second for the number
+the game gave it (2.1 at a sprint), while the stick added that same number to
+the camera every frame, about 24 units a second at a full push.
+
+- **One pace for both.** `js/movement.js` holds the ground speeds in units a
+  second: walk 6, sprint 9.5, wading 4.5, swimming 2.5. The keyboard and the
+  stick both read them, and gear, tonics and perks still scale them. A half
+  push of the stick is half the pace.
+- **The world was already built for it.** The dog runs at 6.4 so it keeps up
+  with a walk, a dodge covers ground at 14, creatures move at 2 to 5, and the
+  explorer's stride was drawn for a 6 walk and a 9.5 run.
+- **A limit on each frame's step.** The camera's collision check follows a
+  step of up to 0.3 units almost perfectly, loses a sixth of a 0.4 step and
+  stops most of anything longer. No frame now pushes further than 0.3, for
+  walking, the stick and the dodge. Under about 20 frames a second this costs
+  some pace, where before the player could stick to the ground. It is also why
+  RUN on a phone used to feel uneven: a sprint there asked for 0.66 a frame.
+
+### Verification
+
+- 169 unit tests pass, 8 of them new or rewritten for this: the keyboard and
+  the stick reach the stated pace at 30 to 240 frames a second (using the
+  engine's own camera sum), no frame's step passes the limit, slow frames slow
+  both evenly, and the dog, the dodge and every creature agree with the pace.
+- Measured in a headless browser at about 50 frames a second: keyboard walk
+  6.0, sprint 9.4, stick 6.0 units a second. At 13 frames a second the
+  keyboard walked at 3.8 where the uncapped version did not move at all.
+- Not verified here: how the new pace feels in the hand, on a desktop or a
+  phone. A phone at full push is about four times slower than it was.
+
 ## Support the project
 
 The Wilds is free to play and open source. If you enjoy it, you can [donate on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate). Any amount helps keep it growing.

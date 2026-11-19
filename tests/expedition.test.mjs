@@ -16,6 +16,7 @@ import { weatherAt } from '../js/components/weather.js';
 import { AudioSystem, SOUNDS } from '../js/components/audio.js';
 import { RESOURCES, RECIPES, REGROW_DAYS, ITEMS, hitsNeeded, toolTier } from '../js/resources.js';
 import { normalizeSettings, loadSettings, saveSettings, DEFAULT_SETTINGS, SETTINGS_KEY } from '../js/settings.js';
+import { SPEED, keyboardSpeed } from '../js/movement.js';
 
 globalThis.BABYLON = BABYLON;
 
@@ -352,12 +353,27 @@ function swimmer(depthBelowSurface) {
     return player;
 }
 
+test('on dry ground the player walks, and sprints while the key is held', () => {
+    const player = swimmer(.2);
+    player.update();
+    assert.equal(player.moveSpeed, SPEED.walk);
+    assert.equal(player.camera.speed, keyboardSpeed(SPEED.walk, player.camera.inertia));
+    player.keys.sprint = true;
+    player.update();
+    assert.equal(player.moveSpeed, SPEED.sprint);
+    assert.equal(player.camera.speed, keyboardSpeed(SPEED.sprint, player.camera.inertia));
+    player.keys.sprint = false;
+    player.update();
+    assert.equal(player.moveSpeed, SPEED.walk);
+});
+
 test('shallows are waded, deep water is swum, and only diving costs oxygen', () => {
     const wader = swimmer(.8);
     wader.update();
     assert.equal(wader.isSwimming, false);
     assert.equal(wader.camera.position.y, 2.2);
-    assert.equal(wader.camera.speed, .27);
+    assert.equal(wader.moveSpeed, SPEED.wade);
+    assert.equal(wader.camera.speed, keyboardSpeed(SPEED.wade, wader.camera.inertia));
 
     const player = swimmer(3);
     for (let n = 0; n < 40; n++) player.update();
@@ -365,7 +381,7 @@ test('shallows are waded, deep water is swum, and only diving costs oxygen', () 
     assert.equal(player.isUnderwater, false);
     assert.ok(Math.abs(player.camera.position.y - 1.35) < 1e-9, 'treads water with eyes above the surface');
     assert.equal(player.oxygenLevel, 100);
-    assert.equal(player.camera.speed, .15);
+    assert.equal(player.moveSpeed, SPEED.swim);
 
     player.keys.descend = true;
     for (let n = 0; n < 30; n++) player.update();

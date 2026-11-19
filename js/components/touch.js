@@ -1,5 +1,7 @@
 // Pointer-based mobile controls. Desktop keyboard/mouse remain unchanged.
 // No virtual-gamepad dependency, rendering assets, or extra per-frame DOM writes.
+import { frameStep } from '../movement.js';
+
 export const TOUCH_DEAD_ZONE = 0.10;
 
 export function joystickAxes(dx, dy, radius = 54) {
@@ -17,10 +19,11 @@ export function applyTouchLook(camera, dx, dy, sensitivity = .0031) {
     camera.rotation.x = Math.max(-1.45, Math.min(1.45, camera.rotation.x + dy * sensitivity));
 }
 
-export function applyJoystick(camera, axes, dtScale = 1) {
+// Push the camera the way the stick points. A full push travels unitsPerSecond;
+// less of a push, proportionally less.
+export function applyJoystick(camera, axes, unitsPerSecond, seconds) {
     if (!axes || (!axes.x && !axes.y)) return;
-    const scale = Math.min(2.5, Math.max(0, dtScale));
-    const speed = camera.speed * scale;
+    const speed = frameStep(unitsPerSecond, seconds, camera.inertia);
     const heading = camera.rotation.y;
     const rightX = Math.cos(heading), rightZ = -Math.sin(heading);
     const forwardX = Math.sin(heading), forwardZ = Math.cos(heading);
@@ -245,7 +248,8 @@ export class TouchControls {
 
     update() {
         if (!this.enabled || this.game.paused || this.game.playerSystem.isDead) return;
-        applyJoystick(this.game.playerSystem.camera, this.axes,
-            this.game.scene.getAnimationRatio());
+        const player = this.game.playerSystem;
+        applyJoystick(player.camera, this.axes, player.moveSpeed,
+            (this.game.engine?.getDeltaTime?.() ?? 16) / 1000);
     }
 }
