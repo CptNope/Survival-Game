@@ -1,19 +1,28 @@
 # Changelog
 
-What changed in The Wilds, newest first. Each entry is one merged pull request.
-There are no version numbers yet, so entries are grouped by the day they were
-merged. The README has the full notes for every update.
+What changed in The Wilds, newest first. Each version is a group of merged pull
+requests, dated the day the last of them was merged, and matches a post in the
+[devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
+The README has the full notes for every update.
 
-## Unreleased
+## v0.5.1 (2026-11-18)
+
+### Added
+- This changelog, and donation and help links in the README and `SUPPORT.md`
+  ([#20](https://github.com/CptNope/Survival-Game/pull/20)).
+
+### Changed
+- The page title, the installed app and the link preview now say The Wilds (#20).
 
 ### Fixed
-- **One walking pace.** Keyboard walking was about four times slower than
+- **One walking pace** ([#21](https://github.com/CptNope/Survival-Game/pull/21)).
+  Keyboard walking was about four times slower than
   intended and the touch stick about four times faster. Both now move at the
   same speed, set in units a second: walk 6, sprint 9.5. Each frame's step is
   limited to what the collision check can follow, so slow frames cost a little
   pace instead of sticking the player to the ground.
 
-## 2026-11-17
+## v0.5.0 (2026-11-17)
 
 ### Added
 - **The explorer** ([#19](https://github.com/CptNope/Survival-Game/pull/19)).
@@ -40,7 +49,7 @@ merged. The README has the full notes for every update.
 - Avatar motion is eased at a rate that does not depend on frame rate, and a
   teleport is no longer read as a sprint (#19).
 
-## 2026-11-16
+## v0.4.0 (2026-11-16)
 
 ### Added
 - **Companions and comforts** ([#17](https://github.com/CptNope/Survival-Game/pull/17)).
@@ -55,6 +64,14 @@ merged. The README has the full notes for every update.
   First-person, third-person and overhead cameras, a dodge, a quick heal,
   and deadlier dungeons: elites, slimes, mimics, spike traps, shrines and
   themes.
+
+### Fixed
+- Garden beds lost their crops when the page reloaded; beds and chests are
+  now restored after the buildings they belong to (#17).
+
+## v0.3.0 (2026-11-16)
+
+### Added
 - **Depths and loot** ([#13](https://github.com/CptNope/Survival-Game/pull/13)).
   Procedurally generated dungeons, new enemies and a boss, and found gear
   graded from Common to Legendary by the bonuses it rolls.
@@ -63,18 +80,13 @@ merged. The README has the full notes for every update.
   sleeping, and a preview of a building before it is placed.
 
 ### Fixed
-- Garden beds lost their crops when the page reloaded; beds and chests are
-  now restored after the buildings they belong to (#17).
 - Movement keys stayed dead after using a menu until the canvas was clicked,
   and the game now falls back gracefully when mouse capture is refused (#12).
 
-## 2026-10-28
+## v0.2.0 (2026-10-28)
 
-### Changed
-- Credit Jeremy Anderson Tech in the README
-  ([#11](https://github.com/CptNope/Survival-Game/pull/11)).
-
-## 2026-10-25
+The first pass after the prototype: pull requests 1 to 11, merged between 23
+and 28 October 2026.
 
 ### Added
 - Startup checks in real desktop and mobile Chrome, run on every change
@@ -94,16 +106,6 @@ merged. The README has the full notes for every update.
 - **Landmarks and wildlife** ([#5](https://github.com/CptNope/Survival-Game/pull/5)).
   Trails and landmarks to discover with a field compass, and rabbits.
 - A regression test suite that runs in CI.
-
-### Changed
-- **Responsive controls and a livelier world**
-  ([#4](https://github.com/CptNope/Survival-Game/pull/4)). Sprinting, tighter
-  movement, terrain streamed over several frames to avoid hitches, grass
-  drawn in one call per chunk, and deer near the start.
-
-## 2026-10-23
-
-### Added
 - **Ore and foraging** ([#3](https://github.com/CptNope/Survival-Game/pull/3)).
   Iron deposits, fiber plants, herbs and berry bushes, iron tools, and
   healing recipes.
@@ -114,7 +116,15 @@ merged. The README has the full notes for every update.
   A pause screen, reticle, resource quick view, meters, crafting menu and
   first objectives.
 
-## 2025-05-09
+### Changed
+- **Responsive controls and a livelier world**
+  ([#4](https://github.com/CptNope/Survival-Game/pull/4)). Sprinting, tighter
+  movement, terrain streamed over several frames to avoid hitches, grass
+  drawn in one call per chunk, and deer near the start.
+- Credit Jeremy Anderson Tech in the README
+  ([#11](https://github.com/CptNope/Survival-Game/pull/11)).
+
+## v0.1.0 (2025-05-09)
 
 ### Added
 - First release: procedural terrain from Perlin noise, harvesting trees and
