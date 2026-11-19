@@ -4,6 +4,15 @@ What changed in The Wilds, newest first. Each entry is one merged pull request.
 There are no version numbers yet, so entries are grouped by the day they were
 merged. The README has the full notes for every update.
 
+## Unreleased
+
+### Fixed
+- **One walking pace.** Keyboard walking was about four times slower than
+  intended and the touch stick about four times faster. Both now move at the
+  same speed, set in units a second: walk 6, sprint 9.5. Each frame's step is
+  limited to what the collision check can follow, so slow frames cost a little
+  pace instead of sticking the player to the ground.
+
 ## 2026-11-17
 
 ### Added
