@@ -24,6 +24,7 @@ import { RegionSystem } from './components/regions.js';
 import { ArcherySystem } from './components/archery.js';
 import { LegendSystem } from './components/legends.js';
 import { PoiSystem } from './components/pois.js';
+import { SeasonSystem } from './components/seasons.js';
 import { FishingSystem, GardenSystem } from './components/homestead.js';
 import { CompanionSystem } from './components/companion.js';
 import { QualitySystem } from './components/quality.js';
@@ -116,6 +117,8 @@ export class SurvivalGame {
             this.explorationSystem = new ExplorationSystem(this);
             // Points of interest keep their doorsteps clear too, so they come first as well.
             this.pois = new PoiSystem(this);
+            // The calendar comes before the terrain, which is coloured by it.
+            this.seasons = new SeasonSystem(this);
 
             // Inventory is needed by terrain for gatherable resources.
             this.inventorySystem = new InventorySystem(this);
@@ -296,7 +299,9 @@ export class SurvivalGame {
         this.animalSystem.clearWolves(slept ? 0 : 30);
         const regrown = this.terrainSystem.regrow(this.dayCount);
         this.weatherSystem.refresh();
-        this.uiSystem.showDayBanner(this.dayCount, message || (regrown ? 'The forest has grown back in places' : 'You made it through the night'), slept);
+        // A new season, or one about to turn, is the morning's news.
+        const calendar = this.seasons.onNewDay();
+        this.uiSystem.showDayBanner(this.dayCount, message || calendar || (regrown ? 'The forest has grown back in places' : 'You made it through the night'), slept);
         this.saveSystem.save();
     }
 
@@ -415,6 +420,7 @@ export class SurvivalGame {
             this.regions.update(dt);
             this.legends.update(dt);
             this.pois.update(dt);
+            this.seasons.update(dt);
             this.fishing.update(dt);
             this.gardens.update(dt);
             this.companion.update(dt);
@@ -463,7 +469,8 @@ export class SurvivalGame {
         if (this.ambienceTimer > 0) return;
         this.ambienceTimer = .3;
         this.audio.update(.3, {
-            weather: this.weatherSystem.type,
+            // Snow falls without a sound; a blizzard howls like a storm.
+            weather: {snow: 'clear', blizzard: 'storm'}[this.weatherSystem.form] || this.weatherSystem.type,
             night: this.survivalSystem.isNight(),
             underwater: player.isUnderwater,
             underground,

@@ -120,7 +120,8 @@ flowchart TD
 ```
 
 Hunger, thirst and cold tick the whole time. A day lasts five minutes, wolves
-come out at night, and each region beyond the meadow adds its own pressure.
+come out at night, and each region beyond the meadow adds its own pressure. A
+year lasts twelve days, an hour of play, and its fourth season is winter.
 
 ## What is in the game
 
@@ -140,7 +141,8 @@ come out at night, and each region beyond the meadow adds its own pressure.
 | **Homestead** | Fishing, garden beds that grow four crops, and chests to store what you cannot carry |
 | **Companion** | A stray dog to tame with cooked meat. It follows, fights beside you, and can be told to stay |
 | **Views** | First-person, third-person and overhead cameras, with a jointed explorer who walks, sprints, swims, swings and draws a bow |
-| **World feel** | A day and night sky, rain and storms, swimmable lakes, and sound made in code |
+| **Seasons** | Spring, summer, autumn and winter, three days each. The land changes colour, the weather and the cold change with it, and each season gives or takes something |
+| **World feel** | A day and night sky, rain, storms and snow, swimmable lakes, and sound made in code |
 | **Any screen** | An interface that scales from a small phone to a 4K monitor, touch controls, and a Graphics setting with an automatic mode |
 | **Offline** | Installs as an app and plays offline once it has loaded online at least once. Saves live in your browser |
 
@@ -155,6 +157,30 @@ Beyond it the country is one of four regions, blending across each border.
 | **Frostfell** (snow) | About 360 m south | Cold builds even at noon | Snowy pines | Ice wolves; a bite adds cold |
 | **Sunscar** (desert) | About 240 m north-west | Thirst builds about twice as fast by day | Cactus, deadwood | Scorpions; a sting poisons |
 | **Mirefen** (marsh) | About 360 m west | Thick fog | Bog trees, mushrooms | Bog toads that spit from range |
+
+### Seasons
+
+A year is twelve days: four seasons of three days each, starting with spring
+on day 1. The clock at the top of the screen names the season, and the map
+says how long is left of it. Dawn announces a new season, and gives a day's
+warning of the next.
+
+| Season | Days | What it does | The skies |
+| --- | --- | --- | --- |
+| **Spring** | 1 to 3 | Garden beds grow half as fast again, and gathered plants grow back in half the time | Wet: more rain than any other season, few storms |
+| **Summer** | 4 to 6 | Nights are milder (the night chill is 30% weaker), and thirst builds a fifth faster by day | Mostly clear |
+| **Autumn** | 7 to 9 | One more from every berry bush, herb, mushroom, fiber plant, cactus and garden bed | Rain and the most storms |
+| **Winter** | 10 to 12 | Cold builds even at noon. Gathered plants do not grow back until spring, and beds grow at a quarter of their pace. One more cut of meat from anything hunted | Snow, and blizzards for storms |
+
+The Greenwood and Mirefen change colour with the season: oaks blossom, turn
+red and gold, and stand white; pines take snow on their boughs; the ground
+goes from green to straw to snow. The change comes over a season's first
+morning. Frostfell is white all year and its rain always falls as snow.
+Sunscar stays sand, feels a quarter of the winter chill, and gets cold rain
+instead of snow.
+
+Nothing about the season is saved. It is worked out from the day count, so an
+expedition begun before this update finds itself wherever its day falls.
 
 ### Points of interest
 
@@ -322,13 +348,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 11,500 lines of JavaScript in 56 modules |
+| **Size** | About 12,000 lines of JavaScript in 58 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 200 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 217 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -352,6 +378,7 @@ flowchart TD
             exploration["Exploration<br/>trails, landmarks"]
             dungeon["Dungeons"]
             sky["Sky and weather"]
+            seasons["Seasons"]
             pois["Points of interest"]
         end
 
@@ -396,7 +423,7 @@ flowchart TD
     systems --> rules
     systems --> models
 
-    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, avatar,<br/>archery, homestead, map"]
+    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, seasons,<br/>avatar, archery, homestead, map"]
     models["Models built in code<br/>wilderness, creatures, avatar, points of interest, instance pool"]
 ```
 
@@ -434,7 +461,7 @@ sprint 9.5) for keyboard and touch alike.
 | `index.html`, `styles.css` | The page, the HUD and menu markup, and the whole interface stylesheet |
 | `js/main.js`, `js/game.js` | Start-up and the `SurvivalGame` class that owns every system |
 | `js/components/` | The systems: terrain, player, touch, view, survival, inventory, building, combat, archery, animals, creatures, dungeon, regions, legends, points of interest, companion, homestead, storage, gear, perks, buffs, progression, weather, sky, audio, effects, quality, save and the interface |
-| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
+| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `seasons`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
 | `js/models/` | Models built in code: `wilderness`, `creatures`, `avatar`, `pois`, and the instance `pool` |
 | `tests/` | 17 test files, one per area of the game |
 | `scripts/browser-smoke.mjs` | Starts the game in real Chrome, desktop and emulated phone, and checks it reaches play |
@@ -465,7 +492,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 200 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 217 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -490,10 +517,12 @@ timeline
     18 November 2026 : v0.5.1 One walking pace for keyboard and touch
     19 November 2026 : v0.6.0 Watchtowers, waystones, dens and havens
                      : v0.7.0 Traders, shrines, cairns and wrecks
+                     : v0.8.0 Seasons
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.8.0** | 19 Nov 2026 | Seasons: a twelve-day year that changes the land, the weather, the cold, the garden and what grows back | 26 |
 | **v0.7.0** | 19 Nov 2026 | More places: traders to barter with, shrines, cairns with buried caches, and wrecks to dive on | 25 |
 | **v0.6.0** | 19 Nov 2026 | Points of interest: watchtowers, waystones to travel between, dens and havens | 24 |
 | **v0.5.1** | 18 Nov 2026 | One walking pace for keyboard and touch; the changelog; donation and help links | 20, 21 |
@@ -1524,6 +1553,77 @@ Four more kinds of place, each with something new to do.
 - Not verified here: whether prices feel fair in play, how often a tree or a
   rock stands on a cache (nothing clears the ground there), and how the dive
   feels on a touch screen with the DOWN button held.
+
+### Seasons: a year in twelve days
+
+The game now has a calendar. Until this update every day was the same day.
+
+- **The year.** Spring, summer, autumn and winter, three days each, so a year
+  is an hour of play. Day 1 is the first day of spring. The season is on the
+  clock, the map says how long is left, and dawn brings the news: "Winter has
+  come", and the morning before it, "Winter comes tomorrow · gather food and
+  herbs while they still grow".
+- **What each season does.** Spring grows garden beds half as fast again and
+  brings gathered plants back in half the time. Summer nights are milder and
+  its days thirstier. Autumn gives one more from every bush, herb, mushroom
+  and garden bed. Winter is cold even at noon (a little over a third as hard as
+  an ordinary night, and added to the night's own chill), gathered plants do not grow back
+  until spring, beds grow at a quarter of their pace, and anything hunted
+  gives one more cut of meat. A fire, a roof, a fur cloak and a warming
+  draught all work against the winter cold as they do against any other.
+- **Weather.** Each season has its own share of clear spells, rain and
+  storms. In winter the rain falls as snow and the storms are blizzards,
+  without thunder. Frostfell gets snow all year. Deep in Sunscar it stays
+  rain.
+- **The land.** The ground and grass of the Greenwood and Mirefen take the
+  season's colours, and so do the trees: oaks blossom in spring, turn red,
+  orange and gold in autumn and stand white in winter; marsh trees go ochre
+  and then frosted; pines keep their needles and carry snow. The change comes
+  in six steps over the first morning of a season, one chunk of ground a
+  frame. Frostfell and Sunscar look the same all year.
+- **Nothing new in the save.** The season is worked out from the day count.
+  An old expedition picks up wherever its day falls; a new one starts in
+  spring. The expedition summary counts winters seen out.
+
+#### Notes for developers
+
+- `js/seasons.js` holds the rules: the calendar, each season's numbers,
+  `grownDays` and `readyAt` (growing counted at each season's pace, and its
+  inverse), `regrown`, `precipitation`, and `seasonLook`, which gives the
+  ground, grass and foliage colours for a moment in time.
+- `js/components/seasons.js` reads the clock, hands out the modifiers and
+  queues loaded chunks for repainting. `TerrainSystem.recolorChunk` rewrites a
+  chunk's vertex colours from the heights already in the mesh.
+- Tree models now record which runs of vertices are leaves or needles
+  (`metadata.foliage`). `tintFoliage` recolours them and keeps each face's
+  shading; because placed trees are instances, changing a handful of models
+  changes every tree.
+- `weatherAt` now depends on the season, so the weather on a given day differs
+  from 0.7.0. Garden beds planted before the update keep their planting time
+  and are simply re-counted at the new pace.
+
+#### Verification
+
+- 217 unit tests pass, 17 of them new. They cover the calendar, growing
+  across seasons and years and its inverse, regrowth through a winter, each
+  season's skies, snow by season and region, the cold by season, hour, shelter
+  and depth, the autumn and winter bonuses through the real gathering,
+  harvesting and hunting code, the colour change step by step, recolouring a
+  tree without touching its bark, repainting loaded chunks one a frame, and a
+  winter save coming back white. Twenty-seven deliberate bugs were each caught
+  by a test. Three older tests were moved into summer, where beds and bushes
+  grow at the pace they always did.
+- Played in a headless browser on a desktop page and an emulated phone: all
+  four seasons looked at around the clearing, the first morning of winter
+  watched as it turned, snow and a blizzard, both dawn banners, a bush picked
+  in autumn for four berries, and a winter save restored. Frostfell, Sunscar
+  and Mirefen were each visited in winter and in summer rain. Repainting a
+  chunk took about 1 ms (3 ms at worst) and the tree models 1.6 ms, and frame times during
+  the turn matched a settled scene (median 18.5 ms against 19.5 ms).
+- Not verified here: how hard winter feels over a real hour of play, since
+  the numbers were checked but not lived through; whether the HUD clock stays
+  readable against snow on a bright phone screen; and the snow overlay on a
+  real phone's GPU. The map still draws the Greenwood green in winter.
 
 ---
 

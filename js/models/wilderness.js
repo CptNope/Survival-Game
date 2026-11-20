@@ -27,6 +27,14 @@ function colorMesh(mesh, color, random) {
         for (let j = 0; j < 3; j++) colors.push(...color.map(c => c * shade), 1);
     }
     mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors);
+    mesh.tone = color;
+    return mesh;
+}
+
+// Marks a piece as leaves or needles, so the seasons can recolour it later.
+// `index` is which clump or tier of the tree it is.
+function leafy(mesh, index) {
+    mesh.foliage = {index, base: [...mesh.tone]};
     return mesh;
 }
 
@@ -48,6 +56,15 @@ function branch(scene, start, end, width, color, random, top = width * 0.55) {
 }
 
 function finish(scene, pieces, name) {
+    // Merging keeps the pieces in order, so each leafy piece is a known run
+    // of vertices in the finished model.
+    const foliage = [];
+    let total = 0;
+    for (const piece of pieces) {
+        const count = piece.getTotalVertices();
+        if (piece.foliage) foliage.push({start: total, count, ...piece.foliage});
+        total += count;
+    }
     const mesh = BABYLON.Mesh.MergeMeshes(pieces, true, true);
     mesh.name = name;
     // Bake merged geometry around the world origin so placing the model uses its feet.
@@ -58,7 +75,30 @@ function finish(scene, pieces, name) {
     material.specularColor = BABYLON.Color3.Black();
     mesh.material = material;
     mesh.metadata = { model: name };
+    if (foliage.length && mesh.getTotalVertices() === total) mesh.metadata.foliage = foliage;
     return mesh;
+}
+
+// Recolours a tree's leaves or needles. `colourFor(kind, index, base)` gives
+// the colour of one clump; each face keeps its own light-and-dark shading.
+// Every placed copy of the model changes with it. Returns false for a model
+// with no foliage to change.
+export function tintFoliage(mesh, kind, colourFor) {
+    const parts = mesh.metadata?.foliage;
+    if (!parts?.length) return false;
+    const kindOf = BABYLON.VertexBuffer.ColorKind;
+    const built = mesh.metadata.builtColors || (mesh.metadata.builtColors = Float32Array.from(mesh.getVerticesData(kindOf)));
+    const colors = Float32Array.from(built);
+    for (const part of parts) {
+        const target = colourFor(kind, part.index, part.base);
+        const channel = part.base[1] > 0 ? 1 : part.base[0] > 0 ? 0 : 2;
+        for (let vertex = part.start; vertex < part.start + part.count; vertex++) {
+            const o = vertex * 4, shade = part.base[channel] > 0 ? built[o + channel] / part.base[channel] : 1;
+            colors[o] = target[0] * shade; colors[o + 1] = target[1] * shade; colors[o + 2] = target[2] * shade;
+        }
+    }
+    mesh.setVerticesData(kindOf, colors);
+    return true;
 }
 
 function crown(scene, radius, height, base, random, color) {
@@ -102,7 +142,7 @@ export function createTreeModel(scene, seed = 1, kind = 'pine') {
             const y = 1.65 + i * height * 0.12;
             const radius = (2.1 - i * 0.32) * (0.9 + random() * 0.18);
             const needles = snowy ? (i % 2 || i === 4 ? snow : frosted) : i % 2 ? palette.pineLight : palette.pine;
-            pieces.push(crown(scene, radius, height * 0.39, V((random() - .5) * .3, y, (random() - .5) * .3), random, needles));
+            pieces.push(leafy(crown(scene, radius, height * 0.39, V((random() - .5) * .3, y, (random() - .5) * .3), random, needles), i));
             if (i < 3) {
                 const a = i * 2.4;
                 pieces.push(branch(scene, V(0, y + .3, 0), V(Math.cos(a) * radius * .9, y + .1, Math.sin(a) * radius * .9), .15, palette.barkLight, random, .04));
@@ -124,7 +164,7 @@ export function createTreeModel(scene, seed = 1, kind = 'pine') {
             const a = i * 2.4, r = i === 7 ? 0 : 1.3 + random() * .5;
             const end = V(Math.cos(a) * r, height * .65 + random() * 1.7, Math.sin(a) * r);
             pieces.push(branch(scene, V(0, 2.8, 0), end, .23, palette.barkLight, random, .07));
-            pieces.push(ellipsoid(scene, 'leaf-cluster', end, V(1.5 + random() * .5, (bog ? .85 : 1.15) + random() * .5, 1.4), leaf.map(c => c * (.85 + random() * .3)), random));
+            pieces.push(leafy(ellipsoid(scene, 'leaf-cluster', end, V(1.5 + random() * .5, (bog ? .85 : 1.15) + random() * .5, 1.4), leaf.map(c => c * (.85 + random() * .3)), random), i));
             if (bog && i % 2 === 0) pieces.push(branch(scene, end.add(V(.5, -.5, .2)), end.add(V(.55, -2.1 - random(), .25)), .13, moss, random, .02));
         }
     }

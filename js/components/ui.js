@@ -395,7 +395,8 @@ export class UISystem {
         this.$('map-legend').innerHTML = `<li>${key('M0 -1.2L.8 1L0 .55L-.8 1Z', '#fff')} You · ${game.regions.def.name}</li>`
             + [...shown].map(([kind, labels]) => `<li>${key(MAP_MARKS[kind][1], MAP_MARKS[kind][0], MAP_MARKS[kind][2])} ${names[kind]}${['lair', 'slain'].includes(kind) ? ' · ' + [...new Set(labels)].join(', ') : ''}</li>`).join('')
             + (hollow ? `<li>${key(MAP_MARKS.seen[1], MAP_MARKS.seen[0], true)} Hollow marks · seen from a watchtower</li>` : '')
-            + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} landmarks and ${game.pois?.found.size || 0} points of interest found</li>`;
+            + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} landmarks and ${game.pois?.found.size || 0} points of interest found</li>`
+            + (game.seasons ? `<li class="map-scale">${game.seasons.calendar}</li>` : '');
         this.drawTravel();
     }
     // Under the map: where the waystone you are standing at can send you.
@@ -717,8 +718,7 @@ export class UISystem {
         this.updateHealthUI(p.health, p.maxHealth);
         this.updateOxygenUI(p.oxygenLevel, p.maxOxygen);
         this.updateSurvivalUI();
-        if (this.game.weatherSystem) this.updateWeatherUI(
-            {clear:'Clear skies',rain:'Rain',storm:'Storm'}[this.game.weatherSystem.type] || 'Clear skies');
+        if (this.game.weatherSystem) this.updateWeatherUI(this.game.weatherSystem.label || 'Clear skies');
         this.updateDungeonUI();
         // Shrine boons and how long they have left.
         const boons = this.game.buffs?.list() || [];
@@ -738,7 +738,8 @@ export class UISystem {
         const dog = this.game.companion?.status() || '', dogButton = this.$('dog-button');
         if (dogButton.hidden !== !dog) dogButton.hidden = !dog;
         if (dog && dogButton.textContent !== dog) dogButton.textContent = dog;
-        this.$('world-clock').textContent = `DAY ${this.game.dayCount} · ${clockTime(this.game.dayTime, this.game.dayLength)}`;
+        const season = this.game.seasons ? this.game.seasons.def.name.toUpperCase() + ' · ' : '';
+        this.$('world-clock').textContent = `${season}DAY ${this.game.dayCount} · ${clockTime(this.game.dayTime, this.game.dayLength)}`;
         if (this.game.paused) return;
         const facing = compass(p.camera.rotation.y);
         if (this.$('compass-facing').textContent !== facing) this.$('compass-facing').textContent = facing;

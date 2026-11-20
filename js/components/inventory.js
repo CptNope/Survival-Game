@@ -96,7 +96,8 @@ export class InventorySystem {
 
         // Iron tools pull extra ore; the Forager perk sometimes finds one more of anything.
         const bonus = (obj.type === 'ore' && this.inventory.ironTools > 0 ? 1 : 0)
-            + (Math.random() < (this.game.perks?.value('forage') || 0) ? 1 : 0);
+            + (Math.random() < (this.game.perks?.value('forage') || 0) ? 1 : 0)
+            + (this.game.seasons?.forage(obj.type) || 0);
         const gained = Object.entries(resource.yields).map(([item, amount]) => {
             this.inventory[item] += amount + bonus;
             return `+${amount + bonus} ${ITEMS[item].toLowerCase()}`;

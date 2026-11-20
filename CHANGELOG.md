@@ -5,6 +5,28 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.8.0 (2026-11-19)
+
+### Added
+- **Seasons** ([#26](https://github.com/CptNope/Survival-Game/pull/26)). A
+  year of twelve days: spring, summer, autumn and winter, three days each.
+  - Spring grows garden beds half as fast again and brings gathered plants
+    back in half the time.
+  - Summer has mild nights and thirsty days.
+  - Autumn gives one more from every bush, herb, mushroom and garden bed.
+  - Winter is cold even at noon, gathered plants wait for spring, and hunted
+    animals give one more cut of meat.
+- Snow and blizzards in winter, and all year in Frostfell.
+- The ground, the grass and the trees of the Greenwood and Mirefen change
+  colour with the season, over its first morning.
+- The season on the clock, the calendar on the map, dawn banners for a new
+  season and the day before one, and winters seen out on the expedition
+  summary.
+
+### Changed
+- The weather on a given day now depends on the season, so it differs from
+  0.7.0. Nothing new is saved: the season comes from the day count.
+
 ## v0.7.0 (2026-11-19)
 
 ### Added

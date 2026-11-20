@@ -166,7 +166,7 @@ export class SkySystem {
         const game = this.game;
         const weather = game.weatherSystem?.type || 'clear';
         this.time += dt;
-        this.updateLightning(dt, weather);
+        this.updateLightning(dt, game.weatherSystem?.form === 'blizzard' ? 'rain' : weather);
         const s = this.state = skyState(game.dayTime, game.dayLength, weather);
         const sun = game.sunLight, ambient = game.ambientLight;
         const camera = game.playerSystem?.camera;

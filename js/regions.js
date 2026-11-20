@@ -60,7 +60,8 @@ export function regionStrength(x, z, id = regionAt(x, z)) {
 
 // Ground colour for a spot before shores and heights are painted over it.
 // `patch` (0..1) is the terrain's own light-and-dark mottling.
-export function groundColor(x, z, patch) {
+// `grounds` swaps in a season's colours for the regions that have them.
+export function groundColor(x, z, patch, grounds = null) {
     // Sharpen the blend so the ground changes where the trees and wildlife
     // do (at half weight) instead of smearing sand far into the meadow.
     const raw = regionWeights(x, z), weights = {meadow: 1};
@@ -70,7 +71,7 @@ export function groundColor(x, z, patch) {
     for (const id of REGION_IDS) {
         const weight = weights[id];
         if (weight <= 0) continue;
-        const [low, high] = REGIONS[id].ground;
+        const [low, high] = grounds?.[id] || REGIONS[id].ground;
         r += (low[0] + (high[0] - low[0]) * patch) * weight;
         g += (low[1] + (high[1] - low[1]) * patch) * weight;
         b += (low[2] + (high[2] - low[2]) * patch) * weight;

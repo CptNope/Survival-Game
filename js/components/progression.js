@@ -151,7 +151,8 @@ export const STAT_LABELS = Object.freeze({
     fish: 'Fish caught', harvests: 'Crops harvested', legends: 'Legends slain',
     tonics: 'Tonics brewed', befriended: 'Strays befriended',
     places: 'Points of interest found', dens: 'Dens cleared',
-    caches: 'Caches dug up', wrecks: 'Wrecks plundered', trades: 'Trades made'
+    caches: 'Caches dug up', wrecks: 'Wrecks plundered', trades: 'Trades made',
+    winters: 'Winters seen out'
 });
 
 export class ProgressionSystem {
