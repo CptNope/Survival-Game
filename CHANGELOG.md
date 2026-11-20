@@ -5,6 +5,19 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.7.0 (2026-11-19)
+
+### Added
+- **More places** ([#25](https://github.com/CptNope/Survival-Game/pull/25)),
+  on a second layer so that nothing from 0.6.0 moved:
+  - Traders, with three swaps and a piece of gear on a board that changes
+    every morning.
+  - Shrines to the boar, the tortoise and the hare, each lending a boon for
+    four minutes once a day.
+  - Cairns, whose notes lead to a buried cache marked on the map.
+  - Wrecks on the lake beds, with a chest to dive for.
+- Map marks for each, and caches, wrecks and trades on the expedition summary.
+
 ## v0.6.0 (2026-11-19)
 
 ### Added

@@ -1,7 +1,8 @@
-import { ITEMS, RESOURCES, RECIPES, RECIPE_GROUPS, recipeDescription, hitsNeeded } from '../resources.js';
+import { ITEMS, RESOURCES, RECIPES, RECIPE_GROUPS, recipeDescription, hitsNeeded, itemAmount } from '../resources.js';
 import { MAP_SPAN, MAP_CELLS, MAP_COLORS, mapCells, toSheet, onSheet } from '../map.js';
 import { LEGEND_LIST } from '../legends.js';
 import { REGIONS } from '../regions.js';
+import { poiById } from '../pois.js';
 import { CHEST_CAPACITY } from '../storage.js';
 import { QUALITY_CHOICES, QUALITY_LABELS } from '../quality.js';
 import { PERKS } from '../perks.js';
@@ -37,6 +38,11 @@ const MAP_MARKS = {
     den: ['#ff9a6b', 'M-1 .75A1 1.15 0 0 1 1 .75Z'],
     denCleared: ['#a3ada5', 'M-1 .75A1 1.15 0 0 1 1 .75Z'],
     haven: ['#8fd98a', 'M0 -.9A.9 .9 0 1 1 0 .9A.9 .9 0 1 1 0 -.9Z'],
+    trader: ['#ffd166', 'M-.8 -.3L-.3 -1L.3 -1L.8 -.3L.6 1L-.6 1Z'],
+    shrine: ['#c9b6ff', 'M0 -1.1L1 -.2L.7 -.2L.7 1L-.7 1L-.7 -.2L-1 -.2Z'],
+    cairn: ['#cfd6cf', 'M0 -1L.5 -.15L-.5 -.15ZM-.85 1L.85 1L.6 .05L-.6 .05Z'],
+    cache: ['#ffd166', 'M-.8 -.8L.8 .8M.8 -.8L-.8 .8', true],
+    wreck: ['#8ec7e8', 'M-1 -.05L1 -.05L.6 .95L-.6 .95ZM-.1 -1.1L.7 -.3L-.1 -.3Z'],
     camp: ['#ffb23e', 'M0 -1L1 -.1L.72 1L-.72 1L-1 -.1Z'],
     home: ['#ffffff', 'M0 -1.1L.29 -.34L1.05 -.34L.44 .16L.66 .92L0 .47L-.66 .92L-.44 .16L-1.05 -.34L-.29 -.34Z']
 };
@@ -78,7 +84,7 @@ export class UISystem {
                 <nav id="panel-tabs" class="panel-tabs" aria-label="Sections"><button type="button" data-panel="menu">Paused</button><button type="button" data-panel="craft">Craft</button><button type="button" data-panel="build">Build</button><button type="button" data-panel="gear">Gear</button><button type="button" data-panel="perks">Perks</button><button type="button" data-panel="map">Map</button></nav>
                 <div class="panel-body">
                     <header class="panel-head"><small id="panel-kicker" class="sr-only"></small><h1 id="panel-title">The Wilds</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p></header>
-                    <div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="map-panel"><div id="map-travel" class="map-travel" hidden></div><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div>
+                    <div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="trade-panel"></div><div id="map-panel"><div id="map-travel" class="map-travel" hidden></div><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div>
                     <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span><span class="settings-label" id="quality-label">Graphics</span><div id="set-quality" role="group" aria-labelledby="quality-label">${QUALITY_CHOICES.map(choice => `<button type="button" data-quality="${choice}">${QUALITY_LABELS[choice]}</button>`).join('')}</div><span id="quality-value"></span></div>
                     <details id="controls-wrap"><summary>Controls</summary><div id="controls"></div></details>
                     <dl id="stats"></dl>
@@ -95,6 +101,10 @@ export class UISystem {
         this.$('exploration-card').onclick = () => this.toggleMap();
         this.$('exploration-card').onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.toggleMap(); } };
         this.$('map-button').onclick = () => this.toggleMap();
+        this.$('trade-panel').onclick = event => {
+            const line = event.target.closest('button[data-offer]');
+            if (line && game.pois?.trade(this.tradeId, Number(line.dataset.offer))) this.updateTradeUI();
+        };
         this.$('map-travel').onclick = event => {
             const choice = event.target.closest('button[data-travel]');
             if (choice) game.pois?.travel(choice.dataset.travel);
@@ -208,6 +218,7 @@ export class UISystem {
     toggleGear() { this.panel === 'gear' ? this.closePanel() : this.openPanel('gear'); }
     togglePerks() { this.panel === 'perks' ? this.closePanel() : this.openPanel('perks'); }
     openStorage(id) { this.storageId = id; this.openPanel('storage'); }
+    openTrade(id) { this.tradeId = id; this.openPanel('trade'); }
     toggleMap() {
         if (this.game.dungeonSystem?.active) { this.showNotification('No map underground · the corner chart shows this floor'); return; }
         this.panel === 'map' ? this.closePanel() : this.openPanel('map');
@@ -231,10 +242,12 @@ export class UISystem {
     }
     renderPanel() {
         const build = this.panel === 'build', craft = this.panel === 'craft', gear = this.panel === 'gear', perks = this.panel === 'perks';
-        const map = this.panel === 'map', storage = this.panel === 'storage';
-        const menu = !build && !craft && !gear && !perks && !map && !storage;
+        const map = this.panel === 'map', storage = this.panel === 'storage', trade = this.panel === 'trade';
+        const menu = !build && !craft && !gear && !perks && !map && !storage && !trade;
         this.$('storage-panel').hidden = !storage;
         if (storage) this.updateStorageUI();
+        this.$('trade-panel').hidden = !trade;
+        if (trade) this.updateTradeUI();
         this.$('map-panel').hidden = !map;
         if (map) this.drawMap();
         this.$('gear-panel').hidden = !gear;
@@ -262,7 +275,7 @@ export class UISystem {
         }
         this.$('save-now').hidden = !menu || title;
         // The heading names the panel; the line under it says what it is for.
-        this.$('panel-title').textContent = storage ? 'Storage chest' : map ? 'Map' : perks ? 'Perks' : gear ? 'Gear'
+        this.$('panel-title').textContent = trade ? (poiById(this.tradeId)?.name || 'Trader') : storage ? 'Storage chest' : map ? 'Map' : perks ? 'Perks' : gear ? 'Gear'
             : build ? 'Build' : craft ? 'Craft' : title ? 'The Wilds' : 'Paused';
         this.$('panel-kicker').textContent = '';
         for (const tab of this.$('panel-tabs').children) {
@@ -275,7 +288,9 @@ export class UISystem {
         // Controls are open on a first visit and folded away after that.
         this.$('controls-wrap').hidden = !menu;
         if (menu) this.$('controls-wrap').open = title || !this.game.touchControls?.enabled;
-        this.$('panel-copy').textContent = storage
+        this.$('panel-copy').textContent = trade
+            ? 'What the trader will swap today. Each line can be had twice, and there is one piece of gear. The board changes every morning.'
+            : storage
             ? 'Move things between your pack and this chest. Whatever is in a chest stays there if you die.'
             : map
             ? 'North is up. Country you have not set foot in stays dark until you reach a region of its kind.'
@@ -291,7 +306,7 @@ export class UISystem {
             : title ? 'Gather, craft and build before nightfall. The cold, hunger and wolves will not wait.'
             : 'Follow your field notes, keep a fire going, and rest in a shelter at night. Progress saves on this device.';
         const returning = this.game.dayCount > 1 || this.game.progression?.completed.size > 0;
-        this.$('resume').textContent = build || craft || gear || perks || map || storage ? 'Back to the wilds'
+        this.$('resume').textContent = build || craft || gear || perks || map || storage || trade ? 'Back to the wilds'
             : title ? (returning ? `Continue expedition · Day ${this.game.dayCount}` : 'Enter the wilds') : 'Return to the wilds';
         if (this.panel) {
             // Focus the way out without scrolling the long crafting list to its end.
@@ -311,6 +326,17 @@ export class UISystem {
             + (rows.length ? `<table class="storage-table"><thead><tr><th>Item</th><th>Pack</th><th></th><th>Chest</th></tr></thead><tbody>${rows.map(row =>
                 `<tr><th scope="row">${row.name}</th><td>${row.carried}</td><td class="storage-moves">${move('take', row.item, 'all', this.icons.takeAll, row.stored > 0)}${move('take', row.item, 1, this.icons.take, row.stored > 0)}${move('store', row.item, 1, this.icons.store, row.carried > 0)}${move('store', row.item, 'all', this.icons.storeAll, row.carried > 0)}</td><td>${row.stored}</td></tr>`).join('')}</tbody></table>`
                 : '<p class="empty-pack">Nothing to store yet · the chest and your pack are both empty</p>');
+    }
+    // --- Trading ------------------------------------------------------------
+    updateTradeUI() {
+        const game = this.game, poi = poiById(this.tradeId), box = this.$('trade-panel');
+        if (!box || !poi || !game.pois) return;
+        const inventory = game.inventorySystem.inventory;
+        const goods = bundle => Object.entries(bundle).map(([item, amount]) => item === 'torch' && amount !== 1 ? `${amount} torches` : itemAmount(item, amount)).join(' and ');
+        const purse = bundle => Object.entries(bundle).map(([item]) => `you have ${inventory[item] || 0}`).join(', ');
+        box.innerHTML = game.pois.offers(poi).map(offer =>
+            `<button type="button" class="recipe" data-offer="${offer.index}" ${offer.affordable ? '' : 'disabled'}><strong>${offer.gear ? 'A piece of gear, unseen' : goods(offer.get)}</strong>`
+            + `<span>for ${goods(offer.give)} · ${purse(offer.give)}</span><b>${offer.left ? (offer.affordable ? 'Trade' : 'Too dear') : 'Sold out'}</b></button>`).join('');
     }
     // --- Map ----------------------------------------------------------------
     // Everything worth marking, nearest things last so they draw on top.
@@ -363,7 +389,8 @@ export class UISystem {
         context.beginPath(); context.moveTo(0, -11); context.lineTo(7, 8); context.lineTo(0, 4); context.lineTo(-7, 8); context.closePath();
         context.fillStyle = '#ffffff'; context.strokeStyle = '#0d1512'; context.lineWidth = 2; context.fill(); context.stroke(); context.restore();
         const names = {site: 'Landmarks found', dungeon: 'Ways underground', lair: 'Lairs', slain: 'Lairs, emptied', camp: 'Your camp', home: 'The clearing',
-            tower: 'Watchtowers', waystone: 'Waystones', den: 'Dens', denCleared: 'Dens, cleared', haven: 'Havens'};
+            tower: 'Watchtowers', waystone: 'Waystones', den: 'Dens', denCleared: 'Dens, cleared', haven: 'Havens',
+            trader: 'Traders', shrine: 'Shrines', cairn: 'Cairns', cache: 'Buried caches', wreck: 'Wrecks'};
         const key = (path, colour, outline) => `<svg viewBox="-1.5 -1.5 3 3" width="14" height="14" aria-hidden="true"><path d="${path}" ${outline ? `fill="none" stroke="${colour}" stroke-width=".34" stroke-linecap="round"` : `fill="${colour}"`}/></svg>`;
         this.$('map-legend').innerHTML = `<li>${key('M0 -1.2L.8 1L0 .55L-.8 1Z', '#fff')} You · ${game.regions.def.name}</li>`
             + [...shown].map(([kind, labels]) => `<li>${key(MAP_MARKS[kind][1], MAP_MARKS[kind][0], MAP_MARKS[kind][2])} ${names[kind]}${['lair', 'slain'].includes(kind) ? ' · ' + [...new Set(labels)].join(', ') : ''}</li>`).join('')

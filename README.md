@@ -10,8 +10,8 @@
 
 A free 3D survival game that runs in the browser, built with Babylon.js. You
 wake in a meadow with nothing. Gather, craft and build a camp, explore four
-procedural regions dotted with watchtowers, waystones, dens and havens, hunt
-three legends, and delve generated dungeons for gear graded from Common to
+procedural regions full of places to find, from watchtowers and waystones to
+traders and wrecks, hunt three legends, and delve generated dungeons for gear graded from Common to
 Legendary. It plays with a keyboard and mouse or on a
 touch screen, and installs as an app.
 
@@ -132,7 +132,7 @@ come out at night, and each region beyond the meadow adds its own pressure.
 | **Building** | A lean-to, a campfire, floors, walls and roofs that snap together, garden beds and storage chests, with a preview before you place |
 | **Combat** | Tools, spear and bow. Every enemy attack has a wind-up you can see. A dodge with a moment of safety, a heavy sweep, and a quick heal |
 | **Exploration** | Trails, landmarks, a field compass and a map. Four regions that blend into each other, each with its own weather, plants and hunters |
-| **Points of interest** | Watchtowers that put the country around them on your map, waystones to travel between, dens to clear, and a haven in every region |
+| **Points of interest** | Watchtowers that put the country around them on your map, waystones to travel between, dens to clear, a haven in every region, traders to barter with, shrines, cairns whose notes lead to buried caches, and wrecks to dive on |
 | **Dungeons** | Stone doorways lead to three generated floors of rooms, corridors, traps, shrines and chests, with a boss at the bottom. Layouts redraw every three days |
 | **Loot** | Found weapons, armor, boots and charms with rolled bonuses, graded Common to Legendary. Compare, equip or break them down |
 | **Progression** | Experience and levels, a perk to choose at each level, and field notes that teach the game one goal at a time |
@@ -158,8 +158,10 @@ Beyond it the country is one of four regions, blending across each border.
 
 ### Points of interest
 
-About three in every four 160 m squares of country hold one, beyond the first
-walk from the clearing. Walk up to one and it goes on your map.
+They come in two layers, so the country is never empty for long: a watchtower,
+waystone, den or haven in about three of every four 160 m squares, and a
+trader, shrine or cairn in about two of every three 220 m squares. Most lakes
+hold a wreck. Walk up to one and it goes on your map.
 
 | Place | What it does |
 | --- | --- |
@@ -167,6 +169,10 @@ walk from the clearing. Walk up to one and it goes on your map.
 | **Waystone** | Wake it (**E**). From any woken waystone you can step to any other. The Clearing Waystone, a short walk from where you start, is the way home |
 | **Den** | Three of the region's hunters come out when you get close: boars, ice wolves, scorpions or toads, led by an elite far from home. Kill them all for a piece of gear and their hoard. It is lived in again four days later |
 | **Haven** | Once a day it gives what its region takes. An old orchard feeds you, a hot spring clears the cold and warms you, an oasis slakes you and fills a waterskin, and a stilt hut cures venom and guards against it |
+| **Trader** | Press **E** to see the board: three swaps and one piece of gear, priced in what the region is short of. Each swap can be had twice a day and the board changes every morning |
+| **Shrine** | To the boar, the tortoise or the hare. Pray (**E**) once a day for four minutes of fury, stoneskin or swiftness |
+| **Cairn** | Read the note under it (**E**). It gives a distance and a direction and marks your map; walk there, find the crossed sticks and dig (**E**) for a piece of gear and supplies |
+| **Wreck** | A mast standing out of a lake. Swim over, dive (**Ctrl**) and prise open the chest on the deck (**E**) for a piece of gear that is never common |
 
 ### Creatures
 
@@ -316,13 +322,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 11,100 lines of JavaScript in 56 modules |
+| **Size** | About 11,500 lines of JavaScript in 56 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 188 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 200 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -459,7 +465,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 188 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 200 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -483,10 +489,12 @@ timeline
     17 November 2026 : v0.5.0 A new name, a new interface and a new player model
     18 November 2026 : v0.5.1 One walking pace for keyboard and touch
     19 November 2026 : v0.6.0 Watchtowers, waystones, dens and havens
+                     : v0.7.0 Traders, shrines, cairns and wrecks
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.7.0** | 19 Nov 2026 | More places: traders to barter with, shrines, cairns with buried caches, and wrecks to dive on | 25 |
 | **v0.6.0** | 19 Nov 2026 | Points of interest: watchtowers, waystones to travel between, dens and havens | 24 |
 | **v0.5.1** | 18 Nov 2026 | One walking pace for keyboard and touch; the changelog; donation and help links | 20, 21 |
 | **v0.5.0** | 17 Nov 2026 | The name The Wilds, an interface for every screen, a Graphics setting, and the explorer model | 18, 19 |
@@ -1466,6 +1474,56 @@ reach them.
 - Not verified here: how a den fight feels to play, since the defenders were
   removed by the test and not fought; whether one place in every 160 m square
   is the right density; and how any of it looks on a real phone.
+
+### More places: traders, shrines, cairns and wrecks
+
+Four more kinds of place, each with something new to do.
+
+- **A second layer.** The first four kinds stay exactly where 0.6.0 put them.
+  The new ones stand on a wider grid of their own, 220 m to a square, about
+  two squares in three filled, and never within 60 m of a place from the first
+  layer. Wrecks are placed by lake, not by grid.
+- **Traders.** A covered cart, a stall and someone behind it. Press **E** for
+  the board: three swaps and one piece of gear. What a trader wants is what
+  the region is short of, and what they sell is what it has to spare, so
+  Frostfell wants wood and sells pelts, and Sunscar wants fish and sells
+  cactus fruit. A swap costs about a third more than it gives. Each can be had
+  twice a day, the gear once, and the board changes every morning. Gear is
+  paid for in something worth carrying: pelts, fish, ore or meat, and more of
+  it further from home.
+- **Shrines.** To the boar, the tortoise or the hare. Pray once a day for four
+  minutes of fury (+30% damage), stoneskin (30% less damage taken) or
+  swiftness (+20% move and swing speed): twice what a dungeon shrine gives.
+- **Cairns and caches.** A pile of stones with a red rag on a stick. The note
+  under it gives a distance and a direction, 140 to 300 paces off, and marks
+  the spot on your map with a gold cross. Walk there and a mound with crossed
+  sticks and the same red rag shows where to dig: a piece of gear, an iron
+  ingot, arrows and herbs.
+- **Wrecks.** Most lakes have a boat on the bed near the middle, with the mast
+  still standing clear of the water so you can see her from the shore. Swim
+  over, dive, and prise open the chest on the deck. The gear goes straight
+  into your bag and is never common. Each wreck gives once.
+- **Map, saves and stats.** Each kind has its own mark, and a watchtower shows
+  them like any other place. The save keeps notes read, caches dug, wrecks
+  opened and the day's trades. The expedition summary counts caches, wrecks
+  and trades.
+
+#### Verification
+
+- 200 unit tests pass, 12 of them new. They check that the first layer is
+  where 0.6.0 left it, the placement of the second layer and the wrecks, where
+  a note points, that trades are fair and change daily, and each kind used
+  through the game's own **E** handler, including a wreck that will not open
+  from the surface and a trader who will not sell twice over. Sixteen
+  deliberate bugs were each caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone: traded
+  at Garrick's trading camp until two lines sold out, prayed at the Shrine of
+  the Hare, read a cairn's note and dug up its cache 140 paces north, swam out
+  to the Wreck of the Lantern, dived and opened the chest, then saved and
+  restored. The five new models were looked at in place.
+- Not verified here: whether prices feel fair in play, how often a tree or a
+  rock stands on a cache (nothing clears the ground there), and how the dive
+  feels on a touch screen with the DOWN button held.
 
 ---
 

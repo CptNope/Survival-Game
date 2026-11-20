@@ -18,6 +18,7 @@ export const DEN_REFILL_DAYS = 4;    // A cleared den is lived in again after th
 export const WAYSTONE_MIN = 260;     // No procedural waystone nearer home than this.
 export const ELITE_LEVEL = 3;        // Dens this far out are led by an elite.
 
+// The first layer: one of these in most 160 m squares.
 export const POI_KINDS = Object.freeze({
     tower: {label: 'Watchtower', plural: 'Watchtowers', weight: .2},
     waystone: {label: 'Waystone', plural: 'Waystones', weight: .2},
@@ -45,6 +46,46 @@ export const HAVENS = Object.freeze({
     marsh: {name: 'Stilt hut', verb: 'rest a while', done: 'Rested',
         effect: {cure: true, heal: 20, buff: 'antivenom', items: {herbs: 2, mushrooms: 2}}}
 });
+
+// The second layer, on a wider grid of its own so that adding it moved none
+// of the first: a trader, a shrine or a cairn. Wrecks lie in the lakes.
+export const EXTRA_SPACING = 220;
+export const EXTRA_HOME_CLEAR = 170;
+export const EXTRA_KINDS = Object.freeze({
+    trader: {label: 'Trader', plural: 'Traders', weight: .3},
+    shrine: {label: 'Shrine', plural: 'Shrines', weight: .3},
+    cairn: {label: 'Cairn', plural: 'Cairns', weight: .4}
+});
+export const WRECK_KIND = Object.freeze({label: 'Wreck', plural: 'Wrecks'});
+export const KIND_LABELS = Object.freeze({...POI_KINDS, ...EXTRA_KINDS, wreck: WRECK_KIND});
+
+// A shrine is to one of three beasts, and lends you what that beast has.
+export const SHRINES = Object.freeze({
+    fury: {name: 'Shrine of the Boar', gift: 'the boar lends you its fury'},
+    stoneskin: {name: 'Shrine of the Tortoise', gift: 'the tortoise lends you its shell'},
+    haste: {name: 'Shrine of the Hare', gift: 'the hare lends you its legs'}
+});
+export const SHRINE_SECONDS = 240;   // Twice what a dungeon shrine gives: you have further to walk.
+
+// What things are worth to a trader, in the same made-up unit.
+export const WORTH = Object.freeze({wood: 1, stone: 1, fiber: 1.5, berries: 1.5, planks: 2.5, herbs: 2.5, arrows: 1.5, mushrooms: 3,
+    cactusFruit: 3, rawMeat: 4, fish: 5, ironOre: 5, torch: 5, cookedMeat: 6, pelt: 7, iron: 12});
+export const TRADE_MARGIN = 1.3;     // A trader takes about a third more than they give.
+export const TRADE_STOCK = 2;        // Each line can be had this many times a day.
+export const GEAR_PRICE = 30;        // What a piece of gear costs near home, in the same unit.
+// What a trader in each region is short of, and what they have to spare.
+const WANTS = {
+    meadow: ['pelt', 'fish', 'ironOre', 'rawMeat', 'stone'], tundra: ['wood', 'berries', 'herbs', 'fish', 'fiber'],
+    desert: ['fish', 'wood', 'berries', 'mushrooms', 'pelt'], marsh: ['stone', 'ironOre', 'cactusFruit', 'pelt', 'wood']
+};
+const SELLS = {
+    meadow: ['arrows', 'planks', 'iron', 'torch'], tundra: ['pelt', 'cookedMeat', 'arrows', 'iron'],
+    desert: ['cactusFruit', 'ironOre', 'arrows', 'torch'], marsh: ['mushrooms', 'herbs', 'arrows', 'iron']
+};
+const LOTS = {arrows: 8, planks: 6, iron: 2, torch: 2, pelt: 2, cookedMeat: 2, cactusFruit: 4, ironOre: 3, mushrooms: 4, herbs: 4};
+
+const KEEPERS = ['Maren', 'Tobin', 'Hesk', 'Orla', 'Brannoch', 'Isolde', 'Wend', 'Garrick', 'Sefa', 'Dunmore', 'Yarrow', 'Petra'];
+const SHIPS = ['Heron', 'Marigold', 'Lantern', 'Grey Goose', 'Thistle', 'Wayfarer', 'Kingfisher', 'Sparrow', 'Otter', 'Longreach'];
 
 const TOWER_NAMES = ['Ashen', 'Briar', 'Crow', 'Dawn', 'Elder', 'Fallow', 'Gale', 'Heron', 'Iron', 'Kestrel', 'Lone', 'Marten'];
 const STONE_NAMES = ['Alder', 'Bracken', 'Cinder', 'Drift', 'Ember', 'Fen', 'Gorse', 'Hazel', 'Ivy', 'Juniper', 'Linden', 'Moss',
@@ -109,7 +150,8 @@ export function poiForCell(cx, cz) {
     return poi;
 }
 
-export function poisNear(x, z, radius = 200) {
+// The first layer only: starters and the 160 m grid.
+export function gridPoisNear(x, z, radius = 200) {
     const result = STARTER_POIS.filter(poi => Math.hypot(poi.x - x, poi.z - z) <= radius);
     const range = Math.ceil(radius / POI_SPACING);
     const centerX = Math.floor(x / POI_SPACING), centerZ = Math.floor(z / POI_SPACING);
@@ -122,12 +164,91 @@ export function poisNear(x, z, radius = 200) {
     return result;
 }
 
+const extras = new Map();
+// The second layer's place in a cell, or null. Same cell, same answer.
+export function extraForCell(cx, cz) {
+    const key = cx + ':' + cz;
+    if (extras.has(key)) return extras.get(key);
+    const random = seededRandom(hash(cx, cz, 0x51ee));
+    let poi = null;
+    if (random() >= .25) {
+        const roll = random(), nameRoll = random();
+        for (let attempt = 0; attempt < 10 && !poi; attempt++) {
+            const x = cx * EXTRA_SPACING + 30 + random() * (EXTRA_SPACING - 60);
+            const z = cz * EXTRA_SPACING + 30 + random() * (EXTRA_SPACING - 60);
+            if (isLake(x, z) || Math.hypot(x, z) < EXTRA_HOME_CLEAR || crowded(x, z) || gridPoisNear(x, z, 60).length) continue;
+            let sum = 0, kind = 'cairn';
+            for (const [name, def] of Object.entries(EXTRA_KINDS)) { sum += def.weight; if (roll < sum) { kind = name; break; } }
+            const region = regionAt(x, z), base = {id: 'poi:x:' + key, kind, region, x, z, level: 1 + Math.min(8, Math.floor(Math.hypot(x, z) / 220))};
+            if (kind === 'trader') {
+                const keeper = KEEPERS[Math.floor(nameRoll * KEEPERS.length)];
+                poi = Object.freeze({...base, keeper, name: `${keeper}'s trading camp`});
+            } else if (kind === 'shrine') {
+                const boon = Object.keys(SHRINES)[Math.floor(nameRoll * 3)];
+                poi = Object.freeze({...base, boon, name: SHRINES[boon].name});
+            } else poi = Object.freeze({...base, name: "Traveller's cairn"});
+        }
+    }
+    extras.set(key, poi);
+    return poi;
+}
+
+// Lakes sit on a lattice of their own; (m, n) names one. Most hold a wreck,
+// on the bed near the middle where the water is deepest.
+const LAKE_STEP = Math.PI / .005;
+const wrecks = new Map();
+export function wreckForLake(m, n) {
+    if (!Number.isInteger(m) || !Number.isInteger(n) || (m + n) % 2 !== 0) return null; // No lake there.
+    const key = m + ':' + n;
+    if (wrecks.has(key)) return wrecks.get(key);
+    const random = seededRandom(hash(m, n, 0x3ec4));
+    let wreck = null;
+    if (random() >= .15) {
+        const angle = random() * Math.PI * 2, reach = 10 + random() * 35;
+        const x = LAKE_STEP * (m + .5) + Math.sin(angle) * reach, z = LAKE_STEP * n + Math.cos(angle) * reach;
+        const ship = SHIPS[Math.floor(random() * SHIPS.length)];
+        wreck = Object.freeze({id: `poi:w:${key}`, kind: 'wreck', region: regionAt(x, z), name: `Wreck of the ${ship}`, x, z,
+            level: 1 + Math.min(8, Math.floor(Math.hypot(x, z) / 220))});
+    }
+    wrecks.set(key, wreck);
+    return wreck;
+}
+
+function wrecksNear(x, z, radius) {
+    const result = [], range = Math.ceil((radius + 50) / LAKE_STEP);
+    const centerM = Math.round(x / LAKE_STEP - .5), centerN = Math.round(z / LAKE_STEP);
+    for (let m = centerM - range; m <= centerM + range; m++) {
+        for (let n = centerN - range; n <= centerN + range; n++) {
+            const wreck = wreckForLake(m, n);
+            if (wreck && Math.hypot(wreck.x - x, wreck.z - z) <= radius) result.push(wreck);
+        }
+    }
+    return result;
+}
+
+// Every place near a spot: both layers, and the wrecks.
+export function poisNear(x, z, radius = 200) {
+    const result = gridPoisNear(x, z, radius);
+    const range = Math.ceil(radius / EXTRA_SPACING);
+    const centerX = Math.floor(x / EXTRA_SPACING), centerZ = Math.floor(z / EXTRA_SPACING);
+    for (let cx = centerX - range; cx <= centerX + range; cx++) {
+        for (let cz = centerZ - range; cz <= centerZ + range; cz++) {
+            const poi = extraForCell(cx, cz);
+            if (poi && Math.hypot(poi.x - x, poi.z - z) <= radius) result.push(poi);
+        }
+    }
+    result.push(...wrecksNear(x, z, radius));
+    return result;
+}
+
 // Find a place again from its id, so a save only has to remember ids.
 export function poiById(id) {
     const starter = STARTER_POIS.find(poi => poi.id === id);
     if (starter) return starter;
-    const match = /^poi:(-?\d{1,6}):(-?\d{1,6})$/.exec(typeof id === 'string' ? id : '');
-    return match ? poiForCell(Number(match[1]), Number(match[2])) : null;
+    const match = /^poi:(x:|w:)?(-?\d{1,6}):(-?\d{1,6})$/.exec(typeof id === 'string' ? id : '');
+    if (!match) return null;
+    const a = Number(match[2]), b = Number(match[3]);
+    return match[1] === 'x:' ? extraForCell(a, b) : match[1] === 'w:' ? wreckForLake(a, b) : poiForCell(a, b);
 }
 
 // Everything a watchtower shows: landmarks, ways underground and other places.
@@ -170,3 +291,42 @@ export function travelChoices(attuned, from) {
     }
     return out.sort((a, b) => a.distance - b.distance);
 }
+
+// --- Shrines, cairns, traders ----------------------------------------------
+// Where a cairn's note sends you: a spot some way off, on dry ground.
+const caches = new Map();
+export function cacheFor(poi) {
+    if (caches.has(poi.id)) return caches.get(poi.id);
+    const random = seededRandom(hash(Math.round(poi.x), Math.round(poi.z), 0x7c41));
+    let spot = null;
+    for (let attempt = 0; attempt < 14 && !spot; attempt++) {
+        const angle = random() * Math.PI * 2, distance = 140 + random() * 160;
+        const x = poi.x + Math.sin(angle) * distance, z = poi.z + Math.cos(angle) * distance;
+        if (isLake(x, z) || Math.hypot(x, z) < 90) continue;
+        spot = Object.freeze({x, z, distance, bearing: angle});
+    }
+    caches.set(poi.id, spot);
+    return spot;
+}
+
+const idSeed = id => { let seed = 0x811c9dc5; for (let i = 0; i < id.length; i++) seed = Math.imul(seed ^ id.charCodeAt(i), 16777619); return seed | 0; };
+
+// What a trader has today: three swaps and a piece of gear. The same trader
+// on the same day always offers the same things.
+export function tradeOffers(poi, day) {
+    const random = seededRandom(idSeed(poi.id) ^ Math.imul(Math.max(1, Math.floor(day)), 0x27d4eb2d));
+    const wants = WANTS[poi.region] || WANTS.meadow, sells = SELLS[poi.region] || SELLS.meadow;
+    const start = Math.floor(random() * sells.length), offers = [];
+    for (let n = 0; n < 3; n++) {
+        const get = sells[(start + n) % sells.length], pool = wants.filter(item => item !== get);
+        const give = pool[Math.floor(random() * pool.length)], lot = LOTS[get];
+        offers.push({give: {[give]: Math.max(1, Math.ceil(WORTH[get] * lot * TRADE_MARGIN / WORTH[give]))}, get: {[get]: lot}, gear: false, stock: TRADE_STOCK});
+    }
+    // Gear is paid for in something worth carrying, not sixty berries.
+    const dear = wants.filter(item => WORTH[item] >= 4), coin = dear[Math.floor(random() * dear.length)] || 'pelt';
+    offers.push({give: {[coin]: Math.ceil(GEAR_PRICE * (1 + .2 * (poi.level - 1)) / WORTH[coin])}, get: null, gear: true, stock: 1});
+    return offers;
+}
+
+export const canAfford = (inventory, offer) =>
+    Object.entries(offer.give).every(([item, amount]) => (inventory[item] || 0) >= amount);

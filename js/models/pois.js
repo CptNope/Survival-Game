@@ -1,5 +1,5 @@
-// Models for the points of interest: a watchtower, a waystone, a den and four
-// havens. Like everything else out here they are low-poly shapes built in
+// Models for the points of interest: a watchtower, a waystone, a den, four
+// havens, a trader's camp, a shrine, a cairn with its cache, and a wreck. Like everything else out here they are low-poly shapes built in
 // code, merged into one mesh each and coloured by vertex.
 import { V, ellipsoid, branch, finish, colorMesh, seededRandom } from './wilderness.js';
 
@@ -167,6 +167,117 @@ function hut(scene, random) {
     return finish(scene, pieces, 'poi-hut');
 }
 
+// A covered cart, an awning with crates under it, a lantern, and the trader.
+function trader(scene, random) {
+    const pieces = [], canvas = [.80, .72, .52], cloth = [.34, .46, .50];
+    // The cart: bed, hooped cover, two wheels and a shaft resting on the ground.
+    pieces.push(box(scene, 'cart-bed', V(-2.2, .95, -.4), V(2.6, .22, 1.5), WOOD, random));
+    pieces.push(box(scene, 'cart-side-near', V(-2.2, 1.3, .32), V(2.6, .5, .08), WOOD_DARK, random));
+    pieces.push(box(scene, 'cart-side-far', V(-2.2, 1.3, -1.12), V(2.6, .5, .08), WOOD_DARK, random));
+    pieces.push(ellipsoid(scene, 'cart-cover', V(-2.2, 1.95, -.4), V(1.35, .85, .82), canvas, random));
+    for (const z of [.5, -1.3]) {
+        const wheel = disc(scene, 'cart-wheel', V(-2.5, .62, z), 1.24, .12, WOOD_DARK, random, 10);
+        wheel.rotation.x = Math.PI / 2;
+        pieces.push(wheel);
+    }
+    pieces.push(branch(scene, V(-.9, .95, -.4), V(.5, .12, -.4), .12, WOOD_DARK, random, .1));
+    // The stall: four poles, a sloping cloth, a board on trestles and the goods.
+    for (const [x, z, tall] of [[.9, 1.6, 2.5], [3.1, 1.6, 2.5], [.9, -.2, 2.1], [3.1, -.2, 2.1]])
+        pieces.push(branch(scene, V(x, 0, z), V(x, tall, z), .1, WOOD_DARK, random, .09));
+    const awning = box(scene, 'stall-awning', V(2, 2.36, .7), V(2.6, .06, 2.1), cloth, random);
+    awning.rotation.x = -.21;
+    pieces.push(awning);
+    pieces.push(box(scene, 'stall-board', V(2, .9, .9), V(2, .1, .8), WOOD, random));
+    pieces.push(box(scene, 'stall-leg-left', V(1.2, .45, .9), V(.1, .9, .7), WOOD_DARK, random));
+    pieces.push(box(scene, 'stall-leg-right', V(2.8, .45, .9), V(.1, .9, .7), WOOD_DARK, random));
+    pieces.push(box(scene, 'stall-crate', V(1.45, 1.13, .9), V(.5, .36, .5), [.52, .38, .22], random, .3));
+    pieces.push(ellipsoid(scene, 'stall-sack', V(2.2, 1.12, .95), V(.3, .24, .28), canvas, random));
+    pieces.push(ellipsoid(scene, 'stall-pot', V(2.7, 1.1, .8), V(.18, .2, .18), [.56, .30, .20], random));
+    pieces.push(box(scene, 'camp-crate', V(3.7, .3, -.6), V(.8, .6, .7), [.46, .33, .2], random, -.3));
+    pieces.push(disc(scene, 'camp-barrel', V(.3, .45, 2.2), .7, .9, [.40, .28, .17], random, 9));
+    pieces.push(ellipsoid(scene, 'stall-lantern', V(.9, 2.2, 1.6), V(.14, .2, .14), [1, .78, .32], random));
+    // The trader, behind the board: coat, head and a wide hat.
+    pieces.push(branch(scene, V(2, 0, -.1), V(2, 1.35, -.1), .62, [.30, .22, .34], random, .44));
+    pieces.push(ellipsoid(scene, 'trader-head', V(2, 1.6, -.1), V(.2, .23, .2), [.80, .62, .48], random));
+    pieces.push(disc(scene, 'trader-brim', V(2, 1.8, -.1), .74, .05, [.22, .18, .13], random, 9));
+    pieces.push(cone(scene, 'trader-crown', V(2, 1.95, -.1), .44, .3, [.22, .18, .13], random, 6));
+    return finish(scene, pieces, 'poi-trader');
+}
+
+const BANNER = {fury: [.74, .20, .16], stoneskin: [.42, .52, .62], haste: [.88, .72, .22]};
+// A little roofed stone house for an idol, with a bowl in front and a banner
+// in the colour of whichever beast it is to.
+function shrine(scene, boon, random) {
+    const stone = [.50, .51, .50], dark = [.33, .34, .35], banner = BANNER[boon] || BANNER.fury;
+    const pieces = [
+        disc(scene, 'shrine-step', V(0, .1, 0), 3.4, .2, dark, random, 8),
+        box(scene, 'shrine-plinth', V(0, .55, -.2), V(1.5, .7, 1.1), stone, random),
+        box(scene, 'shrine-post-left', V(-.62, 1.55, -.2), V(.2, 1.3, .9), stone, random),
+        box(scene, 'shrine-post-right', V(.62, 1.55, -.2), V(.2, 1.3, .9), stone, random),
+        box(scene, 'shrine-back', V(0, 1.55, -.6), V(1.1, 1.3, .14), dark, random),
+        cone(scene, 'shrine-roof', V(0, 2.62, -.2), 2.5, .9, [.36, .26, .20], random),
+        // The idol: a squat body, a head and two ears or horns.
+        ellipsoid(scene, 'shrine-idol', V(0, 1.2, -.22), V(.3, .34, .26), banner.map(c => c * .8 + .1), random),
+        ellipsoid(scene, 'shrine-idol-head', V(0, 1.66, -.14), V(.2, .18, .2), banner.map(c => c * .8 + .1), random),
+        cone(scene, 'shrine-ear-left', V(-.13, 1.9, -.14), .12, boon === 'haste' ? .42 : .2, dark, random, 5),
+        cone(scene, 'shrine-ear-right', V(.13, 1.9, -.14), .12, boon === 'haste' ? .42 : .2, dark, random, 5),
+        disc(scene, 'shrine-bowl', V(0, .28, .95), .6, .16, [.62, .50, .26], random, 8),
+        branch(scene, V(1.35, 0, .2), V(1.35, 3, .2), .1, WOOD_DARK, random, .08),
+        box(scene, 'shrine-banner', V(1.62, 2.4, .2), V(.5, 1.1, .04), banner, random)
+    ];
+    return finish(scene, pieces, 'poi-shrine');
+}
+
+// Stones piled by someone who wanted them found, and a stick with a rag on it.
+function cairn(scene, random) {
+    const pieces = [];
+    for (let n = 0; n < 6; n++) {
+        const size = 1 - n * .14;
+        pieces.push(ellipsoid(scene, 'cairn-stone', V((random() - .5) * .16, .28 + n * .36, (random() - .5) * .16), V(.7 * size, .26, .62 * size), STONE.map(c => c * (.85 + random() * .3)), random));
+    }
+    pieces.push(branch(scene, V(.75, 0, .2), V(.9, 2.3, .26), .08, WOOD_DARK, random, .06));
+    pieces.push(box(scene, 'cairn-rag', V(1.1, 2.05, .26), V(.44, .3, .03), [.72, .24, .18], random));
+    for (let n = 0; n < 3; n++) pieces.push(ellipsoid(scene, 'cairn-spill', V(-.8 + n * .5, .12, .9 - n * .2), V(.24, .14, .2), STONE, random));
+    return finish(scene, pieces, 'poi-cairn');
+}
+
+// Turned earth with two sticks crossed over it: X marks the spot.
+function cacheMound(scene, random) {
+    const earth = [.36, .27, .17], pieces = [
+        ellipsoid(scene, 'cache-mound', V(0, .1, 0), V(1.1, .34, .9), earth, random),
+        ellipsoid(scene, 'cache-clod', V(.9, .1, .5), V(.3, .18, .26), earth.map(c => c * .85), random),
+        ellipsoid(scene, 'cache-clod', V(-.8, .08, -.5), V(.24, .14, .22), earth.map(c => c * .85), random),
+        branch(scene, V(-.55, .3, -.45), V(.55, .46, .45), .07, WOOD, random, .06),
+        branch(scene, V(-.55, .46, .45), V(.55, .3, -.45), .07, WOOD, random, .06),
+        // The same red rag as on the cairn that sent you, so you know it at a distance.
+        branch(scene, V(.95, 0, -.3), V(1.02, 1.7, -.3), .07, WOOD_DARK, random, .05),
+        box(scene, 'cache-rag', V(1.22, 1.5, -.3), V(.4, .28, .03), [.72, .24, .18], random)
+    ];
+    return finish(scene, pieces, 'poi-cache');
+}
+
+// A boat on the lake bed, broken backed, with the mast still standing clear of
+// the water so you can see where she lies. The chest is on what is left of the deck.
+function wreck(scene, random) {
+    const pieces = [], plank = [.30, .24, .17], weed = [.20, .34, .26];
+    pieces.push(branch(scene, V(-3.6, .3, 0), V(3.4, .5, .3), .34, WOOD_DARK, random, .3));
+    for (let n = 0; n < 8; n++) {
+        const x = -3 + n * .86, lean = (random() - .5) * .3, tall = 1.1 + Math.sin(n / 7 * Math.PI) * .7;
+        pieces.push(branch(scene, V(x, .35, 0), V(x + lean, tall, 1.25), .13, plank, random, .09));
+        if (n !== 3 && n !== 6) pieces.push(branch(scene, V(x, .35, 0), V(x - lean, tall, -1.25), .13, plank, random, .09));
+    }
+    const port = box(scene, 'wreck-strake', V(-.4, .75, 1.05), V(5.6, .5, .08), plank, random); port.rotation.x = .42; pieces.push(port);
+    const deck = box(scene, 'wreck-deck', V(-1.5, .95, 0), V(2.6, .1, 1.7), plank, random); deck.rotation.z = .08; pieces.push(deck);
+    pieces.push(branch(scene, V(.6, .4, .1), V(1, 6.6, .3), .26, WOOD, random, .14));
+    pieces.push(branch(scene, V(-.2, 5.5, .28), V(2.1, 5.7, .28), .1, WOOD_DARK, random, .08));
+    pieces.push(box(scene, 'wreck-rag', V(1.5, 5.25, .28), V(.9, .7, .03), [.70, .66, .54], random));
+    pieces.push(box(scene, 'wreck-chest', V(-1.6, 1.28, 0), V(.9, .5, .6), [.36, .24, .14], random, .3));
+    pieces.push(box(scene, 'wreck-chest-band', V(-1.6, 1.3, 0), V(.2, .54, .64), [.85, .66, .25], random, .3));
+    pieces.push(disc(scene, 'wreck-barrel', V(2.6, .45, -1.4), .7, .9, [.36, .26, .16], random, 9));
+    for (let n = 0; n < 5; n++) pieces.push(branch(scene, V(-3 + n * 1.5, .1, 1.8 - (n % 2) * 3.4), V(-3 + n * 1.5 + (random() - .5) * .4, 1 + random() * .9, 1.8 - (n % 2) * 3.4), .09, weed, random, .02));
+    return finish(scene, pieces, 'poi-wreck');
+}
+
 const HAVEN_MODELS = {meadow: orchard, tundra: spring, desert: oasis, marsh: hut};
 
 // The model for a place. Solid ones (a tower, a stone, a hut) can be walked into.
@@ -175,9 +286,20 @@ export function createPoiModel(scene, poi) {
     const mesh = poi.kind === 'tower' ? tower(scene, poi.region, random)
         : poi.kind === 'waystone' ? waystone(scene, random)
         : poi.kind === 'den' ? den(scene, poi.region, random)
+        : poi.kind === 'trader' ? trader(scene, random)
+        : poi.kind === 'shrine' ? shrine(scene, poi.boon, random)
+        : poi.kind === 'cairn' ? cairn(scene, random)
+        : poi.kind === 'wreck' ? wreck(scene, random)
         : (HAVEN_MODELS[poi.region] || orchard)(scene, random);
     mesh.isPickable = false;
     mesh.metadata = {...mesh.metadata, poi: poi.id};
+    return mesh;
+}
+
+// The mound that shows where a cairn's cache is buried.
+export function createCacheModel(scene, seed = 1) {
+    const mesh = cacheMound(scene, seededRandom(seed | 0));
+    mesh.isPickable = false;
     return mesh;
 }
 
