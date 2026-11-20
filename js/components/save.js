@@ -45,6 +45,7 @@ export class SaveSystem {
             buffs:g.buffs?.capture?.() || null,
             perks:g.perks?.capture?.() || null,
             legends:g.legends?.capture?.() || null,
+            pois:g.pois?.capture?.() || null,
             gardens:g.gardens?.capture?.() || null,
             companion:g.companion?.capture?.() || null,
             storage:g.storage?.capture?.() || null,
@@ -141,6 +142,7 @@ export class SaveSystem {
             g.perks?.restore?.(saved.perks);
             g.regions?.restore?.(saved.regions);
             g.legends?.restore?.(saved.legends);
+            g.pois?.restore?.(saved.pois);
             g.companion?.restore?.(saved.companion);
             p.health=finite(saved.health,p.maxHealth,1,p.maxHealth);
         }

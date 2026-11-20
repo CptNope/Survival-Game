@@ -10,8 +10,9 @@
 
 A free 3D survival game that runs in the browser, built with Babylon.js. You
 wake in a meadow with nothing. Gather, craft and build a camp, explore four
-procedural regions, hunt three legends, and delve generated dungeons for gear
-graded from Common to Legendary. It plays with a keyboard and mouse or on a
+procedural regions dotted with watchtowers, waystones, dens and havens, hunt
+three legends, and delve generated dungeons for gear graded from Common to
+Legendary. It plays with a keyboard and mouse or on a
 touch screen, and installs as an app.
 
 > **Play it now:** [on itch.io](https://cptnope.itch.io/survival-game-web-demo)
@@ -131,6 +132,7 @@ come out at night, and each region beyond the meadow adds its own pressure.
 | **Building** | A lean-to, a campfire, floors, walls and roofs that snap together, garden beds and storage chests, with a preview before you place |
 | **Combat** | Tools, spear and bow. Every enemy attack has a wind-up you can see. A dodge with a moment of safety, a heavy sweep, and a quick heal |
 | **Exploration** | Trails, landmarks, a field compass and a map. Four regions that blend into each other, each with its own weather, plants and hunters |
+| **Points of interest** | Watchtowers that put the country around them on your map, waystones to travel between, dens to clear, and a haven in every region |
 | **Dungeons** | Stone doorways lead to three generated floors of rooms, corridors, traps, shrines and chests, with a boss at the bottom. Layouts redraw every three days |
 | **Loot** | Found weapons, armor, boots and charms with rolled bonuses, graded Common to Legendary. Compare, equip or break them down |
 | **Progression** | Experience and levels, a perk to choose at each level, and field notes that teach the game one goal at a time |
@@ -153,6 +155,18 @@ Beyond it the country is one of four regions, blending across each border.
 | **Frostfell** (snow) | About 360 m south | Cold builds even at noon | Snowy pines | Ice wolves; a bite adds cold |
 | **Sunscar** (desert) | About 240 m north-west | Thirst builds about twice as fast by day | Cactus, deadwood | Scorpions; a sting poisons |
 | **Mirefen** (marsh) | About 360 m west | Thick fog | Bog trees, mushrooms | Bog toads that spit from range |
+
+### Points of interest
+
+About three in every four 160 m squares of country hold one, beyond the first
+walk from the clearing. Walk up to one and it goes on your map.
+
+| Place | What it does |
+| --- | --- |
+| **Watchtower** | Climb it (**E**) to mark what lies around on your map: landmarks within 160 m, ways underground and other places within 320 m. They show as hollow marks until you reach them |
+| **Waystone** | Wake it (**E**). From any woken waystone you can step to any other. The Clearing Waystone, a short walk from where you start, is the way home |
+| **Den** | Three of the region's hunters come out when you get close: boars, ice wolves, scorpions or toads, led by an elite far from home. Kill them all for a piece of gear and their hoard. It is lived in again four days later |
+| **Haven** | Once a day it gives what its region takes. An old orchard feeds you, a hot spring clears the cold and warms you, an oasis slakes you and fills a waterskin, and a stilt hut cures venom and guards against it |
 
 ### Creatures
 
@@ -249,7 +263,7 @@ what each material makes.
 | **Shift** | Sprint |
 | **Click** (hold) | Gather or attack; cast a fishing line; confirm a build |
 | **Right-click** | Heavy sweep; cancels building |
-| **E** | Drink, sleep, open chests, plant, take doors and stairs |
+| **E** | Drink, sleep, open chests, plant, take doors and stairs; climb a watchtower, wake a waystone, use a haven |
 | **Space** | Jump; double tap to fly, hold to rise |
 | **Ctrl** | Descend while flying, or dive in deep water |
 | **Q** | Dodge |
@@ -270,7 +284,7 @@ what each material makes.
 | **Stick** | Move. Half a push is half the pace |
 | **Drag** | Look around; pinch to zoom the outside views |
 | **HIT** | Hold to gather or attack; tap to cast a line |
-| **USE** | Drink, sleep, open chests, plant, take doors and stairs |
+| **USE** | Drink, sleep, open chests, plant, take doors and stairs; climb a watchtower, wake a waystone, use a haven |
 | **JUMP** | Jump; double tap to fly |
 | **RUN** | Hold to sprint |
 | **DODGE** | A short dash that blows miss |
@@ -302,13 +316,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 10,400 lines of JavaScript in 53 modules |
+| **Size** | About 11,100 lines of JavaScript in 56 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 169 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 188 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -332,6 +346,7 @@ flowchart TD
             exploration["Exploration<br/>trails, landmarks"]
             dungeon["Dungeons"]
             sky["Sky and weather"]
+            pois["Points of interest"]
         end
 
         subgraph player["Player"]
@@ -375,8 +390,8 @@ flowchart TD
     systems --> rules
     systems --> models
 
-    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, avatar, archery, homestead, map"]
-    models["Models built in code<br/>wilderness, creatures, avatar, instance pool"]
+    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, avatar,<br/>archery, homestead, map"]
+    models["Models built in code<br/>wilderness, creatures, avatar, points of interest, instance pool"]
 ```
 
 ### What happens in a frame
@@ -394,7 +409,7 @@ flowchart TD
     act --> governor[Graphics quality governor]
     governor --> near[Chunks to load, pickups, landmarks, dungeon]
     near --> camera[Camera view and avatar]
-    camera --> systems[Gear, buffs, regions, legends, fishing, gardens, dog, bow]
+    camera --> systems[Gear, buffs, regions, legends, points of interest, fishing, gardens, dog, bow]
     systems --> needs[Hunger, thirst, cold]
     needs --> autosave[Autosave]
     autosave --> draw([Draw the scene])
@@ -412,10 +427,10 @@ sprint 9.5) for keyboard and touch alike.
 | --- | --- |
 | `index.html`, `styles.css` | The page, the HUD and menu markup, and the whole interface stylesheet |
 | `js/main.js`, `js/game.js` | Start-up and the `SurvivalGame` class that owns every system |
-| `js/components/` | The systems: terrain, player, touch, view, survival, inventory, building, combat, archery, animals, creatures, dungeon, regions, legends, companion, homestead, storage, gear, perks, buffs, progression, weather, sky, audio, effects, quality, save and the interface |
-| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
-| `js/models/` | Models built in code: `wilderness`, `creatures`, `avatar`, and the instance `pool` |
-| `tests/` | 16 test files, one per area of the game |
+| `js/components/` | The systems: terrain, player, touch, view, survival, inventory, building, combat, archery, animals, creatures, dungeon, regions, legends, points of interest, companion, homestead, storage, gear, perks, buffs, progression, weather, sky, audio, effects, quality, save and the interface |
+| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
+| `js/models/` | Models built in code: `wilderness`, `creatures`, `avatar`, `pois`, and the instance `pool` |
+| `tests/` | 17 test files, one per area of the game |
 | `scripts/browser-smoke.mjs` | Starts the game in real Chrome, desktop and emulated phone, and checks it reaches play |
 | `sw.js`, `manifest.json`, `icons/` | The service worker, the app manifest and the install icons |
 | `models.html`, `resources.html` | The model workshop and the resource field guide |
@@ -444,7 +459,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 169 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 188 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -467,10 +482,12 @@ timeline
                      : v0.4.0 Three views, three frontiers, bosses and a dog
     17 November 2026 : v0.5.0 A new name, a new interface and a new player model
     18 November 2026 : v0.5.1 One walking pace for keyboard and touch
+    19 November 2026 : v0.6.0 Watchtowers, waystones, dens and havens
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.6.0** | 19 Nov 2026 | Points of interest: watchtowers, waystones to travel between, dens and havens | 24 |
 | **v0.5.1** | 18 Nov 2026 | One walking pace for keyboard and touch; the changelog; donation and help links | 20, 21 |
 | **v0.5.0** | 17 Nov 2026 | The name The Wilds, an interface for every screen, a Graphics setting, and the explorer model | 18, 19 |
 | **v0.4.0** | 16 Nov 2026 | Three camera views, a dodge, three frontier regions, a bow, perks, legends, a map, fishing, gardens, a dog, chests and tonics | 14 to 17 |
@@ -1393,6 +1410,62 @@ the camera every frame, about 24 units a second at a full push.
   keyboard walked at 3.8 where the uncapped version did not move at all.
 - Not verified here: how the new pace feels in the hand, on a desktop or a
   phone. A phone at full push is about four times slower than it was.
+
+### Points of interest: watchtowers, waystones, dens and havens
+
+The country beyond the clearing had landmarks to walk up to, ways underground
+and three lairs. This adds a fourth layer: places that do something when you
+reach them.
+
+- **Where they are.** About three in every four 160 m squares of country hold
+  one place, set well inside the square and clear of lakes,
+  landmarks, ways underground, lairs and the clearing. The same cell always
+  holds the same place, so nothing about where they stand is saved. Walking to
+  within 14 m finds one and puts it on the map.
+- **Watchtowers.** Press **E** at the foot to climb and look around.
+  Landmarks within 160 m, and ways underground and other places within 320 m,
+  go on the map as hollow marks in their own shape and colour until you reach
+  them. The Greenwood Lookout stands about 110 m from the clearing.
+- **Waystones.** Press **E** to wake one. At any woken waystone, **E** opens
+  the map with a list of the others above it, nearest first, each with its
+  distance, bearing and region. Pick one and you step out beside it, and the
+  dog comes too. The Clearing Waystone is a short walk from the start, and no
+  other stands within 260 m of home. A waystone will not answer while a legend
+  is hunting you.
+- **Dens.** Come within 34 m and three of the region's hunters come out: boars
+  in the Greenwood, ice wolves in Frostfell, scorpions in Sunscar, toads in
+  Mirefen. Further from home they are tougher, and from about 440 m out one of
+  them is an elite. Kill all three and the den is cleared: a piece of gear on
+  the step, the hoard in your pack and experience for it. Leave before the
+  last one falls and it is not cleared. A cleared den is lived in again four
+  days later.
+- **Havens.** One kind for each region, each giving once a day. An old orchard
+  gives four berries and takes the edge off hunger. A hot spring clears the
+  cold, heals 30 and leaves you warmed for three minutes. An oasis slakes
+  thirst and fills a waterskin. A stilt hut cures venom, guards against it for
+  a while and has herbs and mushrooms on the shelf.
+- **Map and stats.** Each kind has its own mark, a cleared den goes grey until
+  it refills, and the map's last line counts the places found. Two new lines
+  on the expedition summary count places found and dens cleared.
+- **Trees keep off.** Nothing grows within 11 m of a place, the same way
+  landmarks and dungeon doors keep their doorsteps clear.
+
+#### Verification
+
+- 188 unit tests pass, 19 of them new. They cover where places stand and what
+  they keep clear of, every kind in every region, the rules for dens, havens,
+  surveys and travel, each kind used through the same **E** handler the game
+  uses, a den fight won and a den fled, the models, and a save and restore
+  including a save with rubbish in it. Fourteen deliberate bugs were each
+  caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone: woke
+  the Clearing Waystone, surveyed from the Greenwood Lookout (17 new marks),
+  woke a second waystone 290 m away and stepped home from it, used an oasis,
+  cleared a scorpion nest, and saved and restored. All ten models were looked
+  at in place, in all four regions.
+- Not verified here: how a den fight feels to play, since the defenders were
+  removed by the test and not fought; whether one place in every 160 m square
+  is the right density; and how any of it looks on a real phone.
 
 ---
 

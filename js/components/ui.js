@@ -1,6 +1,7 @@
 import { ITEMS, RESOURCES, RECIPES, RECIPE_GROUPS, recipeDescription, hitsNeeded } from '../resources.js';
 import { MAP_SPAN, MAP_CELLS, MAP_COLORS, mapCells, toSheet, onSheet } from '../map.js';
 import { LEGEND_LIST } from '../legends.js';
+import { REGIONS } from '../regions.js';
 import { CHEST_CAPACITY } from '../storage.js';
 import { QUALITY_CHOICES, QUALITY_LABELS } from '../quality.js';
 import { PERKS } from '../perks.js';
@@ -29,6 +30,13 @@ const MAP_MARKS = {
     dungeon: ['#c9a2ff', 'M-1 -.85L1 -.85L0 1Z'],
     lair: ['#ff6a55', 'M-.9 -.9L.9 .9M.9 -.9L-.9 .9', true],
     slain: ['#a3ada5', 'M-.9 -.9L.9 .9M.9 -.9L-.9 .9', true],
+    // Points of interest. `seen` is only the key for hollow marks: places made out from a watchtower.
+    seen: ['#e9eedc', 'M0 -.8A.8 .8 0 1 1 0 .8A.8 .8 0 1 1 0 -.8Z', true],
+    tower: ['#e8c27a', 'M-.55 1L-.4 -.2L-.8 -.2L0 -1.1L.8 -.2L.4 -.2L.55 1Z'],
+    waystone: ['#7fe3d2', 'M0 -1.15L.5 -.3L.36 1L-.36 1L-.5 -.3Z'],
+    den: ['#ff9a6b', 'M-1 .75A1 1.15 0 0 1 1 .75Z'],
+    denCleared: ['#a3ada5', 'M-1 .75A1 1.15 0 0 1 1 .75Z'],
+    haven: ['#8fd98a', 'M0 -.9A.9 .9 0 1 1 0 .9A.9 .9 0 1 1 0 -.9Z'],
     camp: ['#ffb23e', 'M0 -1L1 -.1L.72 1L-.72 1L-1 -.1Z'],
     home: ['#ffffff', 'M0 -1.1L.29 -.34L1.05 -.34L.44 .16L.66 .92L0 .47L-.66 .92L-.44 .16L-1.05 -.34L-.29 -.34Z']
 };
@@ -70,7 +78,7 @@ export class UISystem {
                 <nav id="panel-tabs" class="panel-tabs" aria-label="Sections"><button type="button" data-panel="menu">Paused</button><button type="button" data-panel="craft">Craft</button><button type="button" data-panel="build">Build</button><button type="button" data-panel="gear">Gear</button><button type="button" data-panel="perks">Perks</button><button type="button" data-panel="map">Map</button></nav>
                 <div class="panel-body">
                     <header class="panel-head"><small id="panel-kicker" class="sr-only"></small><h1 id="panel-title">The Wilds</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p></header>
-                    <div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="map-panel"><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div>
+                    <div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="map-panel"><div id="map-travel" class="map-travel" hidden></div><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div>
                     <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span><span class="settings-label" id="quality-label">Graphics</span><div id="set-quality" role="group" aria-labelledby="quality-label">${QUALITY_CHOICES.map(choice => `<button type="button" data-quality="${choice}">${QUALITY_LABELS[choice]}</button>`).join('')}</div><span id="quality-value"></span></div>
                     <details id="controls-wrap"><summary>Controls</summary><div id="controls"></div></details>
                     <dl id="stats"></dl>
@@ -87,6 +95,10 @@ export class UISystem {
         this.$('exploration-card').onclick = () => this.toggleMap();
         this.$('exploration-card').onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.toggleMap(); } };
         this.$('map-button').onclick = () => this.toggleMap();
+        this.$('map-travel').onclick = event => {
+            const choice = event.target.closest('button[data-travel]');
+            if (choice) game.pois?.travel(choice.dataset.travel);
+        };
         // The tabs along the top of a panel: move between sections without closing it.
         this.$('panel-tabs').onclick = event => {
             const tab = event.target.closest('button[data-panel]');
@@ -242,8 +254,8 @@ export class UISystem {
         if (menu) {
             const rows = list => '<dl class="key-list">' + list.map(([keys, action]) => `<div><dt>${keys.split(' ').map(key => `<kbd>${key}</kbd>`).join('')}</dt><dd>${action}</dd></div>`).join('') + '</dl>';
             this.$('controls').innerHTML = this.game.touchControls?.enabled
-                ? rows([['Stick', 'Move'], ['Drag', 'Look around; pinch to zoom the outside views'], ['HIT', 'Hold to gather or attack; tap to cast a line'], ['USE', 'Drink, sleep, open chests, plant, take doors and stairs'], ['JUMP', 'Jump; double tap to fly'], ['RUN', 'Hold to sprint'], ['DODGE', 'A short dash that blows miss'], ['HEAL', 'Use your best remedy'], ['BOW', 'Hold to draw, let go to loose'], ['TORCH', 'Light or put away the torch'], ['SKILL', 'Heavy sweep; cancels building'], ['DOWN', 'Descend while flying, or dive'], ['View', 'First-person, third-person or overhead'], ['Compass', 'Tap for the map']])
-                : rows([['W A S D', 'Move'], ['Shift', 'Sprint'], ['Click', 'Hold to gather or attack; cast a line'], ['Right-click', 'Heavy sweep; cancels building'], ['E', 'Drink, sleep, open chests, plant, take doors and stairs'], ['Space', 'Jump; double tap to fly'], ['Ctrl', 'Descend or dive'], ['Q', 'Dodge'], ['H', 'Quick heal'], ['R', 'Hold to draw the bow; rotates a build preview'], ['F', 'Torch'], ['V', 'Change view; mouse wheel zooms'], ['T', 'Dog: stay or follow'], ['C B G', 'Craft, Build, Gear'], ['K N', 'Perks, Map'], ['M P', 'Mute, Save'], ['Esc', 'Pause']]);
+                ? rows([['Stick', 'Move'], ['Drag', 'Look around; pinch to zoom the outside views'], ['HIT', 'Hold to gather or attack; tap to cast a line'], ['USE', 'Drink, sleep, open chests, plant, use places, take doors and stairs'], ['JUMP', 'Jump; double tap to fly'], ['RUN', 'Hold to sprint'], ['DODGE', 'A short dash that blows miss'], ['HEAL', 'Use your best remedy'], ['BOW', 'Hold to draw, let go to loose'], ['TORCH', 'Light or put away the torch'], ['SKILL', 'Heavy sweep; cancels building'], ['DOWN', 'Descend while flying, or dive'], ['View', 'First-person, third-person or overhead'], ['Compass', 'Tap for the map']])
+                : rows([['W A S D', 'Move'], ['Shift', 'Sprint'], ['Click', 'Hold to gather or attack; cast a line'], ['Right-click', 'Heavy sweep; cancels building'], ['E', 'Drink, sleep, open chests, plant, use places, take doors and stairs'], ['Space', 'Jump; double tap to fly'], ['Ctrl', 'Descend or dive'], ['Q', 'Dodge'], ['H', 'Quick heal'], ['R', 'Hold to draw the bow; rotates a build preview'], ['F', 'Torch'], ['V', 'Change view; mouse wheel zooms'], ['T', 'Dog: stay or follow'], ['C B G', 'Craft, Build, Gear'], ['K N', 'Perks, Map'], ['M P', 'Mute, Save'], ['Esc', 'Pause']]);
             const progression = this.game.progression;
             if (progression) this.$('stats').innerHTML = `<div><dt>Day</dt><dd>${this.game.dayCount}</dd></div><div><dt>Field notes</dt><dd>${progression.completed.size}</dd></div>` +
                 Object.entries(STAT_LABELS).map(([key, label]) => `<div><dt>${label}</dt><dd>${progression.stats[key]}</dd></div>`).join('');
@@ -313,6 +325,7 @@ export class UISystem {
             const lair = game.legends?.lair(legend.region);
             if (lair) marks.push({kind: game.legends.slain.has(legend.id) ? 'slain' : 'lair', label: legend.name, x: lair.x, z: lair.z});
         }
+        marks.push(...(game.pois?.mapMarks(position, reach) || []));
         const camp = game.buildSystem.structures.find(item => item.type === 'shelter') || game.buildSystem.structures.find(item => item.type === 'fire');
         if (camp) marks.push({kind: 'camp', label: 'Your camp', x: camp.x, z: camp.z});
         marks.push({kind: 'home', label: 'The clearing', x: 0, z: 0});
@@ -328,17 +341,19 @@ export class UISystem {
             context.fillRect((n % MAP_CELLS) * cell, Math.floor(n / MAP_CELLS) * cell, Math.ceil(cell), Math.ceil(cell));
         }
         const shown = new Map();
+        let hollow = 0;
         for (const mark of this.mapMarks()) {
             const point = toSheet(mark.x, mark.z, position.x, position.z, size);
             if (!onSheet(point, size, 10)) continue;
-            const [colour, path, outline] = MAP_MARKS[mark.kind];
-            context.save(); context.translate(point.px, point.py); context.scale(7.5, 7.5);
+            const [colour, path, lined] = MAP_MARKS[mark.kind], outline = lined || mark.seen;
+            context.save(); context.translate(point.px, point.py); context.scale(mark.seen ? 6 : 7.5, mark.seen ? 6 : 7.5);
             const shape = new Path2D(path);
             context.lineJoin = 'round'; context.lineCap = 'round';
             context.lineWidth = outline ? .62 : .44; context.strokeStyle = '#0d1512'; context.stroke(shape);
             if (outline) { context.lineWidth = .3; context.strokeStyle = colour; context.stroke(shape); }
             else { context.fillStyle = colour; context.fill(shape); }
             context.restore();
+            if (mark.seen) { hollow++; continue; }
             if (!shown.has(mark.kind)) shown.set(mark.kind, []);
             shown.get(mark.kind).push(mark.label);
         }
@@ -347,11 +362,25 @@ export class UISystem {
         context.save(); context.translate(size / 2, size / 2); context.rotate(yaw);
         context.beginPath(); context.moveTo(0, -11); context.lineTo(7, 8); context.lineTo(0, 4); context.lineTo(-7, 8); context.closePath();
         context.fillStyle = '#ffffff'; context.strokeStyle = '#0d1512'; context.lineWidth = 2; context.fill(); context.stroke(); context.restore();
-        const names = {site: 'Places found', dungeon: 'Ways underground', lair: 'Lairs', slain: 'Lairs, emptied', camp: 'Your camp', home: 'The clearing'};
+        const names = {site: 'Landmarks found', dungeon: 'Ways underground', lair: 'Lairs', slain: 'Lairs, emptied', camp: 'Your camp', home: 'The clearing',
+            tower: 'Watchtowers', waystone: 'Waystones', den: 'Dens', denCleared: 'Dens, cleared', haven: 'Havens'};
         const key = (path, colour, outline) => `<svg viewBox="-1.5 -1.5 3 3" width="14" height="14" aria-hidden="true"><path d="${path}" ${outline ? `fill="none" stroke="${colour}" stroke-width=".34" stroke-linecap="round"` : `fill="${colour}"`}/></svg>`;
         this.$('map-legend').innerHTML = `<li>${key('M0 -1.2L.8 1L0 .55L-.8 1Z', '#fff')} You · ${game.regions.def.name}</li>`
             + [...shown].map(([kind, labels]) => `<li>${key(MAP_MARKS[kind][1], MAP_MARKS[kind][0], MAP_MARKS[kind][2])} ${names[kind]}${['lair', 'slain'].includes(kind) ? ' · ' + [...new Set(labels)].join(', ') : ''}</li>`).join('')
-            + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} places found</li>`;
+            + (hollow ? `<li>${key(MAP_MARKS.seen[1], MAP_MARKS.seen[0], true)} Hollow marks · seen from a watchtower</li>` : '')
+            + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} landmarks and ${game.pois?.found.size || 0} points of interest found</li>`;
+        this.drawTravel();
+    }
+    // Under the map: where the waystone you are standing at can send you.
+    drawTravel() {
+        const box = this.$('map-travel'), pois = this.game.pois;
+        if (!box) return;
+        const options = pois?.travelOptions() || [], woken = pois?.attuned.size || 0;
+        box.hidden = !woken;
+        box.innerHTML = options.length
+            ? '<h3>Travel from this waystone</h3>' + options.map(option =>
+                `<button type="button" class="recipe" data-travel="${option.id}"><strong>${option.name}</strong><span>${Math.round(option.distance)} m ${compass(option.bearing)} · ${REGIONS[option.region]?.name || ''}</span><b>Go</b></button>`).join('')
+            : `<p>${woken === 1 ? 'One waystone woken' : woken + ' waystones woken'} · stand at one to travel between them</p>`;
     }
     // --- Perks --------------------------------------------------------------
     updatePerkUI() {
@@ -631,7 +660,7 @@ export class UISystem {
         }
         const special = game.dungeonSystem?.interaction();
         if (special) return special.label;
-        const nearby = game.companion?.interaction() || game.storage?.interaction();
+        const nearby = game.companion?.interaction() || game.storage?.interaction() || game.pois?.interaction();
         if (nearby) return nearby.label;
         // The homestead: a line in the water, or a garden bed underfoot.
         const fishing = game.fishing?.hint();

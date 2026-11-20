@@ -309,6 +309,10 @@ body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-even
 #map-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem 1rem;justify-content:center;font-size:.8125rem;color:#d5dcc4}
 #map-legend li{display:flex;align-items:center;gap:.35rem}
 #map-legend .map-scale{color:var(--muted)}
+.map-travel{width:min(100%,33.75rem);display:grid;gap:.5rem}
+.map-travel[hidden]{display:none}
+.map-travel h3{margin:.25rem 0 0}
+.map-travel p{margin:0;text-align:center;color:var(--muted);font-size:.8125rem}
 
 /* Storage. */
 .storage-table{width:100%;border-collapse:collapse;font-size:.875rem}

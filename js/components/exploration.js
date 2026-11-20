@@ -202,7 +202,9 @@ export class ExplorationSystem {
         return landmarksNear(x, z, 16).some(site =>
             Math.hypot(site.x - x, site.z - z) < 8) || isTrailAt(x, z)
             // Dungeon entrances keep their doorstep clear as well.
-            || dungeonsNear(x, z, 9).length > 0;
+            || dungeonsNear(x, z, 9).length > 0
+            // And so do watchtowers, waystones, dens and havens.
+            || Boolean(this.game.pois?.isClearing(x, z));
     }
 
     populateChunk(cx, cz, chunk) {

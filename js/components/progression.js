@@ -149,7 +149,8 @@ export const STAT_LABELS = Object.freeze({
     chests: 'Chests opened', gearFound: 'Gear found', shrines: 'Shrines touched',
     arrows: 'Arrows loosed', arrowHits: 'Arrows on target',
     fish: 'Fish caught', harvests: 'Crops harvested', legends: 'Legends slain',
-    tonics: 'Tonics brewed', befriended: 'Strays befriended'
+    tonics: 'Tonics brewed', befriended: 'Strays befriended',
+    places: 'Points of interest found', dens: 'Dens cleared'
 });
 
 export class ProgressionSystem {

@@ -5,6 +5,24 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.6.0 (2026-11-19)
+
+### Added
+- **Points of interest** ([#24](https://github.com/CptNope/Survival-Game/pull/24)).
+  Places out in the country that do something when you reach them, in about
+  three of every four 160 m squares:
+  - Watchtowers, which put nearby landmarks, ways underground and other places
+    on your map.
+  - Waystones, which you wake and then travel between. One stands by the
+    clearing as the way home.
+  - Dens, defended by three of the region's hunters, with gear and a hoard for
+    clearing one. They refill after four days.
+  - Havens, one kind per region and usable once a day: an old orchard, a hot
+    spring, an oasis and a stilt hut.
+- Map marks for each kind of place, and hollow marks for anything seen from a
+  watchtower but not yet reached.
+- Places found and dens cleared on the expedition summary.
+
 ## v0.5.1 (2026-11-18)
 
 ### Added

@@ -23,6 +23,7 @@ import { PerkSystem } from './components/perks.js';
 import { RegionSystem } from './components/regions.js';
 import { ArcherySystem } from './components/archery.js';
 import { LegendSystem } from './components/legends.js';
+import { PoiSystem } from './components/pois.js';
 import { FishingSystem, GardenSystem } from './components/homestead.js';
 import { CompanionSystem } from './components/companion.js';
 import { QualitySystem } from './components/quality.js';
@@ -113,6 +114,8 @@ export class SurvivalGame {
             // Create exploration before terrain so procedural paths and clearings
             // influence vegetation even for the initial 3x3 chunks.
             this.explorationSystem = new ExplorationSystem(this);
+            // Points of interest keep their doorsteps clear too, so they come first as well.
+            this.pois = new PoiSystem(this);
 
             // Inventory is needed by terrain for gatherable resources.
             this.inventorySystem = new InventorySystem(this);
@@ -411,6 +414,7 @@ export class SurvivalGame {
             this.buffs.update(dt);
             this.regions.update(dt);
             this.legends.update(dt);
+            this.pois.update(dt);
             this.fishing.update(dt);
             this.gardens.update(dt);
             this.companion.update(dt);
