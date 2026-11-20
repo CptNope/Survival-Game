@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v20-walk-speed';
+const CACHE_NAME = 'survival-game-v21-points-of-interest';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,9 @@ const ASSETS = [
   './js/view.js',
   './js/avatar.js',
   './js/movement.js',
+  './js/pois.js',
+  './js/components/pois.js',
+  './js/models/pois.js',
   './js/models/avatar.js',
   './js/dungeon.js',
   './js/creatures.js',

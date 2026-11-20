@@ -115,6 +115,9 @@ export class SurvivalSystem {
         if (stray?.act) return stray.act() !== false;
         const chest = this.game.storage?.interaction?.();
         if (chest?.act) return chest.act() !== false;
+        // A watchtower to climb, a waystone to wake, a haven to use.
+        const place = this.game.pois?.interaction?.();
+        if (place?.act) return place.act() !== false;
         const sleep = this.sleepStatus();
         const thirsty = this.thirst < 60 && (this.nearWater() || (this.hasWaterskin() && this.water > 0));
         if (sleep.ok && !thirsty) return this.sleep();
