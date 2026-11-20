@@ -74,7 +74,7 @@ export const TRADE_MARGIN = 1.3;     // A trader takes about a third more than t
 export const TRADE_STOCK = 2;        // Each line can be had this many times a day.
 export const GEAR_PRICE = 30;        // What a piece of gear costs near home, in the same unit.
 // What a trader in each region is short of, and what they have to spare.
-const WANTS = {
+export const WANTS = {
     meadow: ['pelt', 'fish', 'ironOre', 'rawMeat', 'stone'], tundra: ['wood', 'berries', 'herbs', 'fish', 'fiber'],
     desert: ['fish', 'wood', 'berries', 'mushrooms', 'pelt'], marsh: ['stone', 'ironOre', 'cactusFruit', 'pelt', 'wood']
 };

@@ -104,6 +104,8 @@ export class UISystem {
         this.$('trade-panel').onclick = event => {
             const line = event.target.closest('button[data-offer]');
             if (line && game.pois?.trade(this.tradeId, Number(line.dataset.offer))) this.updateTradeUI();
+            const job = event.target.closest('button[data-bounty]');
+            if (job && game.bounties?.[job.dataset.bounty === 'claim' ? 'claim' : 'accept'](this.tradeId)) this.updateTradeUI();
         };
         this.$('map-travel').onclick = event => {
             const choice = event.target.closest('button[data-travel]');
@@ -289,7 +291,9 @@ export class UISystem {
         this.$('controls-wrap').hidden = !menu;
         if (menu) this.$('controls-wrap').open = title || !this.game.touchControls?.enabled;
         this.$('panel-copy').textContent = trade
-            ? 'What the trader will swap today. Each line can be had twice, and there is one piece of gear. The board changes every morning.'
+            ? (poiById(this.tradeId)?.kind === 'trader'
+                ? 'A job on the notice board, and what the trader will swap today. Each line can be had twice, and there is one piece of gear. The stall changes every morning.'
+                : 'A notice is nailed to the foot of the tower. Take the job, do it, and come back here to be paid.')
             : storage
             ? 'Move things between your pack and this chest. Whatever is in a chest stays there if you die.'
             : map
@@ -334,7 +338,12 @@ export class UISystem {
         const inventory = game.inventorySystem.inventory;
         const goods = bundle => Object.entries(bundle).map(([item, amount]) => item === 'torch' && amount !== 1 ? `${amount} torches` : itemAmount(item, amount)).join(' and ');
         const purse = bundle => Object.entries(bundle).map(([item]) => `you have ${inventory[item] || 0}`).join(', ');
-        box.innerHTML = game.pois.offers(poi).map(offer =>
+        // The notice board comes first; a watchtower has nothing else to offer.
+        const board = game.bounties?.board(poi);
+        const notice = board ? `<h3 class="board-head">Notice board</h3><button type="button" class="recipe bounty" ${board.action ? `data-bounty="${board.action}"` : 'disabled'}>`
+            + `<strong>${board.title}</strong><span>${board.detail}</span><b>${board.button}</b></button>` : '';
+        const stall = poi.kind === 'trader' ? '<h3 class="board-head">Trade</h3>' : '';
+        box.innerHTML = notice + stall + (poi.kind !== 'trader' ? [] : game.pois.offers(poi)).map(offer =>
             `<button type="button" class="recipe" data-offer="${offer.index}" ${offer.affordable ? '' : 'disabled'}><strong>${offer.gear ? 'A piece of gear, unseen' : goods(offer.get)}</strong>`
             + `<span>for ${goods(offer.give)} · ${purse(offer.give)}</span><b>${offer.left ? (offer.affordable ? 'Trade' : 'Too dear') : 'Sold out'}</b></button>`).join('');
     }
@@ -396,7 +405,8 @@ export class UISystem {
             + [...shown].map(([kind, labels]) => `<li>${key(MAP_MARKS[kind][1], MAP_MARKS[kind][0], MAP_MARKS[kind][2])} ${names[kind]}${['lair', 'slain'].includes(kind) ? ' · ' + [...new Set(labels)].join(', ') : ''}</li>`).join('')
             + (hollow ? `<li>${key(MAP_MARKS.seen[1], MAP_MARKS.seen[0], true)} Hollow marks · seen from a watchtower</li>` : '')
             + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} landmarks and ${game.pois?.found.size || 0} points of interest found</li>`
-            + (game.seasons ? `<li class="map-scale">${game.seasons.calendar}</li>` : '');
+            + (game.seasons ? `<li class="map-scale">${game.seasons.calendar}</li>` : '')
+            + (game.bounties?.list() || []).map(line => `<li class="map-scale">Bounty · ${line}</li>`).join('');
         this.drawTravel();
     }
     // Under the map: where the waystone you are standing at can send you.

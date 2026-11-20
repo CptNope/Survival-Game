@@ -141,7 +141,12 @@ export class PoiSystem {
             return this.dug.has(poi.id) || !cache ? null
                 : {label: `The note says: ${Math.round(cache.distance / 10) * 10} paces ${heading(cache.bearing)}`};
         }
-        if (poi.kind === 'tower') return {label: 'Press E to climb the watchtower and look around', act: () => this.survey(poi)};
+        if (poi.kind === 'tower') {
+            // A watchtower has a notice board at its foot: look around, then read it.
+            const notice = game.bounties?.actionable(poi);
+            return {label: 'Press E to climb the watchtower and look around' + (notice ? ' · there is a notice on the post' : ''),
+                act: () => { this.survey(poi); if (game.bounties?.actionable(poi)) game.uiSystem?.openTrade?.(poi.id); return true; }};
+        }
         if (poi.kind === 'waystone') {
             if (!this.attuned.has(poi.id)) return {label: 'Press E to wake the waystone', act: () => this.attune(poi)};
             return travelChoices(this.attuned, poi).length

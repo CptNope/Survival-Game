@@ -322,6 +322,9 @@ body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-even
 .map-travel{width:min(100%,33.75rem);display:grid;gap:.5rem}
 #trade-panel{display:grid;gap:.5rem}
 #trade-panel[hidden]{display:none}
+#trade-panel .board-head{margin:.5rem 0 0;font:600 .8125rem/1.3 'Space Grotesk','DM Sans',sans-serif;color:var(--muted)}
+#trade-panel .board-head:first-child{margin-top:0}
+#trade-panel .bounty b:empty{display:none}
 .map-travel[hidden]{display:none}
 .map-travel h3{margin:.25rem 0 0}
 .map-travel p{margin:0;text-align:center;color:var(--muted);font-size:.8125rem}

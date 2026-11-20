@@ -5,6 +5,19 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.9.0 (2026-11-19)
+
+### Added
+- **Bounties** ([#27](https://github.com/CptNope/Survival-Game/pull/27)).
+  Every trader and watchtower has a notice board with a job on it: hunt the
+  region's hunters, deliver what it is short of, or clear a nearby den. Go
+  back to the board for a piece of gear and experience.
+  - One job to a board and three in hand at once. Boards post something new
+    every three days.
+  - A watchtower shows its notice after you have looked around from the top.
+  - The map lists the jobs in hand, and the expedition summary counts
+    bounties claimed.
+
 ## v0.8.0 (2026-11-19)
 
 ### Added
