@@ -25,6 +25,7 @@ import { ArcherySystem } from './components/archery.js';
 import { LegendSystem } from './components/legends.js';
 import { PoiSystem } from './components/pois.js';
 import { SeasonSystem } from './components/seasons.js';
+import { BountySystem } from './components/bounties.js';
 import { FishingSystem, GardenSystem } from './components/homestead.js';
 import { CompanionSystem } from './components/companion.js';
 import { QualitySystem } from './components/quality.js';
@@ -117,6 +118,7 @@ export class SurvivalGame {
             this.explorationSystem = new ExplorationSystem(this);
             // Points of interest keep their doorsteps clear too, so they come first as well.
             this.pois = new PoiSystem(this);
+            this.bounties = new BountySystem(this);
             // The calendar comes before the terrain, which is coloured by it.
             this.seasons = new SeasonSystem(this);
 

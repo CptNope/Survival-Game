@@ -194,6 +194,8 @@ export class AnimalSystem {
         if (def.split && animal.dungeon) game.dungeonSystem?.summonAround?.(position, def.split.kind, def.split.count, 1.3);
         if (def.boss) game.dungeonSystem?.onBossDefeated?.(animal, position);
         if (def.legend) game.legends?.onSlain?.(animal, position);
+        // Last, so a bounty's tally is the message left on screen.
+        game.bounties?.onKill(animal.kind);
         game.uiSystem?.updateInventoryUI?.();
         if (!animal.dungeon) game.saveSystem?.save();
     }

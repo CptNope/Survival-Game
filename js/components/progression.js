@@ -152,7 +152,7 @@ export const STAT_LABELS = Object.freeze({
     tonics: 'Tonics brewed', befriended: 'Strays befriended',
     places: 'Points of interest found', dens: 'Dens cleared',
     caches: 'Caches dug up', wrecks: 'Wrecks plundered', trades: 'Trades made',
-    winters: 'Winters seen out'
+    winters: 'Winters seen out', bounties: 'Bounties claimed'
 });
 
 export class ProgressionSystem {

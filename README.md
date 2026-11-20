@@ -141,6 +141,7 @@ year lasts twelve days, an hour of play, and its fourth season is winter.
 | **Homestead** | Fishing, garden beds that grow four crops, and chests to store what you cannot carry |
 | **Companion** | A stray dog to tame with cooked meat. It follows, fights beside you, and can be told to stay |
 | **Views** | First-person, third-person and overhead cameras, with a jointed explorer who walks, sprints, swims, swings and draws a bow |
+| **Bounties** | Notice boards at traders and watchtowers post jobs: hunt the region's hunters, deliver what it is short of, or clear a den. Come back to the board for a piece of gear |
 | **Seasons** | Spring, summer, autumn and winter, three days each. The land changes colour, the weather and the cold change with it, and each season gives or takes something |
 | **World feel** | A day and night sky, rain, storms and snow, swimmable lakes, and sound made in code |
 | **Any screen** | An interface that scales from a small phone to a 4K monitor, touch controls, and a Graphics setting with an automatic mode |
@@ -199,6 +200,22 @@ hold a wreck. Walk up to one and it goes on your map.
 | **Shrine** | To the boar, the tortoise or the hare. Pray (**E**) once a day for four minutes of fury, stoneskin or swiftness |
 | **Cairn** | Read the note under it (**E**). It gives a distance and a direction and marks your map; walk there, find the crossed sticks and dig (**E**) for a piece of gear and supplies |
 | **Wreck** | A mast standing out of a lake. Swim over, dive (**Ctrl**) and prise open the chest on the deck (**E**) for a piece of gear that is never common |
+
+### Bounties
+
+Every trader and every watchtower has a notice board with one job on it. The
+job stays up for three days, then a new one is posted.
+
+| Job | What it asks | How it is done |
+| --- | --- | --- |
+| **Hunt** | Three to six of the region's hunters: wolves or boars, ice wolves, scorpions or bog toads | Kill them anywhere, including the ones that come out of a den |
+| **Delivery** | Something the region is short of, such as 4 raw fish or 3 pelts. Traders only | Have it in your pack when you come back |
+| **Den** | A den within 450 m of the board, cleared out. It is marked on your map when you take the job | Clear it after taking the job |
+
+Take a job at the board (**E** at a trader; at a watchtower the notice shows
+after you have looked around), do it, and go back to the same board to be
+paid: a piece of gear a level above the country you are in, and experience.
+You can have three jobs in hand at once, and the map lists them.
 
 ### Creatures
 
@@ -348,13 +365,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 12,000 lines of JavaScript in 58 modules |
+| **Size** | About 12,200 lines of JavaScript in 60 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 217 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 225 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -423,7 +440,7 @@ flowchart TD
     systems --> rules
     systems --> models
 
-    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, seasons,<br/>avatar, archery, homestead, map"]
+    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, bounties,<br/>seasons, avatar, archery, homestead, map"]
     models["Models built in code<br/>wilderness, creatures, avatar, points of interest, instance pool"]
 ```
 
@@ -461,7 +478,7 @@ sprint 9.5) for keyboard and touch alike.
 | `index.html`, `styles.css` | The page, the HUD and menu markup, and the whole interface stylesheet |
 | `js/main.js`, `js/game.js` | Start-up and the `SurvivalGame` class that owns every system |
 | `js/components/` | The systems: terrain, player, touch, view, survival, inventory, building, combat, archery, animals, creatures, dungeon, regions, legends, points of interest, companion, homestead, storage, gear, perks, buffs, progression, weather, sky, audio, effects, quality, save and the interface |
-| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `seasons`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
+| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `bounties`, `seasons`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
 | `js/models/` | Models built in code: `wilderness`, `creatures`, `avatar`, `pois`, and the instance `pool` |
 | `tests/` | 17 test files, one per area of the game |
 | `scripts/browser-smoke.mjs` | Starts the game in real Chrome, desktop and emulated phone, and checks it reaches play |
@@ -492,7 +509,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 217 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 225 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -518,10 +535,12 @@ timeline
     19 November 2026 : v0.6.0 Watchtowers, waystones, dens and havens
                      : v0.7.0 Traders, shrines, cairns and wrecks
                      : v0.8.0 Seasons
+                     : v0.9.0 Bounties
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.9.0** | 19 Nov 2026 | Bounties: jobs on notice boards at traders and watchtowers, paid in gear | 27 |
 | **v0.8.0** | 19 Nov 2026 | Seasons: a twelve-day year that changes the land, the weather, the cold, the garden and what grows back | 26 |
 | **v0.7.0** | 19 Nov 2026 | More places: traders to barter with, shrines, cairns with buried caches, and wrecks to dive on | 25 |
 | **v0.6.0** | 19 Nov 2026 | Points of interest: watchtowers, waystones to travel between, dens and havens | 24 |
@@ -1624,6 +1643,43 @@ The game now has a calendar. Until this update every day was the same day.
   the numbers were checked but not lived through; whether the HUD clock stays
   readable against snow on a bright phone screen; and the snow overlay on a
   real phone's GPU. The map still draws the Greenwood green in winter.
+
+### Bounties: jobs on the notice boards
+
+Something to set out for. Every trader and every watchtower now has a notice
+board with a job on it.
+
+- **Three kinds of job.** A hunt asks for three to six of the region's own
+  hunters. A delivery asks for something the region is short of, and only a
+  trader posts one, since a watchtower has nobody to take it. A den job names
+  a den within 450 m and marks it on your map.
+- **Take it, do it, come back.** A trader's board is at the top of the trade
+  panel. A watchtower shows its notice after you have climbed it and looked
+  around, and only when there is a job to take or a reward to collect. Kills
+  count wherever they happen and the tally shows as you go. The reward is
+  paid at the board the job came from: a piece of gear rolled a level above
+  the country, with better luck than a den's, and experience.
+- **Limits.** One job to a board, three in hand at once. A board posts
+  something new every three days; a board you have been paid at stays bare
+  until then. A job in hand never expires.
+- **Map, saves and stats.** The map lists the jobs in hand and where to claim
+  them. The save keeps them and their tallies. The expedition summary counts
+  bounties claimed.
+
+#### Verification
+
+- 225 unit tests pass, 8 of them new. They cover what the boards post and
+  when it changes, each kind of job taken, done and claimed through the real
+  kill, den and trade code, the watchtower's notice through the game's own
+  **E** handler, the limit of three, and saves, including damaged ones.
+  Seventeen deliberate bugs were each caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone: took a
+  hunt for five bog toads at Sefa's trading camp, watched the tally, claimed
+  the gear; took the den job at the Greenwood Lookout, cleared the Boar
+  wallow and was paid; took a delivery, then saved and restored.
+- Not verified here: whether the rewards are too generous for a short hunt
+  near home, and how a hunt for wolves feels when wolves only come at night.
+  Kills in the browser run were made by the test script, not fought.
 
 ---
 
