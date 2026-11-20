@@ -7,7 +7,9 @@ import BABYLON from 'babylonjs';
 import {
     POI_SPACING, HOME_CLEAR, DISCOVER_RADIUS, USE_RADIUS, SURVEY_RADIUS, SURVEY_SITE_RADIUS, DEN_WAKE_RADIUS, DEN_REFILL_DAYS,
     WAYSTONE_MIN, ELITE_LEVEL, POI_KINDS, DENS, HAVENS, STARTER_POIS,
-    poiForCell, poisNear, poiById, surveyTargets, denPack, denReady, denOutcome, havenReady, travelChoices
+    EXTRA_SPACING, EXTRA_HOME_CLEAR, EXTRA_KINDS, KIND_LABELS, SHRINES, SHRINE_SECONDS, WORTH, TRADE_MARGIN, TRADE_STOCK, GEAR_PRICE,
+    poiForCell, extraForCell, wreckForLake, gridPoisNear, poisNear, poiById, surveyTargets, denPack, denReady, denOutcome, havenReady,
+    travelChoices, cacheFor, tradeOffers, canAfford
 } from '../js/pois.js';
 import { regionAt, REGION_IDS } from '../js/regions.js';
 import { dungeonsNear, STARTER_DUNGEON } from '../js/dungeon.js';
@@ -17,7 +19,7 @@ import { ITEMS } from '../js/resources.js';
 import { landmarksNear, ExplorationSystem } from '../js/components/exploration.js';
 import { BOONS, BuffSystem } from '../js/components/buffs.js';
 import { PoiSystem } from '../js/components/pois.js';
-import { createPoiModel } from '../js/models/pois.js';
+import { createPoiModel, createCacheModel } from '../js/models/pois.js';
 import { AnimalSystem } from '../js/components/animals.js';
 import { InventorySystem } from '../js/components/inventory.js';
 import { CombatSystem } from '../js/components/combat.js';
@@ -32,7 +34,8 @@ import { normalizeSettings } from '../js/settings.js';
 globalThis.BABYLON = BABYLON;
 
 const near = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-const ALL = poisNear(0, 0, 1600);
+const ALL = poisNear(0, 0, 1600), GRID = gridPoisNear(0, 0, 1600);
+const lake = (x, z) => Math.sin(x * .005) * Math.cos(z * .005);
 const first = (kind, region) => ALL.filter(poi => poi.kind === kind && (!region || poi.region === region))
     .sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
 
@@ -106,10 +109,11 @@ test('the same cell always holds the same place, and most cells hold one', () =>
 
 test('places keep clear of water, home, landmarks, ways underground, lairs and each other', () => {
     assert.ok(ALL.length > 150, `${ALL.length} places within 1600 m`);
-    const lake = (x, z) => Math.sin(x * .005) * Math.cos(z * .005) > .56;
     const lairs = LEGEND_LIST.map(legend => lairFor(legend.region)).filter(Boolean);
     for (const poi of ALL) {
-        assert.ok(!lake(poi.x, poi.z), `${poi.id} is not in a lake`);
+        // A wreck is the one thing that belongs in the water, and in the deep of it.
+        if (poi.kind === 'wreck') { assert.ok(lake(poi.x, poi.z) > .86, `${poi.id} lies in deep water`); continue; }
+        assert.ok(lake(poi.x, poi.z) <= .56, `${poi.id} is not in a lake`);
         if (STARTER_POIS.includes(poi)) continue;
         assert.ok(Math.hypot(poi.x, poi.z) >= HOME_CLEAR, `${poi.id} is not on top of the clearing`);
         assert.equal(landmarksNear(poi.x, poi.z, 24).length, 0, `${poi.id} is clear of landmarks`);
@@ -122,8 +126,9 @@ test('places keep clear of water, home, landmarks, ways underground, lairs and e
 
 test('every kind turns up in every region, named for where it is', () => {
     const counts = {};
-    for (const poi of ALL) counts[poi.kind] = (counts[poi.kind] || 0) + 1;
-    for (const kind of Object.keys(POI_KINDS)) assert.ok(counts[kind] >= ALL.length * .12, `${kind}: ${counts[kind]} of ${ALL.length}`);
+    for (const poi of GRID) counts[poi.kind] = (counts[poi.kind] || 0) + 1;
+    for (const kind of Object.keys(POI_KINDS)) assert.ok(counts[kind] >= GRID.length * .18, `${kind}: ${counts[kind]} of ${GRID.length}`);
+    assert.deepEqual(Object.keys(counts).sort(), Object.keys(POI_KINDS).sort(), 'the first layer holds only its own four kinds');
     for (const region of REGION_IDS) {
         const den = first('den', region), haven = first('haven', region);
         assert.ok(den && haven, `${region} has a den and a haven`);
@@ -499,7 +504,7 @@ test('what you have found, seen, woken, cleared and used survives a save', () =>
     stand(haven, 2, 2); tick(); pois.interaction().act();
     pois.found.add(den.id); pois.cleared.set(den.id, 3);
     const saved = JSON.parse(JSON.stringify(pois.capture()));
-    assert.deepEqual(Object.keys(saved).sort(), ['attuned', 'cleared', 'found', 'sighted', 'used']);
+    assert.deepEqual(Object.keys(saved).sort(), ['attuned', 'cleared', 'dug', 'found', 'leads', 'looted', 'sighted', 'trades', 'used']);
     assert.ok(JSON.parse(JSON.stringify(game.saveSystem.capture())).pois, 'the save file carries it');
 
     const {pois: fresh, stand: move, tick: step} = world();
@@ -542,4 +547,359 @@ test('E still does the older things first, and the new files are wired in', asyn
     assert.match(exploration, /this\.game\.pois\?\.isClearing\(x, z\)/);
     for (const file of ['./js/pois.js', './js/components/pois.js', './js/models/pois.js']) assert.ok(worker.includes(`'${file}'`), `${file} is cached for offline play`);
     assert.ok(USE_RADIUS < DISCOVER_RADIUS && DISCOVER_RADIUS < DEN_WAKE_RADIUS);
+});
+
+// --- The second batch: traders, shrines, cairns and wrecks -----------------
+const EXTRA = ALL.filter(poi => EXTRA_KINDS[poi.kind]), WRECKS = ALL.filter(poi => poi.kind === 'wreck');
+
+test('adding a second layer moved nothing in the first', () => {
+    // These were on players' maps in 0.6.0. They must still be where they were.
+    const golden = [
+        ['poi:-1:1', 'waystone', 'desert', 'Rowan Waystone', -122, 291, 2], ['poi:-3:-2', 'den', 'desert', 'Scorpion nest', -355, -219, 2],
+        ['poi:0:-3', 'den', 'tundra', 'Ice wolf den', 47, -387, 2], ['poi:-2:0', 'tower', 'meadow', 'Iron Watchtower', -281, 110, 2],
+        ['poi:1:-2', 'haven', 'meadow', 'Old orchard', 261, -216, 2]
+    ];
+    for (const [id, kind, region, name, x, z, level] of golden) {
+        const poi = poiById(id);
+        assert.deepEqual([poi.id, poi.kind, poi.region, poi.name, Math.round(poi.x), Math.round(poi.z), poi.level], [id, kind, region, name, x, z, level]);
+    }
+    assert.equal(poiById('poi:5:4'), null);
+    assert.equal(gridPoisNear(0, 0, 1500).length, 209);
+    assert.deepEqual(STARTER_POIS.map(poi => [poi.id, poi.x, poi.z]), [['poi:home', -22, 24], ['poi:lookout', 84, 66]]);
+});
+
+test('the second layer: a trader, a shrine or a cairn in most 220 m squares, clear of everything else', () => {
+    let filled = 0, cells = 0;
+    for (let cx = -5; cx <= 5; cx++) for (let cz = -5; cz <= 5; cz++) {
+        const poi = extraForCell(cx, cz);
+        cells++;
+        assert.equal(extraForCell(cx, cz), poi);
+        if (!poi) continue;
+        filled++;
+        assert.equal(poi.id, `poi:x:${cx}:${cz}`);
+        assert.equal(poiById(poi.id), poi);
+        assert.ok(EXTRA_KINDS[poi.kind] && KIND_LABELS[poi.kind].label);
+        assert.ok(poi.x >= cx * EXTRA_SPACING + 30 && poi.x <= (cx + 1) * EXTRA_SPACING - 30);
+        assert.equal(poi.region, regionAt(poi.x, poi.z));
+        assert.ok(Math.hypot(poi.x, poi.z) >= EXTRA_HOME_CLEAR);
+        assert.equal(gridPoisNear(poi.x, poi.z, 60).length, 0, `${poi.id} is clear of the first layer`);
+        assert.equal(landmarksNear(poi.x, poi.z, 24).length, 0);
+        assert.equal(dungeonsNear(poi.x, poi.z, 28).length, 0);
+        assert.ok(lake(poi.x, poi.z) <= .56);
+    }
+    assert.ok(filled / cells > .5 && filled / cells < .85, `${filled} of ${cells}`);
+    const counts = {};
+    for (const poi of EXTRA) counts[poi.kind] = (counts[poi.kind] || 0) + 1;
+    for (const kind of Object.keys(EXTRA_KINDS)) assert.ok(counts[kind] >= EXTRA.length * .18, `${kind}: ${counts[kind]} of ${EXTRA.length}`);
+    assert.ok(Math.abs(Object.values(EXTRA_KINDS).reduce((sum, kind) => sum + kind.weight, 0) - 1) < 1e-9);
+    for (const poi of EXTRA) {
+        if (poi.kind === 'trader') { assert.ok(poi.keeper); assert.equal(poi.name, `${poi.keeper}'s trading camp`); }
+        if (poi.kind === 'shrine') { assert.ok(SHRINES[poi.boon] && BOONS[poi.boon]); assert.equal(poi.name, SHRINES[poi.boon].name); }
+        if (poi.kind === 'cairn') assert.equal(poi.name, "Traveller's cairn");
+    }
+    assert.deepEqual([...new Set(EXTRA.filter(poi => poi.kind === 'shrine').map(poi => poi.boon))].sort(), ['fury', 'haste', 'stoneskin'], 'all three beasts have shrines');
+});
+
+test('wrecks lie in the deep middle of lakes, most lakes have one, and dry land has none', () => {
+    assert.ok(WRECKS.length >= 5, `${WRECKS.length} wrecks within 1600 m`);
+    for (const wreck of WRECKS) {
+        assert.match(wreck.id, /^poi:w:-?\d+:-?\d+$/);
+        assert.match(wreck.name, /^Wreck of the /);
+        assert.equal(poiById(wreck.id), wreck);
+        assert.ok(lake(wreck.x, wreck.z) > .9, 'well out from the shore');
+    }
+    assert.equal(wreckForLake(0, 1), null, 'no lake on the odd squares of the lattice');
+    assert.equal(wreckForLake(1, 0), null);
+    assert.equal(wreckForLake(.5, 0), null);
+    assert.equal(poiById('poi:w:0:1'), null);
+    const nearest = WRECKS.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+    assert.equal(nearest.id, 'poi:w:0:0', 'the lake east of the clearing has one');
+    assert.ok(Math.hypot(nearest.x, nearest.z) < 380);
+    let lakes = 0, held = 0;
+    for (let m = -8; m <= 8; m++) for (let n = -8; n <= 8; n++) if ((m + n) % 2 === 0) { lakes++; if (wreckForLake(m, n)) held++; }
+    assert.ok(held / lakes > .7 && held < lakes, `${held} of ${lakes} lakes`);
+    assert.ok(poisNear(nearest.x, nearest.z, 5).includes(nearest));
+});
+
+test("a cairn's note points to dry ground some way off, and always the same spot", () => {
+    const cairns = EXTRA.filter(poi => poi.kind === 'cairn');
+    assert.ok(cairns.length > 20);
+    for (const cairn of cairns) {
+        const cache = cacheFor(cairn);
+        assert.ok(cache, `${cairn.id} has a cache`);
+        assert.equal(cacheFor(cairn), cache);
+        assert.ok(cache.distance >= 140 && cache.distance <= 300);
+        assert.ok(Math.abs(Math.hypot(cache.x - cairn.x, cache.z - cairn.z) - cache.distance) < 1e-6);
+        assert.ok(Math.abs(Math.atan2(cache.x - cairn.x, cache.z - cairn.z) - (cache.bearing > Math.PI ? cache.bearing - Math.PI * 2 : cache.bearing)) < 1e-6, 'the bearing is the way to it');
+        assert.ok(lake(cache.x, cache.z) <= .56, 'not under water');
+        assert.ok(Math.hypot(cache.x, cache.z) >= 90, 'not in the clearing');
+    }
+});
+
+test('trading rules: four lines a day, fair but in the trader\'s favour, different tomorrow', () => {
+    const traders = EXTRA.filter(poi => poi.kind === 'trader');
+    assert.ok(traders.length > 15);
+    const worth = bundle => Object.entries(bundle).reduce((sum, [item, amount]) => sum + WORTH[item] * amount, 0);
+    let changed = 0;
+    for (const trader of traders) {
+        const offers = tradeOffers(trader, 3);
+        assert.deepEqual(tradeOffers(trader, 3), offers, 'the same all day');
+        assert.equal(offers.length, 4);
+        for (const offer of offers.slice(0, 3)) {
+            const [give] = Object.keys(offer.give), [get] = Object.keys(offer.get);
+            assert.ok(ITEMS[give] && ITEMS[get] && give !== get, `${give} for ${get}`);
+            assert.equal(offer.stock, TRADE_STOCK);
+            assert.equal(offer.gear, false);
+            assert.ok(Number.isInteger(offer.give[give]) && offer.give[give] >= 1 && offer.give[give] <= 60);
+            const ratio = worth(offer.give) / worth(offer.get);
+            assert.ok(ratio >= TRADE_MARGIN - 1e-9 && ratio < TRADE_MARGIN + .7, `${trader.name}: ${give} for ${get} at ${ratio.toFixed(2)}`);
+        }
+        assert.equal(new Set(offers.slice(0, 3).map(offer => Object.keys(offer.get)[0])).size, 3, 'three different things on the board');
+        const gear = offers[3], [coin] = Object.keys(gear.give);
+        assert.ok(gear.gear && gear.get === null && gear.stock === 1);
+        assert.ok(WORTH[coin] >= 4, `gear is paid for in ${coin}`);
+        assert.ok(worth(gear.give) >= GEAR_PRICE * (1 + .2 * (trader.level - 1)) && gear.give[coin] <= 30);
+        if (JSON.stringify(tradeOffers(trader, 4)) !== JSON.stringify(offers)) changed++;
+    }
+    assert.ok(changed > traders.length * .7, 'most boards change overnight');
+    const near = traders.sort((a, b) => a.level - b.level)[0], far = traders.at(-1);
+    assert.ok(worth(tradeOffers(far, 1)[3].give) > worth(tradeOffers(near, 1)[3].give) || far.level === near.level, 'gear costs more where it is better');
+    assert.equal(canAfford({pelt: 3}, {give: {pelt: 3}}), true);
+    assert.equal(canAfford({pelt: 2}, {give: {pelt: 3}}), false);
+    assert.equal(canAfford({}, {give: {pelt: 1}}), false);
+    for (const item of Object.keys(WORTH)) assert.ok(ITEMS[item], item);
+});
+
+test('models for the new places, and the mound over a cache', () => {
+    const {scene} = world();
+    for (const kind of ['trader', 'shrine', 'cairn', 'wreck']) {
+        const poi = ALL.find(one => one.kind === kind), mesh = createPoiModel(scene, poi);
+        assert.equal(mesh.metadata.poi, poi.id);
+        assert.ok(mesh.getTotalVertices() > 300 && mesh.getTotalVertices() < 4000, `${kind}: ${mesh.getTotalVertices()}`);
+        assert.ok(mesh.getVerticesData(BABYLON.VertexBuffer.ColorKind));
+        const box = mesh.getBoundingInfo().boundingBox;
+        assert.ok(box.minimum.y > -.5 && box.maximum.y > (kind === 'wreck' ? 6 : 2), `${kind} is ${box.maximum.y.toFixed(1)} tall`);
+    }
+    const mound = createCacheModel(scene, 5);
+    assert.ok(mound.getTotalVertices() > 100 && mound.getBoundingInfo().boundingBox.maximum.y > 1.4, 'the rag stands above the grass');
+    assert.equal(mound.isPickable, false);
+});
+
+test('a shrine lends its beast\'s boon once a day, for longer than a dungeon shrine', () => {
+    const {game, pois, notes, stand, tick} = world();
+    const shrine = EXTRA.find(poi => poi.kind === 'shrine' && poi.boon === 'haste');
+    stand(shrine, 2, 2); tick();
+    assert.ok(pois.found.has(shrine.id));
+    assert.match(pois.interaction().label, /^Press E to pray at the shrine$/);
+    assert.equal(game.survivalSystem.interact(), true);
+    assert.ok(game.buffs.has('haste'));
+    assert.equal(game.buffs.list()[0].left, SHRINE_SECONDS);
+    assert.ok(SHRINE_SECONDS > BOONS.haste.seconds);
+    assert.match(notes.at(-1), /the hare lends you its legs for 4 minutes/);
+    assert.equal(game.progression.stats.shrines, 1);
+    assert.match(pois.interaction().label, /it has given today$/);
+    assert.equal(pois.interaction().act, undefined);
+    assert.equal(pois.pray(shrine), false);
+    game.dayCount++;
+    assert.equal(pois.pray(shrine), true);
+    assert.equal(pois.pray(STARTER_POIS[0]), false, 'a waystone is not a shrine');
+});
+
+test('a cairn: read the note, find the mound, dig up the cache', () => {
+    const {game, pois, banners, notes, stand, tick} = world();
+    const cairn = EXTRA.find(poi => poi.kind === 'cairn'), cache = cacheFor(cairn), inventory = game.inventorySystem.inventory;
+    // Standing on the spot before you have read the note finds nothing.
+    stand(cache, 1, 1); tick();
+    assert.equal(pois.interaction(), null);
+    assert.equal(pois.mounds.size, 0);
+    stand(cairn, 2, 2); tick();
+    assert.match(pois.interaction().label, /^Press E to read the note under the cairn$/);
+    assert.equal(game.survivalSystem.interact(), true);
+    assert.ok(pois.leads.has(cairn.id));
+    assert.equal(banners.at(-1)[0], 'A note under the stones');
+    assert.match(banners.at(-1)[1], /^"\d+ paces (north|south|east|west)(-east|-west)?, under two crossed sticks" · marked on your map$/);
+    assert.match(pois.interaction().label, /^The note says: \d+ paces /);
+    assert.equal(pois.interaction().act, undefined);
+    assert.equal(pois.readCairn(cairn), false, 'once is enough');
+    const mark = pois.mapMarks(game.playerSystem.camera.position, 600).find(one => one.kind === 'cache');
+    assert.ok(Math.abs(mark.x - cache.x) < 1e-9 && Math.abs(mark.z - cache.z) < 1e-9);
+
+    // The mound shows as you come near.
+    stand(cache, 200, 0); tick();
+    assert.equal(pois.mounds.size, 0);
+    stand(cache, 60, 0); tick();
+    assert.equal(pois.mounds.size, 1);
+    const mound = pois.mounds.get(cairn.id);
+    assert.ok(Math.abs(mound.position.x - cache.x) < 1e-9);
+    stand(cache, 1, 1); tick();
+    assert.match(pois.interaction().label, /^Press E to dig up the cache$/);
+    const iron = inventory.iron, drops = game.gear.drops.length, experience = game.combatSystem.experience + game.combatSystem.level * 1000;
+    assert.equal(game.survivalSystem.interact(), true);
+    assert.ok(pois.dug.has(cairn.id));
+    assert.equal(inventory.iron, iron + 1);
+    assert.equal(game.gear.drops.length, drops + 1);
+    assert.ok(game.combatSystem.experience + game.combatSystem.level * 1000 > experience);
+    assert.equal(game.progression.stats.caches, 1);
+    assert.ok(mound.isDisposed() && pois.mounds.size === 0);
+    assert.match(notes.at(-1), /^Dug up a cache/);
+    // Not twice, and not for a cairn whose note you have not read.
+    const unread = EXTRA.filter(poi => poi.kind === 'cairn')[1];
+    assert.equal(pois.dig({poi: cairn, cache}), false);
+    assert.equal(pois.dig({poi: unread, cache: cacheFor(unread)}), false);
+    assert.equal(inventory.iron, iron + 1);
+    assert.equal(game.gear.drops.length, drops + 1);
+    assert.ok(!pois.dug.has(unread.id));
+    // Nothing more to dig, no mark left, and the cairn has nothing more to say.
+    assert.equal(pois.interaction(), null);
+    assert.equal(pois.mapMarks(game.playerSystem.camera.position, 600).some(one => one.kind === 'cache'), false);
+    stand(cairn, 2, 2); tick();
+    assert.equal(pois.interaction(), null);
+});
+
+test('a wreck: seen from the surface, opened only from under the water, and only once', () => {
+    const {game, pois, player, notes, stand, tick} = world();
+    const wreck = poiById('poi:w:0:0'), inventory = game.inventorySystem.inventory;
+    stand(wreck, 18, 0); tick();
+    assert.ok(pois.found.has(wreck.id), 'found from further off than a place on land');
+    assert.equal(pois.interaction(), null, 'too far to reach');
+    stand(wreck, 4, 3); tick();
+    assert.equal(pois.meshes.get(wreck.id).checkCollisions, false);
+    player.isUnderwater = false;
+    assert.match(pois.interaction().label, /^Wreck of the .* lies below · dive to reach her chest$/);
+    assert.equal(pois.interaction().act, undefined);
+    assert.equal(game.survivalSystem.interact(), false, 'E at the surface does not open it');
+    assert.ok(!pois.looted.has(wreck.id));
+    player.isUnderwater = true;
+    assert.match(pois.interaction().label, /^Press E to prise open the chest$/);
+    const arrows = inventory.arrows, gear = Object.values(game.gear.equipped).filter(Boolean).length + game.gear.bag.length;
+    assert.equal(game.survivalSystem.interact(), true);
+    assert.ok(pois.looted.has(wreck.id));
+    assert.equal(inventory.arrows, arrows + 8);
+    assert.equal(Object.values(game.gear.equipped).filter(Boolean).length + game.gear.bag.length, gear + 1, 'straight into your gear, not left on the lake bed');
+    assert.equal(game.gear.drops.length, 0);
+    assert.notEqual([...Object.values(game.gear.equipped), ...game.gear.bag].filter(Boolean)[0].rarity, 'common');
+    assert.equal(game.progression.stats.wrecks, 1);
+    assert.match(notes.at(-1), /gives up her chest/);
+    assert.equal(pois.interaction(), null, 'an empty wreck has no prompt');
+    assert.equal(pois.loot(wreck), false);
+});
+
+test('a trader: swap what you have, twice a line, and a fresh board in the morning', () => {
+    const {game, pois, panels, sounds, stand, tick} = world();
+    const trader = EXTRA.find(poi => poi.kind === 'trader'), inventory = game.inventorySystem.inventory;
+    let opened = null;
+    game.uiSystem.openTrade = id => { opened = id; };
+    stand(trader, 2, 2); tick();
+    assert.equal(pois.interaction().label, `Press E to trade with ${trader.keeper}`);
+    assert.equal(game.survivalSystem.interact(), true);
+    assert.equal(opened, trader.id);
+
+    const board = pois.offers(trader);
+    assert.equal(board.length, 4);
+    assert.ok(board.every(line => !line.affordable), 'an empty pack buys nothing');
+    assert.equal(pois.trade(trader.id, 0), false);
+    assert.equal(sounds.at(-1), 'deny');
+    const [give] = Object.keys(board[0].give), [get] = Object.keys(board[0].get);
+    inventory[give] = board[0].give[give] * 3;
+    const had = inventory[get];
+    assert.equal(pois.offers(trader)[0].affordable, true);
+    assert.equal(pois.trade(trader.id, 0), true);
+    assert.equal(inventory[give], board[0].give[give] * 2);
+    assert.equal(inventory[get], had + board[0].get[get]);
+    assert.equal(pois.offers(trader)[0].left, TRADE_STOCK - 1);
+    assert.equal(pois.trade(trader.id, 0), true);
+    assert.equal(pois.offers(trader)[0].left, 0);
+    assert.equal(pois.trade(trader.id, 0), false, 'sold out, though you could pay');
+    assert.equal(inventory[give], board[0].give[give]);
+    assert.equal(game.progression.stats.trades, 2);
+
+    // The gear line: one piece, into your gear.
+    const [coin] = Object.keys(board[3].give);
+    inventory[coin] = (inventory[coin] || 0) + board[3].give[coin];
+    const before = inventory[coin];
+    assert.equal(pois.trade(trader.id, 3), true);
+    assert.equal(inventory[coin], before - board[3].give[coin]);
+    assert.equal(Object.values(game.gear.equipped).filter(Boolean).length + game.gear.bag.length, 1);
+    assert.equal(pois.offers(trader)[3].left, 0);
+    assert.equal(pois.trade(trader.id, 9), false, 'no such line');
+    // The id has to be the trader you are standing with, even for a line you could pay for.
+    const [pay] = Object.keys(board[1].give);
+    inventory[pay] = board[1].give[pay] * 2;
+    assert.equal(pois.trade('poi:home', 1), false, 'not this trader');
+    assert.equal(pois.trade(EXTRA.filter(poi => poi.kind === 'trader')[1].id, 1), false, 'nor one somewhere else');
+    assert.equal(inventory[pay], board[1].give[pay] * 2, 'and nothing changes hands');
+    assert.equal(pois.offers(trader)[1].left, TRADE_STOCK);
+
+    // Not from across the field, and tomorrow the stock is back.
+    stand(trader, 30, 0);
+    assert.equal(pois.trade(trader.id, 1), false);
+    assert.equal(pois.interaction(), null);
+    stand(trader, 2, 2);
+    game.dayCount++;
+    assert.ok(pois.offers(trader).every(line => line.left === line.stock));
+});
+
+test('notes read, caches dug, wrecks opened and today\'s trades survive a save', () => {
+    const {game, pois, player, stand, tick} = world();
+    const cairn = EXTRA.find(poi => poi.kind === 'cairn'), other = EXTRA.filter(poi => poi.kind === 'cairn')[1];
+    const trader = EXTRA.find(poi => poi.kind === 'trader'), wreck = poiById('poi:w:0:0'), shrine = EXTRA.find(poi => poi.kind === 'shrine');
+    stand(cairn, 2, 2); tick(); pois.readCairn(cairn); pois.readCairn(other);
+    stand(cacheFor(cairn), 1, 1); pois.dig(pois.digSpot());
+    stand(wreck, 2, 2); tick(); player.isUnderwater = true; pois.loot(wreck);
+    stand(shrine, 2, 2); tick(); pois.pray(shrine);
+    stand(trader, 2, 2); tick();
+    const line = pois.offers(trader)[1], [give] = Object.keys(line.give);
+    game.inventorySystem.inventory[give] = 99; pois.trade(trader.id, 1);
+    const saved = JSON.parse(JSON.stringify(pois.capture()));
+    assert.deepEqual(saved.leads.sort(), [cairn.id, other.id].sort());
+    assert.deepEqual(saved.dug, [cairn.id]);
+    assert.deepEqual(saved.looted, [wreck.id]);
+    assert.deepEqual(saved.trades, {[trader.id]: {day: 1, sold: [0, 1, 0, 0]}});
+    assert.equal(saved.used[shrine.id], 1);
+
+    const {game: later, pois: fresh, stand: move, tick: step} = world();
+    fresh.restore(saved);
+    assert.deepEqual(fresh.capture(), saved, 'a save loads back to exactly what was saved');
+    assert.deepEqual([...fresh.leads].sort(), [cairn.id, other.id].sort());
+    assert.ok(fresh.dug.has(cairn.id) && fresh.looted.has(wreck.id));
+    move(trader, 2, 2); step();
+    assert.equal(fresh.offers(trader)[1].left, TRADE_STOCK - 1, "today's dealings are remembered");
+    assert.equal(fresh.openLeads().length, 1, 'one cache still to find');
+    assert.equal(fresh.pray(shrine), false, 'the shrine has given today');
+    // A mound standing when a save is loaded is taken down with the old state.
+    move(cacheFor(other), 20, 0); step();
+    assert.equal(fresh.mounds.size, 1);
+    const mound = fresh.mounds.get(other.id);
+    fresh.restore(null);
+    assert.ok(mound.isDisposed() && fresh.mounds.size === 0 && fresh.leads.size === 0);
+    // Yesterday's trades are not carried in a save made today.
+    later.dayCount = 5;
+    fresh.restore(saved);
+    assert.deepEqual(fresh.capture().trades, {});
+    assert.ok(fresh.offers(trader).every(one => one.left === one.stock));
+
+    // Rubbish is dropped: wrong kinds, a cache dug without its note, bad counts.
+    fresh.restore({leads: [trader.id, cairn.id, 'poi:x:nope', 3], dug: [other.id, cairn.id], looted: [cairn.id, wreck.id, 'poi:w:0:1'],
+        trades: {[trader.id]: {day: 2.9, sold: [1, 'x', -4, 500, null]}, [cairn.id]: {day: 1, sold: [1]}, bad: {day: 'x', sold: []}, [shrine.id]: 7}});
+    assert.deepEqual([...fresh.leads], [cairn.id]);
+    assert.deepEqual([...fresh.dug], [cairn.id], 'no digging without the note');
+    assert.deepEqual([...fresh.looted], [wreck.id]);
+    assert.deepEqual([...fresh.trades], [[trader.id, {day: 2, sold: [1, 0, 0, 99, 0]}]]);
+});
+
+test('the new places are wired into the interface', async () => {
+    const read = path => readFile(new URL(path, import.meta.url), 'utf8');
+    const [ui, css, worker, progression] = await Promise.all(['../js/components/ui.js', '../styles.css', '../sw.js', '../js/components/progression.js'].map(read));
+    for (const kind of ['trader', 'shrine', 'cairn', 'cache', 'wreck']) {
+        assert.match(ui, new RegExp(`\\n    ${kind}: \\['#`), `${kind} has a map mark`);
+        assert.match(ui, new RegExp(`${kind}: '[A-Z]`), `${kind} is named in the legend`);
+    }
+    assert.match(ui, /<div id="trade-panel"><\/div>/);
+    assert.match(ui, /openTrade\(id\) \{ this\.tradeId = id; this\.openPanel\('trade'\); \}/);
+    assert.match(ui, /game\.pois\?\.trade\(this\.tradeId, Number\(line\.dataset\.offer\)\)/);
+    assert.match(ui, /!storage && !trade;/, 'the trade panel is not the pause menu');
+    assert.match(css, /#trade-panel\[hidden\]\{display:none\}/);
+    assert.doesNotMatch(worker, /v21-points-of-interest/, 'the offline cache was bumped');
+    for (const stat of ['caches', 'wrecks', 'trades']) assert.ok(STAT_LABELS[stat], stat);
+    assert.match(progression, /caches: 'Caches dug up'/);
 });

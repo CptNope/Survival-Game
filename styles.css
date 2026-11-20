@@ -310,6 +310,8 @@ body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-even
 #map-legend li{display:flex;align-items:center;gap:.35rem}
 #map-legend .map-scale{color:var(--muted)}
 .map-travel{width:min(100%,33.75rem);display:grid;gap:.5rem}
+#trade-panel{display:grid;gap:.5rem}
+#trade-panel[hidden]{display:none}
 .map-travel[hidden]{display:none}
 .map-travel h3{margin:.25rem 0 0}
 .map-travel p{margin:0;text-align:center;color:var(--muted);font-size:.8125rem}
