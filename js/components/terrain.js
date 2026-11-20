@@ -2,6 +2,7 @@
 import { seededRandom } from '../models/wilderness.js';
 import { createTreeModel, createRockModel, createOreModel, createPlantModel } from '../models/wilderness.js';
 import { REGROW_DAYS } from '../resources.js';
+import { regrown } from '../seasons.js';
 import { ModelPool, VARIANTS } from '../models/pool.js';
 import { REGIONS, regionAt, groundColor, treeFor, plantFor } from '../regions.js';
 
@@ -211,9 +212,7 @@ export class TerrainSystem {
             // Set the height based on our height function
             const height = this.getPerlinHeight(x, z);
             positions[i + 1] = height;
-            const onTrail = (this.game.explorationSystem?.isTrail(x, z) || false) && !this.isWaterArea(x, z);
-            const [r, g, b] = onTrail ? [.47, .37, .25] : this.terrainColor(x, z, height);
-            vertexColors.push(r, g, b, 1);
+            vertexColors.push(...this.vertexColor(x, z, height), 1);
         }
 
         // Update the mesh with the new heights
@@ -224,6 +223,27 @@ export class TerrainSystem {
         mesh.updateVerticesData(BABYLON.VertexBuffer.NormalKind, normals);
         mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, vertexColors);
 
+    }
+
+    // A trodden trail stays bare earth; everything else takes the land's colour.
+    vertexColor(x, z, height) {
+        const onTrail = (this.game.explorationSystem?.isTrail(x, z) || false) && !this.isWaterArea(x, z);
+        return onTrail ? [.47, .37, .25] : this.terrainColor(x, z, height);
+    }
+
+    // Repaint a loaded chunk for the season: its ground and its grass. The
+    // heights are read back from the mesh, so nothing is regenerated.
+    recolorChunk(chunk) {
+        const mesh = chunk?.mesh;
+        if (!mesh || mesh.isDisposed()) return false;
+        const positions = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind), colors = [];
+        for (let i = 0; i < positions.length; i += 3) {
+            colors.push(...this.vertexColor(positions[i] + mesh.position.x, positions[i + 2] + mesh.position.z, positions[i + 1]), 1);
+        }
+        mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors);
+        const cover = chunk.groundCover;
+        if (cover && !cover.isDisposed()) cover.setVerticesData(BABYLON.VertexBuffer.ColorKind, this.coverColors(chunk.x, chunk.z));
+        return true;
     }
 
     // Use the one shared material: disposing a chunk must not dispose this.
@@ -285,9 +305,12 @@ export class TerrainSystem {
     terrainColor(x, z, height) {
         const patch = .5 + .5 * Math.sin(x * .031 + 1.7) * Math.cos(z * .027 - .6);
         // Meadow green, snow, sand or bog, blended across each border.
-        let [r, g, b] = groundColor(x, z, patch);
-        const dry = smooth((height - 4.9) / 2.4) * .65 * (regionAt(x, z) === 'meadow' ? 1 : .25);
-        r = mix(r, .50, dry); g = mix(g, .50, dry); b = mix(b, .44, dry);
+        let [r, g, b] = groundColor(x, z, patch, this.game?.seasons?.look.ground);
+        const region = regionAt(x, z);
+        const dry = smooth((height - 4.9) / 2.4) * .65 * (region === 'meadow' ? 1 : .25);
+        // Bare rock on the heights, under snow in winter everywhere but the desert.
+        const snow = region === 'desert' ? 0 : this.game?.seasons?.look.snow || 0;
+        r = mix(r, mix(.50, .86, snow), dry); g = mix(g, mix(.50, .89, snow), dry); b = mix(b, mix(.44, .92, snow), dry);
         const lake = this.waterNoise(x, z);
         const sand = smooth((lake - (SHORE_START - .03)) / .09);
         r = mix(r, .77, sand); g = mix(g, .70, sand); b = mix(b, .50, sand);
@@ -483,7 +506,13 @@ export class TerrainSystem {
     }
 
     // Trees, rocks and plants are instances drawn from a shared pool of models.
-    models() { return this.pool || (this.pool = new ModelPool(this.scene)); }
+    models() {
+        if (!this.pool) {
+            this.pool = new ModelPool(this.scene);
+            this.pool.tint = this.game?.seasons?.look.foliage || null;
+        }
+        return this.pool;
+    }
 
     // Build the meadow's models up front, during loading, so the first steps
     // into the world are not spent making them.
@@ -520,8 +549,9 @@ export class TerrainSystem {
     expireRegrown(day) {
         const grown = [];
         for (const id of this.harvestedIds) {
-            const wait = REGROW_DAYS[String(id).split(':')[1]] ?? 3;
-            if (day - (this.harvestedOn.get(id) ?? 1) >= wait) grown.push(id);
+            // Wild plants wait out the winter and hurry in spring.
+            const type = String(id).split(':')[1];
+            if (regrown(type, this.harvestedOn.get(id) ?? 1, day, REGROW_DAYS[type] ?? 3)) grown.push(id);
         }
         for (const id of grown) { this.harvestedIds.delete(id); this.harvestedOn.delete(id); }
         return grown;
@@ -553,21 +583,28 @@ export class TerrainSystem {
 
     // Hundreds of grass tufts rendered as ONE thin-instanced draw call per
     // chunk. Pure scenery: no collision, picking, or costly individual models.
+    // The colours of a chunk's four blades of grass: its region's, or the
+    // season's where the season changes them.
+    coverColors(chunkX, chunkZ) {
+        const region = REGIONS[regionAt(chunkX * this.chunkSize, chunkZ * this.chunkSize)];
+        const greens = this.game?.seasons?.look.grass[region.id] || region.grass, colors = [];
+        for (let i = 0; i < 4; i++) for (let n = 0; n < 3; n++) colors.push(...greens[i], 1);
+        return colors;
+    }
+
     createGroundCover(chunkX, chunkZ) {
         const random = seededRandom((Math.imul(chunkX, 1013904223) ^ Math.imul(chunkZ, 1664525) ^ 0x5144) | 0);
         const mesh = new BABYLON.Mesh(`groundcover_${chunkX}_${chunkZ}`, this.scene);
-        const positions = [], indices = [], colors = [];
+        const positions = [], indices = [];
         // Each chunk's ground cover takes the colours and thickness of its region.
         const region = REGIONS[regionAt(chunkX * this.chunkSize, chunkZ * this.chunkSize)];
-        const greens = region.grass;
+        const colors = this.coverColors(chunkX, chunkZ);
         for (let i = 0; i < 4; i++) {
             const angle = i * Math.PI / 2;
             const dx = Math.cos(angle), dz = Math.sin(angle);
             const o = positions.length / 3;
             positions.push(-dz * .16, 0, dx * .16, dz * .16, 0, -dx * .16, dx * .10, .50 + (i % 2) * .15, dz * .10);
             indices.push(o, o+1, o+2);
-            const col = greens[i];
-            for (let n = 0; n < 3; n++) colors.push(...col, 1);
         }
         const data = new BABYLON.VertexData();
         data.positions = positions; data.indices = indices; data.colors = colors;

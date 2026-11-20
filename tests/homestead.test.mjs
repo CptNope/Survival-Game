@@ -392,18 +392,19 @@ test('garden rules: what can be planted, how it grows, and what a bed gives back
     assert.equal(pickCrop({berries: 1, herbs: 1}), null, 'not enough of anything');
     assert.equal(pickCrop({berries: 2, herbs: 5, cactusFruit: 1}), 'herbs', 'whatever you carry most of');
     assert.equal(pickCrop({cactusFruit: 1}), 'cactusFruit');
-    assert.equal(growth(10, 10, 'berries'), 0);
-    assert.equal(growth(10 + CROPS.berries.days / 2, 10, 'berries'), .5);
-    assert.equal(growth(99, 10, 'berries'), 1);
-    assert.equal(growth(5, 10, 'berries'), 0, 'a clock that ran backwards does no harm');
-    assert.equal(growth(11, 10, 'turnips'), 0);
+    // Day 4 is the first day of summer, when a bed grows at its plain rate.
+    assert.equal(growth(4, 4, 'berries'), 0);
+    assert.equal(growth(4 + CROPS.berries.days / 2, 4, 'berries'), .5);
+    assert.equal(growth(99, 4, 'berries'), 1);
+    assert.equal(growth(3, 4, 'berries'), 0, 'a clock that ran backwards does no harm');
+    assert.equal(growth(5, 4, 'turnips'), 0);
     assert.deepEqual([0, .39, .4, .99, 1].map(growthStage), [0, 0, 1, 1, 2]);
-    assert.equal(ripeIn(10, 10, 'berries'), 'about a day and a half');
-    assert.equal(ripeIn(10, 10, 'mushrooms'), 'about 2 days');
-    assert.equal(ripeIn(10.6, 10, 'berries'), 'about a day');
-    assert.equal(ripeIn(11.2, 10, 'berries'), 'about 7 hours');
-    assert.equal(ripeIn(11.48, 10, 'berries'), 'about an hour');
-    assert.equal(ripeIn(12, 10, 'berries'), 'now');
+    assert.equal(ripeIn(4, 4, 'berries'), 'about a day and a half');
+    assert.equal(ripeIn(4, 4, 'mushrooms'), 'about 2 days');
+    assert.equal(ripeIn(4.6, 4, 'berries'), 'about a day');
+    assert.equal(ripeIn(5.2, 4, 'berries'), 'about 7 hours');
+    assert.equal(ripeIn(5.48, 4, 'berries'), 'about an hour');
+    assert.equal(ripeIn(6, 4, 'berries'), 'now');
     assert.deepEqual(sanitizeBeds([
         {id: 3, crop: 'herbs', plantedAt: 2.5}, {id: 3, crop: 'berries', plantedAt: 1}, {id: 4, crop: 'turnips', plantedAt: 1},
         {id: 5, crop: 'berries', plantedAt: NaN}, {id: 6.5, crop: 'berries', plantedAt: 1}, null, {id: 9, crop: 'berries', plantedAt: 1}
@@ -418,6 +419,7 @@ test('build a bed, plant it, wait, harvest more than you sowed, and keep it acro
         const gardens = game.gardens, pack = game.inventorySystem.inventory, survival = game.survivalSystem;
         camera.position.set(30, 4, 30); camera.rotation.set(.3, 0, 0);
         assert.equal(gardens.interaction(), null, 'no bed here');
+        game.dayCount = 4; // Summer: beds grow at their plain rate.
         Object.assign(pack, {wood: 4, fiber: 2});
         assert.equal(game.buildSystem.place('garden'), true);
         const bed = game.buildSystem.structures.at(-1);

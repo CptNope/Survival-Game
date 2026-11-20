@@ -3,7 +3,7 @@
 // nothing and lets the GPU draw every copy in one call. Each kind has a
 // handful of variants, and every instance gets its own turn and size, so a
 // forest still looks hand-planted.
-import { createTreeModel, createRockModel, createOreModel, createPlantModel } from './wilderness.js';
+import { createTreeModel, createRockModel, createOreModel, createPlantModel, tintFoliage } from './wilderness.js';
 
 export const VARIANTS = Object.freeze({
     pine: 6, oak: 5, snowpine: 4, bogtree: 4, deadwood: 3,
@@ -16,6 +16,19 @@ export class ModelPool {
         this.scene = scene;
         this.sources = new Map();
         this.spawned = 0;
+        // How the season colours leaves: (kind, index, base) => colour.
+        this.tint = null;
+    }
+
+    // A new season: every tree model, and so every copy of it, changes colour.
+    retint(tint) {
+        this.tint = tint;
+        let changed = 0;
+        for (const [key, mesh] of this.sources) {
+            const kind = key.split(':')[0];
+            if (TREES.has(kind) && tint && tintFoliage(mesh, kind, tint)) changed++;
+        }
+        return changed;
     }
 
     // The hidden original that instances of (kind, variant) are drawn from.
@@ -34,6 +47,7 @@ export class ModelPool {
         mesh.checkCollisions = false;
         mesh.receiveShadows = true;
         mesh.alwaysSelectAsActiveMesh = false;
+        if (this.tint && TREES.has(kind)) tintFoliage(mesh, kind, this.tint);
         this.sources.set(key, mesh);
         return mesh;
     }

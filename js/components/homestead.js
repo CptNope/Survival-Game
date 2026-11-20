@@ -195,7 +195,8 @@ export class GardenSystem {
         const game = this.game, planted = this.beds.get(bed.id);
         if (!planted || growth(this.now(), planted.plantedAt, planted.crop) < 1) return false;
         const def = CROPS[planted.crop];
-        const amount = def.yield + (Math.random() < (game.perks?.value('forage') || 0) ? 1 : 0);
+        // Autumn fills the beds: one more of whatever was planted.
+        const amount = def.yield + (Math.random() < (game.perks?.value('forage') || 0) ? 1 : 0) + (game.seasons?.gardenBonus() || 0);
         game.inventorySystem.inventory[planted.crop] += amount;
         this.beds.delete(bed.id);
         this.refresh(bed);

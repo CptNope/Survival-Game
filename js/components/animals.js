@@ -175,8 +175,11 @@ export class AnimalSystem {
         game.combatSystem?.gainExperience(Math.round((def.xp || 20) * (animal.xpScale || 1)));
         if (game.inventorySystem && def.loot) {
             const inv = game.inventorySystem.inventory;
-            for (const [item, amount] of Object.entries(def.loot)) inv[item] += amount;
-            const haul = Object.entries(def.loot).map(([item, amount]) => `+${amount} ${ITEMS[item].toLowerCase()}`).join(' · ');
+            // Game is the winter larder: one more cut of meat from anything hunted above ground.
+            const extra = animal.dungeon ? 0 : game.seasons?.gameBonus() || 0;
+            const loot = Object.fromEntries(Object.entries(def.loot).map(([item, amount]) => [item, amount + (item === 'rawMeat' ? extra : 0)]));
+            for (const [item, amount] of Object.entries(loot)) inv[item] += amount;
+            const haul = Object.entries(loot).map(([item, amount]) => `+${amount} ${ITEMS[item].toLowerCase()}`).join(' · ');
             game.uiSystem?.showNotification?.(`Hunted ${(def.label || animal.kind).toLowerCase()} · ${haul}`);
         } else if (def.brain) {
             game.uiSystem?.showNotification?.('Defeated ' + (animal.elite ? 'an elite ' : '') + def.label.toLowerCase());

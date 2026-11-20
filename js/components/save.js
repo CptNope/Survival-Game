@@ -129,6 +129,8 @@ export class SaveSystem {
         g.dayCount=Math.floor(finite(saved.dayCount,1,1,999999));
         g.dayTime=finite(saved.dayTime,60,0,g.dayLength-0.001);
         g.weatherSystem?.refresh?.();
+        // The restored day may be in another season: repaint before anyone looks.
+        g.seasons?.refresh?.(true);
         g.survivalSystem.hunger=finite(saved.hunger,100);
         g.survivalSystem.thirst=finite(saved.thirst,100);
         g.survivalSystem.cold=finite(saved.cold,0);

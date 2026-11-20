@@ -147,10 +147,13 @@ export class SurvivalSystem {
         const sprinting = Boolean(player.keys?.sprint && !player.isFlying);
         const gear = this.game.gear;
         const perks = this.game.perks, regions = this.game.regions;
+        // The season only reaches the surface.
+        const seasons = this.game.dungeonSystem?.active ? null : this.game.seasons;
         const appetite = (1 - (gear?.stat('endurance') || 0) / 100) * (1 - (perks?.value('appetite') || 0));
         this.hunger = Math.max(0, this.hunger - dt * (sprinting ? .065 : .045) * appetite);
         // The desert sun doubles thirst; its nights are no worse than anywhere.
-        this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09) * appetite * (regions?.thirstFactor(this.isNight()) || 1));
+        this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09) * appetite * (regions?.thirstFactor(this.isNight()) || 1)
+            * (seasons?.thirst(this.isNight()) ?? 1));
         // Underground there is no weather: the cold neither bites nor lifts.
         const underground = Boolean(this.game.dungeonSystem?.active);
         const safe = !underground && (this.game.buildSystem?.isProtected(player.camera.position) || false);
@@ -166,8 +169,9 @@ export class SurvivalSystem {
         const shield = (1 - (gear?.stat('warmth') || 0) / 100) * (this.game.inventorySystem?.inventory?.furCloak > 0 ? .5 : 1)
             * (1 - (perks?.value('insulation') || 0)) * (this.game.buffs?.factor('cold') || 1);
         // Weather chills anywhere; Frostfell chills even on a clear day.
-        const weather = night || storm || rain ? .65 + (storm ? .85 : rain ? .3 : 0) : 0;
-        const surface = exposed ? weather + (regions?.coldRate(night) || 0) : 0;
+        // Summer nights are mild, and winter is cold even at noon.
+        const weather = night || storm || rain ? .65 * (night ? seasons?.nightChill() ?? 1 : 1) + (storm ? .85 : rain ? .3 : 0) : 0;
+        const surface = exposed ? weather + (regions?.coldRate(night) || 0) + (seasons?.chill() || 0) : 0;
         const coldRate = underground ? (chill > 0 ? chill * (torch < 1 ? .15 : 1) * shield : chill)
             : surface > 0 ? surface * torch * shield : -1.4;
         this.cold = SurvivalSystem.clamp(this.cold + dt * coldRate, 0);

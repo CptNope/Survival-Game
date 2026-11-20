@@ -1,4 +1,5 @@
 // Fishing and gardening: the quiet half of the game. Pure rules and numbers.
+import { grownDays, readyAt } from './seasons.js';
 export const FISHING = Object.freeze({
     reach: 6,       // How far out the line lands.
     minWait: 2.5,   // Seconds before the earliest bite.
@@ -36,10 +37,11 @@ export function pickCrop(inventory) {
     return best;
 }
 
-// 0 when planted, 1 when ripe. `now` and `plantedAt` are in days.
+// 0 when planted, 1 when ripe. `now` and `plantedAt` are in days. A bed
+// grows at the season's pace: quick in spring, barely at all in winter.
 export function growth(now, plantedAt, crop) {
     const days = CROPS[crop]?.days;
-    return days ? Math.max(0, Math.min(1, (now - plantedAt) / days)) : 0;
+    return days ? Math.max(0, Math.min(1, grownDays(plantedAt, now) / days)) : 0;
 }
 
 // Seedling, growing or ripe: what the bed looks like.
@@ -47,7 +49,7 @@ export const growthStage = fraction => fraction >= 1 ? 2 : fraction >= .4 ? 1 : 
 
 // "about 6 hours", "about a day": time left, in words. A game day is 24 hours.
 export function ripeIn(now, plantedAt, crop) {
-    const left = Math.max(0, (CROPS[crop]?.days || 0) - (now - plantedAt)) * 24;
+    const left = Math.max(0, readyAt(plantedAt, CROPS[crop]?.days || 0) - now) * 24;
     if (left <= 0) return 'now';
     if (left < 1.5) return 'about an hour';
     if (left < 20) return `about ${Math.round(left)} hours`;

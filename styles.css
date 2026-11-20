@@ -92,7 +92,7 @@ progress::-moz-progress-bar{background:var(--accent)}
   min-height:2.25rem;padding-top:.5rem;font-size:.75rem;letter-spacing:.04em;color:#dfe6d8;text-shadow:var(--text-shadow);white-space:nowrap}
 #world-clock{font-weight:700;font-variant-numeric:tabular-nums}
 #save-status{color:var(--muted)}
-body.weather-storm #weather-status{color:#d9bfdc}
+body.weather-storm #weather-status,body.weather-blizzard #weather-status{color:#d9bfdc}
 
 .hud-buttons{grid-area:buttons;justify-self:end;align-self:start;display:flex;gap:.5rem}
 
@@ -212,6 +212,16 @@ body.weather-rain::after,body.weather-storm::after{content:'';position:fixed;ins
   background:repeating-linear-gradient(103deg,transparent 0 14px,rgb(172 211 233 / .18) 15px 16px,transparent 17px 29px);
   background-size:110px 170px;opacity:.33;animation:wild-rain .6s linear infinite}
 body.weather-storm::after{opacity:.65;animation-duration:.35s}
+/* Snow drifts down in three layers at three speeds; a blizzard is the same, thicker, faster and whited out. */
+body.weather-snow::after,body.weather-blizzard::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:radial-gradient(circle,rgb(255 255 255 / .9) 0 1.5px,transparent 2.2px),radial-gradient(circle,rgb(255 255 255 / .65) 0 1px,transparent 1.6px),
+    radial-gradient(circle,rgb(255 255 255 / .8) 0 2.2px,transparent 3px),linear-gradient(rgb(232 240 247 / .06),rgb(232 240 247 / .06));
+  background-size:97px 131px,61px 89px,149px 173px,100% 100%;background-position:0 0,23px 41px,71px 17px,0 0;
+  opacity:.75;animation:wild-snow 9s linear infinite}
+body.weather-blizzard::after{opacity:1;animation-duration:2.8s;
+  background-size:71px 97px,43px 61px,113px 131px,100% 100%;
+  background-image:radial-gradient(circle,rgb(255 255 255 / .9) 0 1.5px,transparent 2.2px),radial-gradient(circle,rgb(255 255 255 / .65) 0 1px,transparent 1.6px),
+    radial-gradient(circle,rgb(255 255 255 / .8) 0 2.2px,transparent 3px),linear-gradient(rgb(232 240 247 / .24),rgb(232 240 247 / .24))}
 body.underwater::after,body.underground::after{display:none}
 body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(rgb(13 74 90 / .33),rgb(6 34 46 / .53))}
 
@@ -514,12 +524,15 @@ body.view-third #hud.touch #target-hint,body.view-overhead #hud.touch #target-hi
 
 /* --- Motion ------------------------------------------------------------------ */
 @keyframes wild-rain{to{background-position:-35px 170px}}
+/* Each layer moves a whole number of its own tiles, so the loop has no seam at either size. */
+@keyframes wild-snow{to{background-position:97px 262px,-38px 308px,220px 190px,0 0}}
 @keyframes wild-hurt{0%{opacity:.95}100%{opacity:0}}
 @keyframes wild-pulse{0%,100%{opacity:.22}50%{opacity:.5}}
 @keyframes wild-shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-7px,4px)}40%{transform:translate(6px,-5px)}60%{transform:translate(-4px,-3px)}80%{transform:translate(3px,4px)}}
 @keyframes wild-fade-in{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){
   body.weather-rain::after,body.weather-storm::after{animation:none;opacity:.2}
+  body.weather-snow::after,body.weather-blizzard::after{animation:none;opacity:.45}
   #perk-button{animation:none}
   #renderCanvas.shake{animation:none}
   button,#toast,#day-banner{transition:none}

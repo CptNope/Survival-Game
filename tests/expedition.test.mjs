@@ -420,28 +420,29 @@ test('gathered nodes grow back on schedule and reappear in loaded chunks', () =>
         assert.equal(new Set(all).size, all.length);
         terrain.chunkMap.set('2,1', {objects: [...harvestables]});
 
-        // Gather one tree and one berry bush on day 1.
+        // Gather one tree and one berry bush on day 4, the first day of summer,
+        // when plants grow back at their plain rate.
         const tree = harvestables.find(node => node.type === 'tree');
         const berry = harvestables.find(node => node.type === 'berry');
         for (const node of [tree, berry]) {
             node.mesh.dispose(false, true);
             harvestables.splice(harvestables.indexOf(node), 1);
             terrain.harvestedIds.add(node.resourceId);
-            terrain.harvestedOn.set(node.resourceId, 1);
+            terrain.harvestedOn.set(node.resourceId, 4);
         }
         terrain.harvestedIds.add('9,9:rock:0'); // In a chunk that is not loaded.
-        terrain.harvestedOn.set('9,9:rock:0', 1);
+        terrain.harvestedOn.set('9,9:rock:0', 4);
 
-        assert.equal(terrain.regrow(2), 0, 'nothing is back after a single day');
-        assert.equal(terrain.regrow(1 + REGROW_DAYS.berry), 1);
+        assert.equal(terrain.regrow(5), 0, 'nothing is back after a single day');
+        assert.equal(terrain.regrow(4 + REGROW_DAYS.berry), 1);
         assert.ok(harvestables.some(node => node.resourceId === berry.resourceId));
         assert.equal(terrain.harvestedIds.has(tree.resourceId), true);
-        assert.equal(terrain.regrow(1 + REGROW_DAYS.tree), 1);
+        assert.equal(terrain.regrow(4 + REGROW_DAYS.tree), 1);
         const regrown = harvestables.find(node => node.resourceId === tree.resourceId);
         assert.deepEqual(regrown.mesh.position.asArray(), tree.mesh.position.asArray(), 'same tree, same place');
         assert.equal(harvestables.length, all.length, 'nothing was duplicated');
         assert.equal(terrain.chunkMap.get('2,1').objects.length, all.length + 2);
-        assert.equal(terrain.regrow(1 + REGROW_DAYS.rock), 0, 'unloaded chunks just forget the depletion');
+        assert.equal(terrain.regrow(4 + REGROW_DAYS.rock), 0, 'unloaded chunks just forget the depletion');
         assert.equal(terrain.harvestedIds.size, 0);
         // Legacy saves have no recorded day: treated as gathered on day 1.
         terrain.harvestedIds.add('3,3:fiber:1');
