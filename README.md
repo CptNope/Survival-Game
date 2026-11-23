@@ -142,6 +142,7 @@ year lasts twelve days, an hour of play, and its fourth season is winter.
 | **Companion** | A stray dog to tame with cooked meat. It follows, fights beside you, and can be told to stay |
 | **Views** | First-person, third-person and overhead cameras, with a jointed explorer who walks, sprints, swims, swings and draws a bow |
 | **Bounties** | Notice boards at traders and watchtowers post jobs: hunt the region's hunters, deliver what it is short of, or clear a den. Come back to the board for a piece of gear |
+| **Pack nights** | On the last night of every season a pack hunts you at midnight. Break it for gear, outlast it until dawn, or lose it |
 | **Seasons** | Spring, summer, autumn and winter, three days each. The land changes colour, the weather and the cold change with it, and each season gives or takes something |
 | **World feel** | A day and night sky, rain, storms and snow, swimmable lakes, and sound made in code |
 | **Any screen** | An interface that scales from a small phone to a 4K monitor, touch controls, and a Graphics setting with an automatic mode |
@@ -216,6 +217,26 @@ Take a job at the board (**E** at a trader; at a watchtower the notice shows
 after you have looked around), do it, and go back to the same board to be
 paid: a piece of gear a level above the country you are in, and experience.
 You can have three jobs in hand at once, and the map lists them.
+
+### Pack nights
+
+On the last night of every season (days 3, 6, 9, 12 and so on) a pack comes
+for you. You are warned at dusk, and it arrives at midnight, in a ring around
+wherever you are standing above ground.
+
+| | |
+| --- | --- |
+| **Who comes** | The region's own hunters: wolves in the Greenwood, ice wolves in Frostfell, scorpions in Sunscar, bog toads in Mirefen |
+| **How many** | Three on the first pack night, one more each season up to seven, and one more again in winter |
+| **How strong** | Outside the Greenwood they toughen as the seasons pass, and from the second pack night one of them is an elite leader |
+| **Break it** | Kill them all for a piece of gear a level above the pack, the region's spoils and experience |
+| **Outlast it** | Whatever is left gives up at dawn, for a little experience and no gear |
+| **Lose it** | Get more than 100 m clear and the pack is gone. So is the reward |
+
+There is no sleeping from the warning until the pack is dealt with. A pack on
+the hunt keeps your scent from 60 m, much further than its kind usually sees.
+If you are underground at midnight the pack finds nobody and moves on. The map
+says which night the next one comes.
 
 ### Creatures
 
@@ -365,13 +386,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 12,200 lines of JavaScript in 60 modules |
+| **Size** | About 12,400 lines of JavaScript in 62 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 225 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 231 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -440,7 +461,7 @@ flowchart TD
     systems --> rules
     systems --> models
 
-    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, bounties,<br/>seasons, avatar, archery, homestead, map"]
+    rules["Rule modules, no scene needed<br/>movement, gear, dungeon, regions, creatures,<br/>perks, legends, points of interest, bounties,<br/>pack nights, seasons, avatar, archery, homestead, map"]
     models["Models built in code<br/>wilderness, creatures, avatar, points of interest, instance pool"]
 ```
 
@@ -478,7 +499,7 @@ sprint 9.5) for keyboard and touch alike.
 | `index.html`, `styles.css` | The page, the HUD and menu markup, and the whole interface stylesheet |
 | `js/main.js`, `js/game.js` | Start-up and the `SurvivalGame` class that owns every system |
 | `js/components/` | The systems: terrain, player, touch, view, survival, inventory, building, combat, archery, animals, creatures, dungeon, regions, legends, points of interest, companion, homestead, storage, gear, perks, buffs, progression, weather, sky, audio, effects, quality, save and the interface |
-| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `bounties`, `seasons`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
+| `js/*.js` | Rule modules with no scene in them: `movement`, `gear`, `dungeon`, `regions`, `creatures`, `perks`, `legends`, `pois`, `bounties`, `raids`, `seasons`, `avatar`, `archery`, `companion`, `homestead`, `storage`, `map`, `view`, `quality`, `resources`, `settings` |
 | `js/models/` | Models built in code: `wilderness`, `creatures`, `avatar`, `pois`, and the instance `pool` |
 | `tests/` | 17 test files, one per area of the game |
 | `scripts/browser-smoke.mjs` | Starts the game in real Chrome, desktop and emulated phone, and checks it reaches play |
@@ -509,7 +530,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 225 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 231 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -536,10 +557,12 @@ timeline
                      : v0.7.0 Traders, shrines, cairns and wrecks
                      : v0.8.0 Seasons
                      : v0.9.0 Bounties
+    22 November 2026 : v0.10.0 Pack nights
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.10.0** | 22 Nov 2026 | Pack nights: a hunting pack at midnight on the last night of every season | 28 |
 | **v0.9.0** | 19 Nov 2026 | Bounties: jobs on notice boards at traders and watchtowers, paid in gear | 27 |
 | **v0.8.0** | 19 Nov 2026 | Seasons: a twelve-day year that changes the land, the weather, the cold, the garden and what grows back | 26 |
 | **v0.7.0** | 19 Nov 2026 | More places: traders to barter with, shrines, cairns with buried caches, and wrecks to dive on | 25 |
@@ -1680,6 +1703,45 @@ board with a job on it.
 - Not verified here: whether the rewards are too generous for a short hunt
   near home, and how a hunt for wolves feels when wolves only come at night.
   Kills in the browser run were made by the test script, not fought.
+
+### Pack nights: the last night of every season
+
+The seasons now end with something. On the last night of each one a pack
+hunts you.
+
+- **Warned at dusk, struck at midnight.** A banner at dusk says how many are
+  coming. At midnight they appear in a ring 22 m out, on dry ground, and close
+  in. From the warning until they are dealt with there is no sleeping.
+- **The region's own hunters.** Wolves in the Greenwood, ice wolves in
+  Frostfell, scorpions in Sunscar, bog toads in Mirefen. Three on the first
+  pack night, one more each season up to seven, one more again in winter.
+  Outside the Greenwood the pack toughens over time and has an elite leader
+  from the second pack night on.
+- **Three ways it ends.** Kill them all and the pack is broken: a piece of
+  gear, the region's spoils and experience. Hold out until dawn and what is
+  left gives up, for a little experience. Get clear of them and they are gone,
+  with nothing paid. If they kill you, the rest leave.
+- **Not underground.** A pack finds nobody below ground and does not wait.
+- **Map, saves and stats.** The map says which night the next pack comes. The
+  save keeps whether tonight's has been and gone, so loading does not bring it
+  back. The expedition summary counts packs broken.
+
+#### Verification
+
+- 231 unit tests pass, 6 of them new. They cover which nights, each region's
+  pack by season, a whole night from the warning to the reward through the
+  real animal, sleep and save code, the pack closing from beyond its usual
+  sight while a stray at the same distance stays put, and every other way the
+  night can end. Nineteen deliberate bugs were each caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone: the
+  dusk warning on day 3, three wolves arriving at midnight and closing to 3 m,
+  the count as they fell, the reward and a save; then a pack of four ice
+  wolves with a leader in Frostfell on day 6.
+- Not verified here: whether three wolves at midnight on day 3 is fair to a
+  new player, since the wolves in the browser run were killed by the test
+  script and not fought. Flying away from a pack is possible and untested as
+  play. Plain wolves have no elite form, so Greenwood packs grow only in
+  number.
 
 ---
 

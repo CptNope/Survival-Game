@@ -70,6 +70,7 @@ export class SurvivalSystem {
         if (game.dungeonSystem?.active) return {near: false, ok: false, reason: ''};
         if (!game.buildSystem?.nearBed?.(player.camera.position)) return {near: false, ok: false, reason: ''};
         if (!this.isNight()) return {near: true, ok: false, reason: 'You can rest here once night falls'};
+        if (game.raids?.blocksSleep()) return {near: true, ok: false, reason: 'No sleeping with a pack hunting you'};
         if (player.isFlying || player.isSwimming) return {near: true, ok: false, reason: ''};
         const wolf = game.animalSystem?.animals?.some(animal => animal.kind === 'wolf' &&
             Math.hypot(animal.mesh.position.x - player.camera.position.x,
