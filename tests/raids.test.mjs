@@ -186,7 +186,7 @@ test('warned at dusk, struck at midnight, and paid when the last of them falls',
         tick(); tick();
         assert.equal(animals.length, 0, 'and it does not come back tonight');
         assert.equal(game.progression.stats.raids, 1);
-        assert.equal(raids.next, 3);
+        assert.equal(raids.next, 6, 'tonight\'s pack has been: the map stops saying "tonight"');
         game.dayCount = 4; game.dayTime = MIDNIGHT;
         tick();
         assert.equal(animals.length, 0, 'nor on an ordinary night');

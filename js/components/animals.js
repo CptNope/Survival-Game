@@ -130,7 +130,7 @@ export class AnimalSystem {
                 animal.attackCooldown = (animal.attackCooldown || 0) - dt;
                 if (animal.attackCooldown <= 0) {
                     animal.attackCooldown = 2.25;
-                    this.game.playerSystem.takeDamage(wolfBite(animal), animal.elite ? 'an alpha wolf' : 'a wolf');
+                    this.game.playerSystem.takeDamage(wolfBite(animal), animal.title || (animal.elite ? 'an alpha wolf' : 'a wolf'));
                     this.game.uiSystem?.showNotification?.('Wolf attack! Seek shelter or defend yourself');
                 }
             }

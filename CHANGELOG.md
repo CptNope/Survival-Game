@@ -5,6 +5,23 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.15.0 (2026-11-22)
+
+### Added
+- **An ending** ([#33](https://github.com/CptNope/Survival-Game/pull/33)).
+  Once the three frontier legends are slain, the First Wolf leads the next
+  pack night, wherever you are.
+  - The First Wolf, an alpha and three more wolves. One fewer on Gentle, one
+    more on Harsh.
+  - Break it for The First Wolf's Tooth, a legendary charm, and a summary of
+    the expedition headed "The Wilds are yours". Play continues afterwards.
+  - Outlast it, outrun it or fall, and it is back on the next pack night.
+  - Two closing field notes: slay all three legends, and break the First Wolf.
+
+### Fixed
+- After a pack had come, the map said "A pack hunts tonight" until morning.
+  It now names the next pack night.
+
 ## v0.14.0 (2026-11-22)
 
 ### Added

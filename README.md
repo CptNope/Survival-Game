@@ -123,6 +123,10 @@ Hunger, thirst and cold tick the whole time. A day lasts five minutes, wolves
 come out at night, and each region beyond the meadow adds its own pressure. A
 year lasts twelve days, an hour of play, and its fourth season is winter.
 
+The story has an end. When the three frontier legends are dead, the
+Greenwood's own legend leads the next pack night. Break it and the game shows
+you the expedition's numbers, then lets you carry on.
+
 ## What is in the game
 
 | Area | What you get |
@@ -131,6 +135,7 @@ year lasts twelve days, an hour of play, and its fourth season is winter.
 | **Gathering** | Trees, rocks, iron ore, fiber plants, herbs, berries, mushrooms and cactus fruit. Gathered nodes stay gathered and grow back over days |
 | **Crafting** | 28 recipes: planks, stone and iron tools, a spear, a torch, a waterskin, a fishing rod, a bow and arrows, a fur cloak, remedies, cooked food, three tonics and three stews |
 | **Difficulty** | Gentle, Standard or Harsh, chosen on the menu and changeable at any time |
+| **An ending** | Slay the three frontier legends and the First Wolf leads the next pack night. Break it and the story is finished; the expedition carries on |
 | **Cooking** | A cook pot makes stews two servings at a time. Carry them and eat them when you need a full meal and a five-minute effect |
 | **Building** | A lean-to, a campfire, floors, walls and roofs that snap together, garden beds and storage chests, with a preview before you place |
 | **Combat** | Tools, spear and bow. Every enemy attack has a wind-up you can see. A dodge with a moment of safety, a heavy sweep, and a quick heal |
@@ -286,6 +291,23 @@ says which night the next one comes.
 
 Each legend is killed once, and its prize is always legendary.
 
+#### The First Wolf
+
+The Greenwood has a legend too, and it has no lair. Once the other three are
+slain it leads the next pack night, wherever you are standing, and it keeps
+coming on every pack night until it is broken.
+
+| | |
+| --- | --- |
+| **What comes** | The First Wolf, an alpha, and three more wolves. One fewer on Gentle, one more on Harsh |
+| **The First Wolf** | Nearly twice the size of a wolf, with 900 health and a bite of 26, three times a wolf's |
+| **Break it** | Kill the First Wolf and the rest of its pack scatter. It leaves The First Wolf's Tooth, a legendary charm, and a great deal of experience |
+| **Fail** | Outlast it, outrun it or fall to it, and it is back on the next pack night |
+| **Afterwards** | The game shows the expedition's numbers under "The Wilds are yours". Pack nights go back to ordinary packs and play continues |
+
+The last two field notes point the way: slay all three legends, then break
+the First Wolf.
+
 ## Gear, perks and tonics
 
 Found gear rolls its bonuses when it drops. The total decides its grade.
@@ -436,13 +458,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 12,600 lines of JavaScript in 64 modules |
+| **Size** | About 12,800 lines of JavaScript in 64 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 255 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 260 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -580,7 +602,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 255 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 260 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -612,10 +634,12 @@ timeline
                      : v0.12.0 Alpha wolves
                      : v0.13.0 The cook pot
                      : v0.14.0 Difficulty settings
+                     : v0.15.0 An ending
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.15.0** | 22 Nov 2026 | An ending: the First Wolf leads the pack night after the three legends fall, and breaking it finishes the story | 33 |
 | **v0.14.0** | 22 Nov 2026 | Difficulty: Gentle, Standard and Harsh, on the menu and changeable at any time | 32 |
 | **v0.13.0** | 22 Nov 2026 | The cook pot: three stews cooked two servings at a time, carried, and eaten for a long effect | 31 |
 | **v0.12.0** | 22 Nov 2026 | Alpha wolves: wolves toughen by tier and have an elite form; the map is drawn in the season's colours | 30 |
@@ -1941,6 +1965,51 @@ them has been balanced by play. This lets each player set it.
   there after a reload.
 - Not verified here: whether these are the right three sets of numbers. They
   are a first guess at "easier" and "harder", and easy to change.
+
+### An ending: the First Wolf
+
+The game had goals but nowhere to arrive. The field notes stopped at "outlast
+the wilds", and the three legends could be killed in any order with nothing
+waiting behind them. This gives the expedition a last night.
+
+- **The Greenwood's legend.** Frostfell, Sunscar and Mirefen each had a
+  legend with a lair. The Greenwood's has none: once the other three are
+  slain it leads the next pack night and comes at midnight, wherever you are.
+- **The last hunt.** The First Wolf, an alpha and three more wolves. It is
+  nearly twice a wolf's size, has 900 health and bites for 26. Its name and
+  health are across the top of the screen, as a legend's are.
+- **Breaking it.** Kill the First Wolf and the others scatter. It leaves The
+  First Wolf's Tooth, a legendary charm: the one gear slot the other three
+  prizes leave empty.
+- **The ending.** A banner, then a summary headed "The Wilds are yours" with
+  the day it was done and every number the expedition has kept. One button
+  goes back to the game, which carries on with ordinary pack nights.
+- **If it goes badly.** Outlast it, outrun it or fall, and it is back on the
+  next pack night. Nothing is lost but the night.
+- **Two closing field notes.** "Slay all three legends" and "Break the First
+  Wolf", after the existing ones. The second says which night it hunts.
+- **Difficulty applies.** The escort is one fewer on Gentle and one more on
+  Harsh, and its bite scales like any other blow.
+- **Also fixed.** After a pack had come, the map went on saying "A pack hunts
+  tonight" until morning. It now names the next pack night.
+
+#### Verification
+
+- 260 unit tests pass, 5 of them new. They cover the last hunt waiting for
+  all three legends, the pack and the First Wolf's numbers through the real
+  pack night in a region with no wolves of its own, the escort not being
+  enough and the rest scattering when it falls, the prize and the ending, it
+  returning after a night outlasted, the two field notes, and a save keeping
+  the ending so it cannot come twice. Nineteen deliberate bugs were each
+  caught by a test, one of them only after a test was tightened.
+- Played in a headless browser on a desktop page and an emulated phone: the
+  dusk banner, the map line, the pack arriving, the bar across the top, the
+  First Wolf killed, the banner, the summary a few seconds later, play
+  resuming, and the next pack night being an ordinary one.
+- Not verified here: whether it is a fair fight. A fresh level 1 character
+  standing still lost most of its health in three seconds, which is as it
+  should be, but nobody has fought it with the gear and level a player would
+  have by then. The numbers are in one line of `js/raids.js`.
 
 ---
 
