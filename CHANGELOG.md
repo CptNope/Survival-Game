@@ -5,6 +5,18 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.12.0 (2026-11-22)
+
+### Added
+- **Alpha wolves** ([#30](https://github.com/CptNope/Survival-Game/pull/30)).
+  Wolves now toughen by tier and have an elite form: a larger, black-coated
+  alpha with 2.4 times the health and a harder bite, which always leaves gear.
+  - Greenwood packs are led by an alpha from the second pack night.
+  - From the fourth day an alpha turns up now and then on ordinary nights.
+
+### Changed
+- The map draws the Greenwood and Mirefen in the season's colours.
+
 ## v0.11.0 (2026-11-22)
 
 ### Added

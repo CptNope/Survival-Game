@@ -2,7 +2,7 @@ import { regionAt, wildlifeFor } from '../regions.js';
 import { ITEMS } from '../resources.js';
 import { createDeerModel, createRabbitModel, createWolfModel, animateDeer, animateRabbit } from '../models/wilderness.js';
 import { createCreatureModel } from '../models/creatures.js';
-import { CREATURES, ELITE, scaleFor } from '../creatures.js';
+import { CREATURES, ELITE, scaleFor, ALPHA, wolfBite, wolfName, nightWolf } from '../creatures.js';
 import { CreatureAI } from './creatures.js';
 import { RAID_SIGHT } from '../raids.js';
 // Animal system for handling animal spawning and behavior
@@ -129,7 +129,7 @@ export class AnimalSystem {
                 animal.attackCooldown = (animal.attackCooldown || 0) - dt;
                 if (animal.attackCooldown <= 0) {
                     animal.attackCooldown = 2.25;
-                    this.game.playerSystem.takeDamage(8, 'a wolf');
+                    this.game.playerSystem.takeDamage(wolfBite(animal), animal.elite ? 'an alpha wolf' : 'a wolf');
                     this.game.uiSystem?.showNotification?.('Wolf attack! Seek shelter or defend yourself');
                 }
             }
@@ -165,7 +165,9 @@ export class AnimalSystem {
                     : !this.isNight() && fromHome > 110 && count('bear') < 1 && roll < .07 ? 'bear'
                     : !this.isNight() && fromHome > 45 && count('boar') < 2 && roll < .24 ? 'boar'
                     : Math.random() < .38 ? 'rabbit' : 'deer';
-                this.spawnAnimal(spawnX, terrainHeight, spawnZ, kind);
+                // Now and then, after the first few days, the wolf that comes is an alpha.
+                const options = kind === 'wolf' ? nightWolf(this.game.dayCount, Math.random(), this.animals.some(a => a.kind === 'wolf' && a.elite)) : {};
+                this.spawnAnimal(spawnX, terrainHeight, spawnZ, kind, options);
             }
         }
     }
@@ -188,7 +190,7 @@ export class AnimalSystem {
             const loot = Object.fromEntries(Object.entries(def.loot).map(([item, amount]) => [item, amount + (item === 'rawMeat' ? extra : 0)]));
             for (const [item, amount] of Object.entries(loot)) inv[item] += amount;
             const haul = Object.entries(loot).map(([item, amount]) => `+${amount} ${ITEMS[item].toLowerCase()}`).join(' · ');
-            game.uiSystem?.showNotification?.(`Hunted ${(def.label || animal.kind).toLowerCase()} · ${haul}`);
+            game.uiSystem?.showNotification?.(`Hunted ${animal.kind === 'wolf' ? wolfName(animal) : (def.label || animal.kind).toLowerCase()} · ${haul}`);
         } else if (def.brain) {
             game.uiSystem?.showNotification?.('Defeated ' + (animal.elite ? 'an elite ' : '') + def.label.toLowerCase());
         }
@@ -216,12 +218,15 @@ export class AnimalSystem {
         const model = def.brain ? createCreatureModel(this.game.scene, kind, seed)
             : kind === 'rabbit'
             ? createRabbitModel(this.game.scene, seed) : kind === 'wolf'
-                ? createWolfModel(this.game.scene, seed) : createDeerModel(this.game.scene, seed);
+                ? (options.elite ? createWolfModel(this.game.scene, seed, ALPHA.coat, ALPHA.lighter) : createWolfModel(this.game.scene, seed))
+                : createDeerModel(this.game.scene, seed);
         model.mesh.position.set(x, y, z);
         model.mesh.computeWorldMatrix(true);
         if (kind === 'deer') this.game.registerModelShadow(model.mesh);
-        const scale = def.brain ? {...scaleFor(options.tier, options.floor)} : {health: 1, damage: 1, xp: 1};
-        const elite = Boolean(options.elite && def.brain && !def.boss);
+        // Wolves toughen by tier and have an elite form, like the creatures with minds of their own.
+        const tiered = Boolean(def.brain) || kind === 'wolf';
+        const scale = tiered ? {...scaleFor(options.tier, options.floor)} : {health: 1, damage: 1, xp: 1};
+        const elite = Boolean(options.elite && tiered && !def.boss);
         if (elite) {
             scale.health *= ELITE.health; scale.damage *= ELITE.damage; scale.xp *= ELITE.xp;
             model.mesh.scaling.setAll(ELITE.size);

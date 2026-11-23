@@ -245,7 +245,7 @@ wherever you are standing above ground.
 | --- | --- |
 | **Who comes** | The region's own hunters: wolves in the Greenwood, ice wolves in Frostfell, scorpions in Sunscar, bog toads in Mirefen |
 | **How many** | Three on the first pack night, one more each season up to seven, and one more again in winter |
-| **How strong** | Outside the Greenwood they toughen as the seasons pass, and from the second pack night one of them is an elite leader |
+| **How strong** | They toughen as the seasons pass, and from the second pack night one of them is an elite leader: in the Greenwood, an alpha wolf |
 | **Break it** | Kill them all for a piece of gear a level above the pack, the region's spoils and experience |
 | **Outlast it** | Whatever is left gives up at dawn, for a little experience and no gear |
 | **Lose it** | Get more than 100 m clear and the pack is gone. So is the reward |
@@ -260,7 +260,7 @@ says which night the next one comes.
 | Creature | Where | How it behaves |
 | --- | --- | --- |
 | Deer, rabbit | The Greenwood | Graze, and run when you come close. Hunt them for meat |
-| Wolf | The surface, at night | Hunts you in the dark |
+| Wolf | The surface, at night | Hunts you in the dark. From the fourth day, now and then one is an alpha: larger, black-coated and carrying gear |
 | Boar | The surface, by day | Leaves you alone until you come close, then charges |
 | Bear | The surface, far from camp | Rare and dangerous; always drops a piece of gear |
 | Ice wolf | Frostfell | Fast; its bite chills |
@@ -412,7 +412,7 @@ stateDiagram-v2
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 240 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 245 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -550,7 +550,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 240 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 245 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -579,10 +579,12 @@ timeline
                      : v0.9.0 Bounties
     22 November 2026 : v0.10.0 Pack nights
                      : v0.11.0 Camp defences
+                     : v0.12.0 Alpha wolves
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.12.0** | 22 Nov 2026 | Alpha wolves: wolves toughen by tier and have an elite form; the map is drawn in the season's colours | 30 |
 | **v0.11.0** | 22 Nov 2026 | Camp defences: spike traps, palisades and watch fires; chests and garden beds lose a stray campfire | 29 |
 | **v0.10.0** | 22 Nov 2026 | Pack nights: a hunting pack at midnight on the last night of every season | 28 |
 | **v0.9.0** | 19 Nov 2026 | Bounties: jobs on notice boards at traders and watchtowers, paid in gear | 27 |
@@ -1807,6 +1809,37 @@ defend with, and gives building its first new purpose since shelter.
   made three times as tough before this was opened; that figure has only been
   tested, not played. Hunters do not go round a fence, so a long one is no
   better than one length placed between you and them.
+
+### Alpha wolves, and a map that knows the season
+
+The wolf was the oldest enemy in the game and the simplest: one size, one
+bite. Greenwood packs could only grow in number.
+
+- **Alpha wolves.** A black-coated wolf a fifth larger than the rest, with
+  2.4 times the health and a harder bite (10 against 8). It always leaves a
+  piece of gear behind. It still counts as a wolf for the tally and for wolf
+  bounties.
+- **Leading the pack.** From the second pack night, a Greenwood pack is led by
+  an alpha, as every other region's is led by an elite. The wolves behind it
+  toughen with the seasons too: 52 health on day 6 against 45 on day 3.
+- **On ordinary nights.** From the fourth day, about one night wolf in seven
+  is an alpha, and never two at once.
+- **The map.** The Greenwood and Mirefen are drawn in the season's colours:
+  greener in spring, straw in autumn, white in winter. Summer is the map as
+  it was, and Frostfell, Sunscar and water never change.
+
+#### Verification
+
+- 245 unit tests pass, 5 of them new, and the pack test was updated for the
+  new leader. They cover a wolf's health and bite by tier and as an alpha, its
+  size and coat, the gear it leaves, when alphas turn up through the real
+  spawner, a day-12 Greenwood pack, and the map's colours in each season. Ten
+  deliberate bugs were each caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone: an
+  alpha beside an ordinary wolf, the day-6 pack arriving as one alpha and
+  three wolves, and the map in winter and in autumn.
+- Not verified here: how an alpha feels to fight. Its numbers are the same
+  multipliers every other elite uses, applied to a wolf.
 
 ---
 
