@@ -1,5 +1,7 @@
 // Craftable base structures with one merged mesh each; active meshes stream
 // around the player, while compact structure records are persisted by SaveSystem.
+import { SPIKES, PALISADE, WATCHFIRE, SMALL_PIECES, SMALL_GAP, isHunter, crossesPalisade } from '../defences.js';
+
 export const BUILDINGS = Object.freeze({
     shelter: {name: 'Lean-to shelter', cost: {wood: 6, planks: 2, fiber: 3}},
     fire: {name: 'Campfire', cost: {wood: 3, stone: 3}},
@@ -7,14 +9,18 @@ export const BUILDINGS = Object.freeze({
     wall: {name: 'Log wall', cost: {wood: 4}},
     roof: {name: 'Wooden roof', cost: {planks: 3, fiber: 2}},
     garden: {name: 'Garden bed', cost: {wood: 4, fiber: 2}},
-    chest: {name: 'Storage chest', cost: {planks: 4, fiber: 2}}
+    chest: {name: 'Storage chest', cost: {planks: 4, fiber: 2}},
+    spikes: {name: 'Spike trap', cost: {wood: 4, fiber: 1}},
+    palisade: {name: 'Palisade', cost: {wood: 6}},
+    watchfire: {name: 'Watch fire', cost: {wood: 4, stone: 3}}
 });
 
 function createModel(scene, type, item, material) {
     const pieces = [];
     const color = {
         wood: [.40,.28,.18], roof: [.31,.37,.24],
-        stone: [.42,.43,.40], ember: [.93,.39,.15], ash: [.18,.17,.15], soil: [.24,.17,.11]
+        stone: [.42,.43,.40], ember: [.93,.39,.15], ash: [.18,.17,.15], soil: [.24,.17,.11],
+        point: [.66,.55,.38]
     };
     function tint(mesh, shade) {
         const rgb = color[shade], values = [];
@@ -61,7 +67,46 @@ function createModel(scene, type, item, material) {
     } else if (type === 'roof') {
         beam('roof-slab',0,3.15,0,4.5,.25,4.5,'roof');
         for(let x of [-1.8,1.8]) beam('roof-rafter',x,2.97,0,.26,.24,4,'wood');
-    } else {
+    } else if (type === 'spikes') {
+        // A low frame bristling with sharpened stakes, leaning outward.
+        beam('spike-frame-a', 0,.1,0,1.9,.16,.2,'wood');
+        beam('spike-frame-b', 0,.1,0,.2,.16,1.9,'wood');
+        for (let i=0;i<9;i++) {
+            const gx=i%3-1, gz=Math.floor(i/3)-1;
+            const stake=BABYLON.MeshBuilder.CreateCylinder('spike',{height:.95,diameterTop:0,diameterBottom:.17,tessellation:5},scene);
+            stake.position.set(gx*.62,.5,gz*.62);
+            stake.rotation.z=-gx*.32; stake.rotation.x=gz*.32;
+            tint(stake, i===4 ? 'wood' : 'point');
+        }
+    } else if (type === 'palisade') {
+        // Seven sharpened logs side by side, with a rail lashed across them.
+        for (let i=0;i<7;i++) {
+            const x=-1.8+i*.6, tall=2.25+(i%2)*.22;
+            const log=BABYLON.MeshBuilder.CreateCylinder('palisade-log',{height:tall,diameter:.5,tessellation:6},scene);
+            log.position.set(x,tall/2,0); tint(log,'wood');
+            const tip=BABYLON.MeshBuilder.CreateCylinder('palisade-tip',{height:.55,diameterTop:0,diameterBottom:.5,tessellation:6},scene);
+            tip.position.set(x,tall+.27,0); tint(tip,'point');
+        }
+        beam('palisade-rail', 0,1.35,.27,4.1,.2,.14,'roof');
+    } else if (type === 'watchfire') {
+        // An iron basket of coals on a tripod, head high.
+        for (let i=0;i<3;i++) {
+            const a=i*Math.PI*2/3;
+            const leg=BABYLON.MeshBuilder.CreateCylinder('watchfire-leg',{height:2.1,diameter:.13,tessellation:5},scene);
+            leg.position.set(Math.cos(a)*.42,1,Math.sin(a)*.42);
+            leg.rotation.z=Math.cos(a)*.4; leg.rotation.x=-Math.sin(a)*.4;
+            tint(leg,'wood');
+        }
+        const basket=BABYLON.MeshBuilder.CreateCylinder('watchfire-basket',{height:.42,diameterTop:.95,diameterBottom:.55,tessellation:7},scene);
+        basket.position.y=2.05; tint(basket,'ash');
+        const coals=BABYLON.MeshBuilder.CreateCylinder('watchfire-coals',{height:.3,diameterTop:.5,diameterBottom:.8,tessellation:7},scene);
+        coals.position.y=2.35; tint(coals,'ember');
+        for (let i=0;i<5;i++) {
+            const a=i*Math.PI*2/5;
+            const rock=BABYLON.MeshBuilder.CreateIcoSphere('watchfire-foot',{radius:.2,subdivisions:1,flat:true},scene);
+            rock.position.set(Math.cos(a)*.8,.12,Math.sin(a)*.8); tint(rock,'stone');
+        }
+    } else if (type === 'fire') {
         for (let i=0;i<8;i++) {
             const a=i*Math.PI/4;
             const rock=BABYLON.MeshBuilder.CreateIcoSphere('fire-ring', {radius:.34,subdivisions:1,flat:true},scene);
@@ -83,7 +128,7 @@ function createModel(scene, type, item, material) {
     mesh.position.set(item.x,item.y,item.z);
     mesh.rotation.y=item.rotation;
     mesh.material=material;
-    mesh.checkCollisions=!item.ghost && (type==='shelter' || type==='wall');
+    mesh.checkCollisions=!item.ghost && (type==='shelter' || type==='wall' || type==='palisade');
     mesh.isPickable=false; // Do not block harvesting or targeting behind a structure.
     mesh.receiveShadows=false;
     return mesh;
@@ -122,7 +167,7 @@ export class BuildingSystem {
         if (player.isDead || player.isFlying) return null;
         const pos=player.camera.position;
         const heading=player.camera.rotation.y;
-        const modular=['floor','wall','roof'].includes(type);
+        const modular=['floor','wall','roof','palisade'].includes(type);
         const step=modular?4:2;
         const x=Math.round((pos.x+Math.sin(heading)*6)/step)*step;
         const z=Math.round((pos.z+Math.cos(heading)*6)/step)*step;
@@ -136,7 +181,7 @@ export class BuildingSystem {
         if (!at) return 'Land before building';
         const terrain=this.game.terrainSystem;
         const {x,y,z}=at;
-        const modular=['floor','wall','roof'].includes(type);
+        const modular=['floor','wall','roof','palisade'].includes(type);
         if (terrain.isWaterArea(x,z)) return 'Cannot build in water';
         if (!Number.isFinite(y)) return 'Need clear, dry, fairly level ground ahead';
         const heights=[[3,0],[-3,0],[0,3],[0,-3]]
@@ -146,7 +191,9 @@ export class BuildingSystem {
         // pieces, but never overlap the same type at that location.
         if (this.structures.some(s => {
             const distance=Math.hypot(s.x-x,s.z-z);
-            if(!modular || !['floor','wall','roof'].includes(s.type)) return distance<7;
+            // Traps and watch fires are small enough to stand close to anything.
+            if(SMALL_PIECES.includes(type) || SMALL_PIECES.includes(s.type)) return distance<SMALL_GAP;
+            if(!modular || !['floor','wall','roof','palisade'].includes(s.type)) return distance<7;
             return distance<1 && s.type===type;
         })) return modular ? 'That piece is already built here' : 'Too close to another structure';
         if (this.game.inventorySystem.harvestableObjects.some(o =>
@@ -250,7 +297,7 @@ export class BuildingSystem {
 
     isProtected(position) {
         return this.structures.some(item => {
-            const radius=item.type==='shelter'?8:item.type==='fire'?5:item.type==='roof'?3:0;
+            const radius=item.type==='shelter'?8:item.type==='fire'?5:item.type==='roof'?3:item.type==='watchfire'?WATCHFIRE.warmth:0;
             return radius>0 && Math.hypot(position.x-item.x,position.z-item.z)<=radius;
         });
     }
@@ -261,6 +308,60 @@ export class BuildingSystem {
             const radius=item.type==='shelter'?6:item.type==='roof'?3:0;
             return radius>0 && Math.hypot(position.x-item.x,position.z-item.z)<=radius;
         });
+    }
+
+    // --- Defences ------------------------------------------------------------
+    // Take a structure down for good.
+    remove(record, message = '') {
+        const index=this.structures.indexOf(record);
+        if (index<0) return false;
+        this.structures.splice(index,1);
+        this.meshes.get(record.id)?.dispose(false,false);
+        this.meshes.delete(record.id);
+        this.game.effects?.burst?.(new BABYLON.Vector3(record.x,record.y+.6,record.z),'wood',14);
+        if (message) this.game.uiSystem?.showNotification?.(message);
+        this.game.saveSystem?.save?.();
+        return true;
+    }
+
+    // The palisade a step would cross, if any.
+    barrier(x0, z0, x1, z1) {
+        for (const item of this.structures) {
+            if (item.type==='palisade' && Math.abs(item.x-x0)<8 && Math.abs(item.z-z0)<8 && crossesPalisade(item,x0,z0,x1,z1)) return item;
+        }
+        return null;
+    }
+
+    // A hunter stopped at a palisade tears at it.
+    batter(record, dt) {
+        record.wear=(record.wear || 0)+PALISADE.batter*dt;
+        if (record.wear>=PALISADE.health) this.remove(record,'A palisade has been torn down');
+    }
+
+    // The share of its pace a hunter keeps here: slower near a watch fire.
+    wary(x, z) {
+        return this.structures.some(item => item.type==='watchfire' && Math.hypot(item.x-x,item.z-z)<=WATCHFIRE.reach) ? WATCHFIRE.pace : 1;
+    }
+
+    // Spike traps catch whatever hunters are standing on them.
+    defend(dt) {
+        const animals=this.game.animalSystem?.animals;
+        // Underground, the surface stands still, and so do its traps.
+        if (!animals?.length || this.game.dungeonSystem?.active) return;
+        for (const trap of this.structures.filter(item => item.type==='spikes')) {
+            trap.cool=Math.max(0,(trap.cool || 0)-dt);
+            if (trap.cool>0) continue;
+            const caught=animals.find(animal => isHunter(animal) && animal.mesh
+                && Math.hypot(animal.mesh.position.x-trap.x,animal.mesh.position.z-trap.z)<=SPIKES.reach);
+            if (!caught) continue;
+            trap.cool=SPIKES.every;
+            trap.wear=(trap.wear || 0)+1;
+            caught.health-=SPIKES.damage;
+            caught.staggerTimer=Math.max(caught.staggerTimer || 0,SPIKES.stagger);
+            this.game.effects?.burst?.(caught.mesh.position.clone(),'wood',8);
+            this.game.audio?.play('trap');
+            if (trap.wear>=SPIKES.catches) this.remove(trap,'A spike trap has broken');
+        }
     }
 
     nearFire(position) {
@@ -294,7 +395,10 @@ export class BuildingSystem {
             seen.add(item.id);
             // Re-seat on the ground so saves survive changes to the terrain shape.
             const ground=this.game.terrainSystem?.getPerlinHeight?.(item.x,item.z);
-            this.structures.push({id:item.id,type:item.type,x:item.x,y:Number.isFinite(ground)?ground:item.y,z:item.z,rotation:item.rotation});
+            const record={id:item.id,type:item.type,x:item.x,y:Number.isFinite(ground)?ground:item.y,z:item.z,rotation:item.rotation};
+            // How worn a trap or a palisade is.
+            if (Number.isFinite(item.wear) && item.wear>0) record.wear=Math.min(item.wear,1000);
+            this.structures.push(record);
             this.nextId=Math.max(this.nextId,item.id+1);
         }
         this.update();

@@ -100,9 +100,16 @@ export class AnimalSystem {
             const knockX = animal.knockX || 0, knockZ = animal.knockZ || 0;
             animal.knockX = knockX * Math.max(0, 1 - dt * 7);
             animal.knockZ = knockZ * Math.max(0, 1 - dt * 7);
-            const nextX = animal.mesh.position.x + (Math.sin(heading) * speed + knockX) * dt;
-            const nextZ = animal.mesh.position.z + (Math.cos(heading) * speed + knockZ) * dt;
-            if (!this.game.terrainSystem.isWaterArea(nextX, nextZ)) {
+            // A hunting wolf is wary of a watch fire, and a palisade stops it until it is torn down.
+            const build = wolf && !underground ? this.game.buildSystem : null;
+            const pace = speed * (hunting ? build?.wary?.(animal.mesh.position.x, animal.mesh.position.z) ?? 1 : 1);
+            const nextX = animal.mesh.position.x + (Math.sin(heading) * pace + knockX) * dt;
+            const nextZ = animal.mesh.position.z + (Math.cos(heading) * pace + knockZ) * dt;
+            const barrier = build?.barrier?.(animal.mesh.position.x, animal.mesh.position.z, nextX, nextZ);
+            if (barrier) {
+                build.batter(barrier, dt);
+                animal.mesh.rotation.y = heading;
+            } else if (!this.game.terrainSystem.isWaterArea(nextX, nextZ)) {
                 animal.mesh.position.x = nextX;
                 animal.mesh.position.z = nextZ;
                 animal.mesh.rotation.y = heading;

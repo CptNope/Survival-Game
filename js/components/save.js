@@ -63,7 +63,7 @@ export class SaveSystem {
             harvestedDays:Object.fromEntries([...(g.terrainSystem.harvestedOn || [])].slice(-20000)),
             discovered:[...g.explorationSystem.discovered].slice(-5000),
             harvestedIds:[...g.terrainSystem.harvestedIds].slice(-20000),
-            structures:g.buildSystem.structures.map(({id,type,x,y,z,rotation})=>({id,type,x,y,z,rotation})),
+            structures:g.buildSystem.structures.map(({id,type,x,y,z,rotation,wear})=>(wear>0 ? {id,type,x,y,z,rotation,wear} : {id,type,x,y,z,rotation})),
             drops:g.inventorySystem.droppedItems.slice(0,100).map(drop=>({
                 itemType:drop.itemType,count:drop.count,
                 position:{x:drop.position.x,y:drop.position.y,z:drop.position.z}

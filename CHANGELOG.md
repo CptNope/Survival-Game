@@ -5,6 +5,21 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.11.0 (2026-11-22)
+
+### Added
+- **Camp defences** ([#29](https://github.com/CptNope/Survival-Game/pull/29)).
+  Three pieces that work on everything that hunts you.
+  - Spike trap: damage and a stagger to a hunter standing on it; breaks after
+    ten catches.
+  - Palisade: a fence hunters cannot cross until they tear it down.
+  - Watch fire: hunters near it move slower, and it warms like a campfire.
+
+### Fixed
+- Storage chests and garden beds no longer have a campfire's stones, logs and
+  coals inside them.
+- The build menu no longer says a log wall blocks wolves, which it never did.
+
 ## v0.10.0 (2026-11-22)
 
 ### Added

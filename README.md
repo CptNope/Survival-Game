@@ -142,6 +142,7 @@ year lasts twelve days, an hour of play, and its fourth season is winter.
 | **Companion** | A stray dog to tame with cooked meat. It follows, fights beside you, and can be told to stay |
 | **Views** | First-person, third-person and overhead cameras, with a jointed explorer who walks, sprints, swims, swings and draws a bow |
 | **Bounties** | Notice boards at traders and watchtowers post jobs: hunt the region's hunters, deliver what it is short of, or clear a den. Come back to the board for a piece of gear |
+| **Camp defences** | Spike traps, palisades and watch fires, which work on everything that hunts you |
 | **Pack nights** | On the last night of every season a pack hunts you at midnight. Break it for gear, outlast it until dawn, or lose it |
 | **Seasons** | Spring, summer, autumn and winter, three days each. The land changes colour, the weather and the cold change with it, and each season gives or takes something |
 | **World feel** | A day and night sky, rain, storms and snow, swimmable lakes, and sound made in code |
@@ -217,6 +218,22 @@ Take a job at the board (**E** at a trader; at a watchtower the notice shows
 after you have looked around), do it, and go back to the same board to be
 paid: a piece of gear a level above the country you are in, and experience.
 You can have three jobs in hand at once, and the map lists them.
+
+### Camp defences
+
+Three things to build that work on whatever hunts you: wolves, boars, bears
+and every frontier creature above ground. Deer and rabbits are left alone.
+
+| Piece | What it does | How long it lasts |
+| --- | --- | --- |
+| **Spike trap** | 14 damage and a half-second stagger to a hunter standing on it, once a second | Breaks after 10 catches |
+| **Palisade** | A four-metre fence of sharpened logs. Hunters cannot cross it, and neither can you | One hunter tears it down in 30 seconds; three in 10 |
+| **Watch fire** | Hunters within 9 m move at 70% of their pace. Warm to stand by, like a campfire | Does not wear out |
+
+Palisades join up on the same four-metre grid as walls. Traps and watch
+fires are small: they can stand 2.5 m from anything, where other structures
+need 7 m. A hunter goes straight for you, so a fence between you and it
+holds it there, and a trap in front of the fence catches it while it pushes.
 
 ### Pack nights
 
@@ -317,6 +334,9 @@ perks each time.
 | Wooden roof | 3 planks, 2 fiber | The top of a cabin |
 | Garden bed | 4 wood, 2 fiber | Grows berries, herbs, mushrooms or cactus fruit |
 | Storage chest | 4 planks, 2 fiber | Holds what you cannot carry |
+| Spike trap | 4 wood, 1 fiber | Hurts and staggers whatever hunts you; breaks after 10 catches |
+| Palisade | 6 wood | Stops hunters until they tear it down |
+| Watch fire | 4 wood, 3 stone | Hunters within 9 m move at 70% of their pace; warmth |
 
 Recipes are in the Craft menu (**C**), and the
 [resource guide](https://cptnope.github.io/Survival-Game/resources.html) shows
@@ -386,13 +406,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 12,400 lines of JavaScript in 62 modules |
+| **Size** | About 12,600 lines of JavaScript in 63 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 231 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 240 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -530,7 +550,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 231 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 240 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -558,10 +578,12 @@ timeline
                      : v0.8.0 Seasons
                      : v0.9.0 Bounties
     22 November 2026 : v0.10.0 Pack nights
+                     : v0.11.0 Camp defences
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.11.0** | 22 Nov 2026 | Camp defences: spike traps, palisades and watch fires; chests and garden beds lose a stray campfire | 29 |
 | **v0.10.0** | 22 Nov 2026 | Pack nights: a hunting pack at midnight on the last night of every season | 28 |
 | **v0.9.0** | 19 Nov 2026 | Bounties: jobs on notice boards at traders and watchtowers, paid in gear | 27 |
 | **v0.8.0** | 19 Nov 2026 | Seasons: a twelve-day year that changes the land, the weather, the cold, the garden and what grows back | 26 |
@@ -1742,6 +1764,49 @@ hunts you.
   script and not fought. Flying away from a pack is possible and untested as
   play. Plain wolves have no elite form, so Greenwood packs grow only in
   number.
+
+### Camp defences: traps, palisades and watch fires
+
+Pack nights gave you something to defend against. This gives you something to
+defend with, and gives building its first new purpose since shelter.
+
+- **Spike trap** (4 wood, 1 fiber). A hunter standing on it takes 14 damage
+  and is staggered for half a second, once a second. It breaks after ten
+  catches. Kills by a trap pay out like any other kill.
+- **Palisade** (6 wood). Hunters stop at it and tear at it: one needs 30
+  seconds, three need 10. It blocks you as well, so leave a gap or go round.
+- **Watch fire** (4 wood, 3 stone). Hunters within 9 m move at 70% of their
+  pace. It warms you like a campfire but does not cook.
+- **Who it works on.** Wolves and every creature that attacks, above ground.
+  Deer and rabbits walk through unharmed.
+- **Saves.** How worn a trap or a palisade is goes in the save.
+
+#### Fixed
+
+- **Chests and garden beds had a campfire inside them.** Every structure that
+  was not a shelter, floor, wall or roof was given the campfire's ring of
+  stones, logs and coals as well as its own shape. A chest is now a chest.
+- The build menu said a log wall "blocks wolves". It never did; it now says
+  what a log wall is for. The palisade is the piece that stops them.
+
+#### Verification
+
+- 240 unit tests pass, 9 of them new. They cover what counts as a hunter, the
+  geometry of crossing a palisade at any angle, each model's size, where each
+  piece may stand, a trap's damage, pause, wear and breaking, a wolf and an
+  ice wolf held at a fence until it falls and two wolves felling it twice as
+  fast, the watch fire's slowing of both kinds of hunter, and worn pieces
+  surviving a save. Eighteen deliberate bugs were each caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone: the
+  three new lines in the build menu, a trap placed through the game's own
+  placement code, and a small camp (three palisades, two traps, a watch fire)
+  with three wolves sent at it. They were held at the fence, the two outer
+  ones were caught twice each, and they came through when the fence fell.
+- Not verified here: whether the numbers are right in a real fight. The first
+  run showed three wolves felling a palisade in under four seconds, so it was
+  made three times as tough before this was opened; that figure has only been
+  tested, not played. Hunters do not go round a fence, so a long one is no
+  better than one length placed between you and them.
 
 ---
 

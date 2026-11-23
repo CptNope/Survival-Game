@@ -21,9 +21,12 @@ const rarityOf = item => RARITIES[rarityIndex(item.rarity)];
 
 const BUILD_NOTES = {
     shelter: 'Shelter from the cold · a place to sleep', fire: 'Warmth · cooking · light',
-    floor: 'Cabin foundation', wall: 'Blocks wolves and wind', roof: 'Cover from rain · a place to sleep',
+    floor: 'Cabin foundation', wall: 'A wall for a cabin', roof: 'Cover from rain · a place to sleep',
     garden: 'Plant berries, herbs, mushrooms or cactus fruit · harvest more',
-    chest: 'Holds 300 items · safe when you die'
+    chest: 'Holds 300 items · safe when you die',
+    spikes: 'Hurts and staggers whatever hunts you · breaks after 10 catches',
+    palisade: 'Stops hunters until they tear it down',
+    watchfire: 'Hunters near it move slower · warmth'
 };
 // Map markers: [colour, SVG path in a 2-unit box, drawn as an outline?].
 const MAP_MARKS = {
