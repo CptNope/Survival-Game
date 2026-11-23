@@ -12,7 +12,8 @@ export const BUILDINGS = Object.freeze({
     chest: {name: 'Storage chest', cost: {planks: 4, fiber: 2}},
     spikes: {name: 'Spike trap', cost: {wood: 4, fiber: 1}},
     palisade: {name: 'Palisade', cost: {wood: 6}},
-    watchfire: {name: 'Watch fire', cost: {wood: 4, stone: 3}}
+    watchfire: {name: 'Watch fire', cost: {wood: 4, stone: 3}},
+    cookpot: {name: 'Cook pot', cost: {stone: 4, wood: 3, iron: 1}}
 });
 
 function createModel(scene, type, item, material) {
@@ -106,6 +107,25 @@ function createModel(scene, type, item, material) {
             const rock=BABYLON.MeshBuilder.CreateIcoSphere('watchfire-foot',{radius:.2,subdivisions:1,flat:true},scene);
             rock.position.set(Math.cos(a)*.8,.12,Math.sin(a)*.8); tint(rock,'stone');
         }
+    } else if (type === 'cookpot') {
+        // An iron pot hung from a crossbar over a bed of coals.
+        for (const x of [-.95,.95]) {
+            const post=BABYLON.MeshBuilder.CreateCylinder('pot-post',{height:1.7,diameter:.14,tessellation:5},scene);
+            post.position.set(x,.85,0); tint(post,'wood');
+        }
+        beam('pot-bar', 0,1.68,0,2.2,.12,.12,'wood');
+        beam('pot-chain', 0,1.38,0,.05,.5,.05,'ash');
+        const pot=BABYLON.MeshBuilder.CreateCylinder('pot',{height:.62,diameterTop:.95,diameterBottom:.68,tessellation:8},scene);
+        pot.position.y=.88; tint(pot,'ash');
+        const broth=BABYLON.MeshBuilder.CreateCylinder('pot-broth',{height:.06,diameter:.82,tessellation:8},scene);
+        broth.position.y=1.17; tint(broth,'soil');
+        for (let i=0;i<6;i++) {
+            const a=i*Math.PI/3;
+            const rock=BABYLON.MeshBuilder.CreateIcoSphere('pot-ring',{radius:.24,subdivisions:1,flat:true},scene);
+            rock.position.set(Math.cos(a)*.62,.14,Math.sin(a)*.62); tint(rock,'stone');
+        }
+        const coals=BABYLON.MeshBuilder.CreateCylinder('pot-coals',{height:.22,diameter:.75,tessellation:7},scene);
+        coals.position.y=.2; tint(coals,'ember');
     } else if (type === 'fire') {
         for (let i=0;i<8;i++) {
             const a=i*Math.PI/4;
@@ -297,7 +317,7 @@ export class BuildingSystem {
 
     isProtected(position) {
         return this.structures.some(item => {
-            const radius=item.type==='shelter'?8:item.type==='fire'?5:item.type==='roof'?3:item.type==='watchfire'?WATCHFIRE.warmth:0;
+            const radius=item.type==='shelter'?8:item.type==='fire'?5:item.type==='roof'?3:item.type==='watchfire' || item.type==='cookpot'?WATCHFIRE.warmth:0;
             return radius>0 && Math.hypot(position.x-item.x,position.z-item.z)<=radius;
         });
     }
@@ -364,8 +384,15 @@ export class BuildingSystem {
         }
     }
 
+    // Somewhere to roast and brew: a campfire, or the fire under a cook pot.
     nearFire(position) {
-        return this.structures.some(item => item.type==='fire' &&
+        return this.structures.some(item => (item.type==='fire' || item.type==='cookpot') &&
+            Math.hypot(position.x-item.x,position.z-item.z)<=6);
+    }
+
+    // Stews need the pot itself.
+    nearPot(position) {
+        return this.structures.some(item => item.type==='cookpot' &&
             Math.hypot(position.x-item.x,position.z-item.z)<=6);
     }
 

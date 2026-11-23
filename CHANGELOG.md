@@ -5,6 +5,17 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.13.0 (2026-11-22)
+
+### Added
+- **The cook pot** ([#31](https://github.com/CptNope/Survival-Game/pull/31)).
+  A new structure that cooks stews two servings at a time. A serving is
+  carried and eaten anywhere: a full meal and a long effect.
+  - Hunter's stew: +15% damage and 15% less damage taken for 5 minutes.
+  - Fish chowder: +15% move and swing speed for 5 minutes.
+  - Winter pottage: the cold builds 70% slower for 6 minutes.
+  - The pot warms like a campfire and roasts and brews like one too.
+
 ## v0.12.0 (2026-11-22)
 
 ### Added

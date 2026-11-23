@@ -26,7 +26,8 @@ const BUILD_NOTES = {
     chest: 'Holds 300 items · safe when you die',
     spikes: 'Hurts and staggers whatever hunts you · breaks after 10 catches',
     palisade: 'Stops hunters until they tear it down',
-    watchfire: 'Hunters near it move slower · warmth'
+    watchfire: 'Hunters near it move slower · warmth',
+    cookpot: 'Cook stews to carry · roast and brew as at a campfire · warmth'
 };
 // Map markers: [colour, SVG path in a 2-unit box, drawn as an outline?].
 const MAP_MARKS = {

@@ -138,7 +138,7 @@ test('the three pieces are built to size, and a chest no longer has a campfire i
 test('traps and watch fires may stand close to things; palisades join up on the grid', () => {
     const {engine, game, build, put} = world();
     try {
-        assert.deepEqual(SMALL_PIECES, ['spikes', 'watchfire']);
+        assert.deepEqual(SMALL_PIECES, ['spikes', 'watchfire', 'cookpot']);
         put('fire', 0, 0);
         const at = (x, z) => ({x, y: 2, z, rotation: 0});
         assert.equal(build.blockedReason('shelter', at(6, 0)), 'Too close to another structure');

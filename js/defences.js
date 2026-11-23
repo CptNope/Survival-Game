@@ -13,7 +13,7 @@ export const WATCHFIRE = Object.freeze({reach: 9, pace: .7, warmth: 5});
 
 export const DEFENCES = Object.freeze(['spikes', 'palisade', 'watchfire']);
 // Small pieces may stand close to other structures; everything else keeps its distance.
-export const SMALL_PIECES = Object.freeze(['spikes', 'watchfire']);
+export const SMALL_PIECES = Object.freeze(['spikes', 'watchfire', 'cookpot']);
 export const SMALL_GAP = 2.5;
 
 // The things defences work on: wolves and every creature with a mind to
