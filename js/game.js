@@ -453,6 +453,7 @@ export class SurvivalGame {
 
             // Update animal spawning and movement
             if (!this.paused) this.animalSystem.update();
+            if (!this.paused) this.buildSystem.defend(Math.min(.05, this.engine.getDeltaTime() / 1000));
             this.uiSystem.update();
 
             // With a menu up nothing in the world moves, so there is no need

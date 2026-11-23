@@ -50,7 +50,12 @@ export class CreatureAI {
         const knockX = (animal.knockX || 0) * knockScale, knockZ = (animal.knockZ || 0) * knockScale;
         animal.knockX = (animal.knockX || 0) * Math.max(0, 1 - dt * 7);
         animal.knockZ = (animal.knockZ || 0) * Math.max(0, 1 - dt * 7);
-        let x = position.x + (vx + knockX) * dt, z = position.z + (vz + knockZ) * dt;
+        // Above ground: wary of a watch fire, and stopped by a palisade until it is torn down.
+        const build = layout ? null : this.game.buildSystem;
+        const wary = build?.wary?.(position.x, position.z) ?? 1;
+        let x = position.x + (vx * wary + knockX) * dt, z = position.z + (vz * wary + knockZ) * dt;
+        const barrier = build?.barrier?.(position.x, position.z, x, z);
+        if (barrier) { build.batter(barrier, dt); return false; }
         if (layout) {
             ({x, z} = resolveCircle(layout, x, z, def.radius));
         } else if (this.game.terrainSystem.isWaterArea(x, z)) {
