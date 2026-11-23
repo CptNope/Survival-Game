@@ -1,6 +1,6 @@
 import { BOONS } from './buffs.js';
 import { createLootModel } from '../models/wilderness.js';
-import { ITEMS, RESOURCES, RECIPES, hitsNeeded } from '../resources.js';
+import { ITEMS, RESOURCES, RECIPES, hitsNeeded, itemAmount } from '../resources.js';
 
 const SWING_COOLDOWN_MS = 330;
 const QUICK_HEALS = ['herbalWrap', 'bandage', 'snack', 'eatMeat']; // Strongest first.
@@ -144,6 +144,7 @@ export class InventorySystem {
                 (recipe.hunger && this.game.survivalSystem?.hunger < 100) ||
                 Boolean(recipe.thirst && this.game.survivalSystem?.thirst < 100))
             && (!recipe.requiresFire || this.game.buildSystem?.nearFire(this.game.playerSystem.camera.position))
+            && (!recipe.requiresPot || this.game.buildSystem?.nearPot?.(this.game.playerSystem.camera.position))
             && Object.entries(recipe.cost).every(([item, count]) => this.inventory[item] >= count);
     }
     // Why a recipe is unavailable, for the crafting panel.
@@ -153,6 +154,7 @@ export class InventorySystem {
         if (recipe.unique && this.inventory[recipe.output]) return 'Already carried';
         if (!Object.entries(recipe.cost).every(([item, count]) => this.inventory[item] >= count)) return 'Missing materials';
         if (recipe.requiresFire) return 'Stand by a campfire';
+        if (recipe.requiresPot) return 'Stand by a cook pot';
         return 'Not needed right now';
     }
     craft(type) {
@@ -165,6 +167,8 @@ export class InventorySystem {
             this.game.buffs?.add(recipe.buff);
             if (recipe.buff === 'antivenom') player.poisonLeft = 0;
             if (recipe.hunger) this.game.survivalSystem?.eatBerries(recipe.hunger);
+            // A stew mends you a little as well.
+            if (recipe.heal) player.health = Math.min(player.maxHealth, player.health + Math.round(recipe.heal * (1 + (this.game.perks?.value('healing') || 0))));
             this.game.uiSystem.showNotification(`${BOONS[recipe.buff].label} · ${BOONS[recipe.buff].text}`);
             this.game.audio?.play('heal');
             this.game.progression?.record('tonics');
@@ -183,9 +187,9 @@ export class InventorySystem {
             if (recipe.meal) this.game.progression?.record('meals');
         } else {
             this.inventory[recipe.output] += recipe.amount;
-            this.game.uiSystem.showNotification(`Crafted ${recipe.name.toLowerCase()}`);
-            this.game.audio?.play(recipe.requiresFire ? 'sizzle' : 'craft');
-            this.game.progression?.record('crafted');
+            this.game.uiSystem.showNotification(recipe.requiresPot ? `Cooked ${itemAmount(recipe.output, recipe.amount)}` : `Crafted ${recipe.name.toLowerCase()}`);
+            this.game.audio?.play(recipe.requiresFire || recipe.requiresPot ? 'sizzle' : 'craft');
+            this.game.progression?.record(recipe.requiresPot ? 'stews' : 'crafted');
             this.game.effects?.refreshHeld?.();
         }
         this.game.uiSystem.updateInventoryUI();

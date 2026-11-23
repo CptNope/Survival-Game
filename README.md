@@ -129,7 +129,8 @@ year lasts twelve days, an hour of play, and its fourth season is winter.
 | --- | --- |
 | **Survival** | Health, hunger, thirst and cold. Eat, drink at a lake or from a waterskin, and warm up at a fire or under a roof. Sleep through the night in a shelter |
 | **Gathering** | Trees, rocks, iron ore, fiber plants, herbs, berries, mushrooms and cactus fruit. Gathered nodes stay gathered and grow back over days |
-| **Crafting** | 22 recipes: planks, stone and iron tools, a spear, a torch, a waterskin, a fishing rod, a bow and arrows, a fur cloak, remedies, cooked food and three tonics |
+| **Crafting** | 28 recipes: planks, stone and iron tools, a spear, a torch, a waterskin, a fishing rod, a bow and arrows, a fur cloak, remedies, cooked food, three tonics and three stews |
+| **Cooking** | A cook pot makes stews two servings at a time. Carry them and eat them when you need a full meal and a five-minute effect |
 | **Building** | A lean-to, a campfire, floors, walls and roofs that snap together, garden beds and storage chests, with a preview before you place |
 | **Combat** | Tools, spear and bow. Every enemy attack has a wind-up you can see. A dodge with a moment of safety, a heavy sweep, and a quick heal |
 | **Exploration** | Trails, landmarks, a field compass and a map. Four regions that blend into each other, each with its own weather, plants and hunters |
@@ -323,6 +324,16 @@ perks each time.
 | Antivenom | 1 cactus fruit, 2 herbs | Anywhere | Cures venom, and immunity for 2½ minutes |
 | Hunter's broth | 1 fish, 2 berries | Campfire | 30 hunger and +30% damage for 2 minutes |
 
+Stews are cooked in a cook pot, two servings at a time, and carried. A serving
+is eaten anywhere: a full meal and an effect milder than a tonic's but much
+longer.
+
+| Stew | One pot takes | A serving gives |
+| --- | --- | --- |
+| Hunter's stew | 2 raw meat, 1 mushroom, 1 herb | 60 hunger, 20 health, and +15% damage with 15% less damage taken for 5 minutes |
+| Fish chowder | 2 raw fish, 2 berries, 1 herb | 50 hunger, 15 health, and +15% move and swing speed for 5 minutes |
+| Winter pottage | 3 mushrooms, 2 berries | 45 hunger, and the cold builds 70% slower for 6 minutes |
+
 ## Building and crafting
 
 | Piece | Cost | What it is for |
@@ -337,6 +348,7 @@ perks each time.
 | Spike trap | 4 wood, 1 fiber | Hurts and staggers whatever hunts you; breaks after 10 catches |
 | Palisade | 6 wood | Stops hunters until they tear it down |
 | Watch fire | 4 wood, 3 stone | Hunters within 9 m move at 70% of their pace; warmth |
+| Cook pot | 4 stone, 3 wood, 1 iron ingot | Cooks stews; roasts and brews like a campfire; warmth |
 
 Recipes are in the Craft menu (**C**), and the
 [resource guide](https://cptnope.github.io/Survival-Game/resources.html) shows
@@ -412,7 +424,7 @@ stateDiagram-v2
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 245 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 250 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -550,7 +562,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 245 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 250 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -580,10 +592,12 @@ timeline
     22 November 2026 : v0.10.0 Pack nights
                      : v0.11.0 Camp defences
                      : v0.12.0 Alpha wolves
+                     : v0.13.0 The cook pot
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.13.0** | 22 Nov 2026 | The cook pot: three stews cooked two servings at a time, carried, and eaten for a long effect | 31 |
 | **v0.12.0** | 22 Nov 2026 | Alpha wolves: wolves toughen by tier and have an elite form; the map is drawn in the season's colours | 30 |
 | **v0.11.0** | 22 Nov 2026 | Camp defences: spike traps, palisades and watch fires; chests and garden beds lose a stray campfire | 29 |
 | **v0.10.0** | 22 Nov 2026 | Pack nights: a hunting pack at midnight on the last night of every season | 28 |
@@ -1840,6 +1854,43 @@ bite. Greenwood packs could only grow in number.
   three wolves, and the map in winter and in autumn.
 - Not verified here: how an alpha feels to fight. Its numbers are the same
   multipliers every other elite uses, applied to a wolf.
+
+### The cook pot: stews to carry
+
+Seasons made a stockpile worth having, and all you could do with it was eat
+it one piece at a time. Food now does more when it is cooked together.
+
+- **The cook pot** (4 stone, 3 wood, 1 iron ingot). An iron pot over coals.
+  It needs iron, so it comes after the first few days. It is a small piece
+  that can stand close to the fire or the shelter, it warms like a campfire,
+  and anything a campfire roasts or brews can be done at it.
+- **Three stews.** Hunter's stew from meat, a mushroom and a herb; fish
+  chowder from fish, berries and a herb; winter pottage from mushrooms and
+  berries. One pot makes two servings, which you carry.
+- **Eating one.** A serving is a full meal, mends you a little, and leaves an
+  effect for five or six minutes: harder hits and a thicker skin, quicker
+  feet, or the cold kept off. The effects are milder than a shrine's or a
+  tonic's and last more than twice as long. Different stews work together;
+  the same stew twice renews it.
+- **Why winter pottage.** It keeps off 70% of the cold for six minutes, where
+  a warming draught keeps off 60% for three. One serving outlasts a whole
+  night, which is a little over two and a half minutes.
+
+#### Verification
+
+- 250 unit tests pass, 5 of them new. They cover each stew's recipe and
+  effect, that a campfire will not cook one and the pot will also roast, what
+  a serving does to hunger, health and the active effects, effects renewing
+  instead of stacking and wearing off, winter pottage against a real winter
+  night, and servings, the pot and a running effect all surviving a save.
+  Eleven deliberate bugs were each caught by a test. Three older tests that
+  pin the list of items were updated for the three new ones.
+- Played in a headless browser on a desktop page and an emulated phone: a pot
+  placed through the game's own placement code, hunter's stew and winter
+  pottage cooked and eaten through the craft panel, both effects showing
+  under the vitals, and a save and restore.
+- Not verified here: whether the ingredients are easy enough to come by in
+  each region, and whether five minutes of +15% is felt in a fight.
 
 ---
 

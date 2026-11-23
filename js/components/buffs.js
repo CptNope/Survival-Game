@@ -6,7 +6,11 @@ export const BOONS = Object.freeze({
     haste: {label: 'Swiftness', text: '+20% move and swing speed', seconds: 120, speed: 1.2},
     // Brewed, not granted: tonics made from what the frontier grows.
     warmth: {label: 'Warmed', text: 'The cold builds 60% slower', seconds: 180, cold: .4},
-    antivenom: {label: 'Antivenom', text: 'Immune to venom', seconds: 150}
+    antivenom: {label: 'Antivenom', text: 'Immune to venom', seconds: 150},
+    // Eaten: what a stew from the cook pot leaves you with.
+    wellFed: {label: 'Well fed', text: '+15% damage and 15% less damage taken', seconds: 300, damage: 1.15, defence: .85},
+    nimble: {label: 'Light on your feet', text: '+15% move and swing speed', seconds: 300, speed: 1.15},
+    warmThrough: {label: 'Warm through', text: 'The cold builds 70% slower', seconds: 360, cold: .3}
 });
 // What a dungeon shrine may hand out.
 export const SHRINE_BOONS = Object.freeze(['fury', 'stoneskin', 'haste']);

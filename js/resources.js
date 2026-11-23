@@ -6,7 +6,8 @@ export const ITEMS = {
     spear: 'Spear', torch: 'Torch', waterskin: 'Waterskin',
     bow: 'Bow', arrows: 'Arrows', pelt: 'Pelts', furCloak: 'Fur cloak',
     cactusFruit: 'Cactus fruit', mushrooms: 'Mushrooms',
-    fishingRod: 'Fishing rod', fish: 'Raw fish'
+    fishingRod: 'Fishing rod', fish: 'Raw fish',
+    hunterStew: "Hunter's stew", fishChowder: 'Fish chowder', winterPottage: 'Winter pottage'
 };
 // `hits` is the number of swings a node takes by tool tier. A missing tier
 // means that tier cannot gather the node at all (bare hands on ore).
@@ -35,6 +36,7 @@ export function hitsNeeded(type, inventory) {
 }
 
 export const RECIPE_GROUPS = { gear: 'Tools & gear', food: 'Food & healing', materials: 'Materials' };
+export const SERVINGS = 2;   // What one pot of stew makes.
 export const RECIPES = {
     planks: { group: 'materials', name: 'Wooden planks', cost: { wood: 2 }, output: 'planks', amount: 1 },
     iron: { group: 'materials', name: 'Smelt iron', cost: { ironOre: 2, wood: 2 }, output: 'iron', amount: 1 },
@@ -58,11 +60,22 @@ export const RECIPES = {
     antivenom: { group: 'food', name: 'Mix antivenom', cost: { cactusFruit: 1, herbs: 2 }, buff: 'antivenom', effect: 'cures venom · immune for 2½ minutes' },
     huntersBroth: { group: 'food', name: "Simmer hunter's broth at campfire", cost: { fish: 1, berries: 2 }, requiresFire: true, hunger: 30, buff: 'fury', effect: '+30% damage for 2 minutes', meal: true },
     grillFish: { group: 'food', name: 'Grill fish at campfire', cost: { fish: 1 }, heal: 15, hunger: 40, requiresFire: true, meal: true },
-    roastMushrooms: { group: 'food', name: 'Roast mushrooms at campfire', cost: { mushrooms: 2 }, heal: 25, hunger: 32, requiresFire: true, meal: true }
+    roastMushrooms: { group: 'food', name: 'Roast mushrooms at campfire', cost: { mushrooms: 2 }, heal: 25, hunger: 32, requiresFire: true, meal: true },
+    // Stews: cooked two servings at a time in a cook pot, carried, and eaten
+    // when they are needed. Each is a full meal and a long effect.
+    cookHunterStew: { group: 'food', name: "Cook hunter's stew in a cook pot", note: 'Two servings to carry', cost: { rawMeat: 2, mushrooms: 1, herbs: 1 }, output: 'hunterStew', amount: SERVINGS, requiresPot: true },
+    cookFishChowder: { group: 'food', name: 'Cook fish chowder in a cook pot', note: 'Two servings to carry', cost: { fish: 2, berries: 2, herbs: 1 }, output: 'fishChowder', amount: SERVINGS, requiresPot: true },
+    cookWinterPottage: { group: 'food', name: 'Cook winter pottage in a cook pot', note: 'Two servings to carry', cost: { mushrooms: 3, berries: 2 }, output: 'winterPottage', amount: SERVINGS, requiresPot: true },
+    eatHunterStew: { group: 'food', name: "Eat hunter's stew", cost: { hunterStew: 1 }, heal: 20, hunger: 60, buff: 'wellFed', effect: '+15% damage and 15% less damage taken for 5 minutes', meal: true },
+    eatFishChowder: { group: 'food', name: 'Eat fish chowder', cost: { fishChowder: 1 }, heal: 15, hunger: 50, buff: 'nimble', effect: '+15% move and swing speed for 5 minutes', meal: true },
+    eatWinterPottage: { group: 'food', name: 'Eat winter pottage', cost: { winterPottage: 1 }, hunger: 45, buff: 'warmThrough', effect: 'cold builds 70% slower for 6 minutes', meal: true }
 };
+export const STEWS = Object.freeze(['hunterStew', 'fishChowder', 'winterPottage']);
 export function itemAmount(item, count) {
     const singular = {planks: 'plank', tools: 'stone tool', iron: 'iron ingot', herbs: 'herb', berries: 'berry', ironTools: 'iron tool',
         arrows: 'arrow', pelt: 'pelt', mushrooms: 'mushroom', fish: 'raw fish'};
+    // Stews are counted in servings.
+    if (STEWS.includes(item)) return `${count} ${count === 1 ? 'serving' : 'servings'} of ${ITEMS[item].toLowerCase()}`;
     return `${count} ${count === 1 && singular[item] ? singular[item] : ITEMS[item].toLowerCase()}`;
 }
 export function recipeDescription(recipe) {

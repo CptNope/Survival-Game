@@ -18,7 +18,7 @@ test('crafting fails atomically and follows the displayed recipe',()=>{
  assert.equal(i.craft('tools'),false);assert.equal(i.inventory.tools,0);
  i.inventory.wood=2;i.inventory.stone=2;
  assert.equal(i.craft('planks'),true);assert.equal(i.craft('tools'),true);
- assert.deepEqual(i.inventory,{wood:0,stone:0,planks:0,tools:1,ironOre:0,iron:0,fiber:0,herbs:0,berries:0,ironTools:0,rawMeat:0,cookedMeat:0,spear:0,torch:0,waterskin:0,bow:0,arrows:0,pelt:0,furCloak:0,cactusFruit:0,mushrooms:0,fishingRod:0,fish:0});
+ assert.deepEqual(i.inventory,{wood:0,stone:0,planks:0,tools:1,ironOre:0,iron:0,fiber:0,herbs:0,berries:0,ironTools:0,rawMeat:0,cookedMeat:0,spear:0,torch:0,waterskin:0,bow:0,arrows:0,pelt:0,furCloak:0,cactusFruit:0,mushrooms:0,fishingRod:0,fish:0,hunterStew:0,fishChowder:0,winterPottage:0});
  assert.equal(i.craft('unknown'),false);
 });
 test('dressing caps health and consumes nothing at full health',()=>{
@@ -91,7 +91,7 @@ test('death drops every resource type and clears all inventory slots',()=>{
  for(const item of Object.keys(i.inventory))i.inventory[item]=3;
  i.createLootBag=(position,item,count)=>dropped.push({item,count});
  i.dropAllItems({x:1,y:2,z:3});
- assert.equal(dropped.length,23);assert.ok(dropped.every(drop=>drop.count===3));
+ assert.equal(dropped.length,26);assert.ok(dropped.every(drop=>drop.count===3));
  assert.ok(Object.values(i.inventory).every(count=>count===0));
 });
 
