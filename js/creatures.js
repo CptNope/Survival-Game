@@ -66,6 +66,20 @@ export const CREATURES = Object.freeze({
 export const ELITE = Object.freeze({health: 2.4, damage: 1.3, xp: 2.5, size: 1.2, luck: .35});
 
 // Deeper floors and farther dungeons hit harder and take more killing.
+// Wolves have no mind of their own like the frontier creatures, but they take
+// the same tiers and the same elite form. An elite wolf is an alpha: bigger,
+// black-coated, and alone unless it is leading a pack.
+export const WOLF_BITE = 8;
+export const ALPHA = Object.freeze({fromDay: 4, chance: .15, coat: [.13, .13, .15], lighter: [.31, .30, .32]});
+export const wolfBite = animal => Math.round(WOLF_BITE * (animal?.damageScale || 1));
+// What a wolf is called: "alpha wolf" for the elite.
+export const wolfName = animal => animal?.elite ? 'alpha wolf' : 'wolf';
+// A wolf that turns up on an ordinary night. From the fourth day on, now and
+// then it is an alpha, but never two at once.
+export function nightWolf(day, roll, alphaAbout = false) {
+    return {elite: day >= ALPHA.fromDay && !alphaAbout && roll < ALPHA.chance};
+}
+
 export function scaleFor(tier = 1, floor = 1) {
     const step = (tier - 1) * .3 + (floor - 1) * .18;
     return {health: 1 + step, damage: 1 + step * .7, xp: 1 + step * .6};

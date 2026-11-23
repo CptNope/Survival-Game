@@ -34,12 +34,12 @@ export function raidPhase(day, dayTime, dayLength) {
 
 // The pack that comes on a given day in a given region. It grows with every
 // season survived, winter's is one stronger again, and from the second raid
-// on it has a leader where the region's hunters can have one.
+// on it has an elite leader.
 export function raidPack(day, region = 'meadow') {
     const kind = RAIDERS[region] || RAIDERS.meadow, number = Math.max(1, raidNumber(day));
     const size = Math.min(7, 2 + number) + (seasonAt(day).id === 'winter' ? 1 : 0);
     const level = Math.min(6, 1 + Math.floor(number / 2));
-    const leader = number >= 2 && kind !== 'wolf';   // Plain wolves have no elite form.
+    const leader = number >= 2;   // In the Greenwood the leader is an alpha wolf.
     return {kind, number, size, level, tier: 1 + (level - 1) * .5,
         members: Array.from({length: size}, (_, n) => ({kind, elite: leader && n === 0}))};
 }

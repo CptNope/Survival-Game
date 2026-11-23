@@ -105,8 +105,9 @@ test('the pack is the region\'s own hunters, grows each season, and winter\'s is
             last = pack.level;
             assert.equal(pack.tier, 1 + (pack.level - 1) * .5);
             const leaders = pack.members.filter(one => one.elite).length;
-            // Plain wolves have no elite form; elsewhere there is one leader from the second raid on.
-            assert.equal(leaders, kind !== 'wolf' && pack.number >= 2 ? 1 : 0, `${region} raid ${pack.number}`);
+            // One leader from the second raid on: an alpha in the Greenwood, an elite elsewhere.
+            assert.equal(leaders, pack.number >= 2 ? 1 : 0, `${region} raid ${pack.number}`);
+            if (leaders) assert.equal(pack.members[0].elite, true, 'the leader is the first of them');
             const reward = raidReward(pack, region);
             assert.equal(reward.gearLevel, pack.level + 1);
             assert.ok(reward.xp >= 55);

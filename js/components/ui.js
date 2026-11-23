@@ -1,5 +1,5 @@
 import { ITEMS, RESOURCES, RECIPES, RECIPE_GROUPS, recipeDescription, hitsNeeded, itemAmount } from '../resources.js';
-import { MAP_SPAN, MAP_CELLS, MAP_COLORS, mapCells, toSheet, onSheet } from '../map.js';
+import { MAP_SPAN, MAP_CELLS, mapColors, mapCells, toSheet, onSheet } from '../map.js';
 import { LEGEND_LIST } from '../legends.js';
 import { REGIONS } from '../regions.js';
 import { poiById } from '../pois.js';
@@ -374,8 +374,10 @@ export class UISystem {
         if (!context) return;
         const game = this.game, position = game.playerSystem.camera.position, size = canvas.width, cell = size / MAP_CELLS;
         const cells = mapCells(position.x, position.z, game.regions.discovered, (x, z) => game.terrainSystem.isWaterArea(x, z));
+        // The Greenwood and Mirefen are drawn in the season's colours.
+        const colours = mapColors(game.seasons?.look.ground);
         for (let n = 0; n < cells.length; n++) {
-            context.fillStyle = MAP_COLORS[cells[n]];
+            context.fillStyle = colours[cells[n]];
             context.fillRect((n % MAP_CELLS) * cell, Math.floor(n / MAP_CELLS) * cell, Math.ceil(cell), Math.ceil(cell));
         }
         const shown = new Map();
