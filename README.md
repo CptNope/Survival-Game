@@ -50,7 +50,7 @@ touch screen, and installs as an app.
 | **Play** | [cptnope.itch.io/survival-game-web-demo](https://cptnope.itch.io/survival-game-web-demo) | The game on itch.io, with comments and the devlog |
 | **Play** | [cptnope.github.io/Survival-Game](https://cptnope.github.io/Survival-Game/) | The same build on GitHub Pages, deployed from `main`. The path is case-sensitive: the lowercase `/survival-game/` URL does not work |
 | **Donate** | [Support This Game on itch.io](https://cptnope.itch.io/survival-game-web-demo/donate) | Pay what you like through itch.io, by card or PayPal |
-| **Devlog** | [The Wilds devlog](https://cptnope.itch.io/survival-game-web-demo/devlog) | One post per release, from the first prototype on |
+| **Devlog** | [The Wilds devlog](https://cptnope.itch.io/survival-game-web-demo/devlog) | A post for every release, from the first prototype on. Later posts cover several versions at once |
 | **Changelog** | [CHANGELOG.md](CHANGELOG.md) | Every release and the pull requests in it |
 | **Project page** | [jeremyanderson.tech/project/babylon-js-survival-game](https://jeremyanderson.tech/project/babylon-js-survival-game/) | Overview, screenshots and how it is built |
 | **Build story** | [Vibe Coding a Babylon.js Survival Game](https://jeremyanderson.tech/vibe-coding-a-babylon-js-survival-game/) | The write-up: from a Windsurf prototype to The Wilds with Claude Fable |

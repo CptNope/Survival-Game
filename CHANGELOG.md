@@ -1,8 +1,10 @@
 # Changelog
 
 What changed in The Wilds, newest first. Each version is a group of merged pull
-requests, dated the day the last of them was merged, and matches a post in the
-[devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
+requests, dated the day the last of them was merged. The
+[devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog)
+covers every version: up to v0.11.0 each has a post of its own, and from
+v0.12.0 on a post may cover several, under the newest one's number.
 The README has the full notes for every update.
 
 ## v0.15.0 (2026-11-22)
