@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v29-difficulty';
+const CACHE_NAME = 'survival-game-v30-first-wolf';
 const ASSETS = [
   './',
   './index.html',

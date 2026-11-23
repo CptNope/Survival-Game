@@ -46,6 +46,20 @@ export function raidPack(day, region = 'meadow', extra = 0) {
         members: Array.from({length: size}, (_, n) => ({kind, elite: leader && n === 0}))};
 }
 
+// The Greenwood's own legend. Once the frontier's three are slain it leads the
+// next pack night, wherever you are, and keeps coming on every pack night
+// until it is broken. Breaking it is the end of the story, not of the game.
+export const FIRST_WOLF = Object.freeze({name: 'The First Wolf', health: 900, bite: 26, size: 1.8, escort: 4, level: 6, xp: 600,
+    reward: {slot: 'charm', name: "The First Wolf's Tooth"}});
+
+// The last hunt: the First Wolf, an alpha, and the rest of its escort.
+// `extra` is the difficulty's say over the escort, which is never under two.
+export function finalePack(extra = 0) {
+    const escort = Math.max(2, FIRST_WOLF.escort + (Number.isInteger(extra) ? extra : 0)), level = FIRST_WOLF.level;
+    return {kind: 'wolf', finale: true, number: 0, size: escort + 1, level, tier: 1 + (level - 1) * .5,
+        members: [{kind: 'wolf', elite: true, first: true}, ...Array.from({length: escort}, (_, n) => ({kind: 'wolf', elite: n === 0}))]};
+}
+
 // What breaking the pack is worth: gear, the region's spoils, and experience.
 export function raidReward(pack, region = 'meadow') {
     const spoils = region === 'meadow' || !DENS[region] ? {pelt: 2, rawMeat: 2} : DENS[region].spoils;

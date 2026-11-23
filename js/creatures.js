@@ -73,7 +73,7 @@ export const WOLF_BITE = 8;
 export const ALPHA = Object.freeze({fromDay: 4, chance: .15, coat: [.13, .13, .15], lighter: [.31, .30, .32]});
 export const wolfBite = animal => Math.round(WOLF_BITE * (animal?.damageScale || 1));
 // What a wolf is called: "alpha wolf" for the elite.
-export const wolfName = animal => animal?.elite ? 'alpha wolf' : 'wolf';
+export const wolfName = animal => animal?.title || (animal?.elite ? 'alpha wolf' : 'wolf');
 // A wolf that turns up on an ordinary night. From the fourth day on, now and
 // then it is an alpha, but never two at once.
 export function nightWolf(day, roll, alphaAbout = false) {

@@ -213,7 +213,17 @@ export class UISystem {
         this.updateInventoryUI();
         this.renderPanel();
     }
+    // The end of the story: the summary, a few seconds after the banner.
+    showEnding() {
+        if (typeof setTimeout !== 'function') return;
+        setTimeout(() => {
+            if (this.game.playerSystem?.isDead) return;
+            this.ending = true;
+            this.openPanel('menu');
+        }, 3500);
+    }
     closePanel() {
+        this.ending = false;
         this.panel = null;
         this.started = true;
         this.game.setPaused(false);
@@ -279,7 +289,8 @@ export class UISystem {
         this.$('recipes').hidden = !craft;
         this.$('build-options').hidden = !build;
         this.$('controls').hidden = !menu;
-        this.$('settings').hidden = !menu;
+        // The ending shows the expedition's numbers and nothing else.
+        this.$('settings').hidden = !menu || this.ending;
         this.$('stats').hidden = !menu || title;
         this.$('new-game').hidden = !menu;
         this.$('new-game').classList.remove('confirm');
@@ -296,7 +307,7 @@ export class UISystem {
         this.$('save-now').hidden = !menu || title;
         // The heading names the panel; the line under it says what it is for.
         this.$('panel-title').textContent = trade ? (poiById(this.tradeId)?.name || 'Trader') : storage ? 'Storage chest' : map ? 'Map' : perks ? 'Perks' : gear ? 'Gear'
-            : build ? 'Build' : craft ? 'Craft' : title ? 'The Wilds' : 'Paused';
+            : build ? 'Build' : craft ? 'Craft' : title ? 'The Wilds' : this.ending ? 'The Wilds are yours' : 'Paused';
         this.$('panel-kicker').textContent = '';
         for (const tab of this.$('panel-tabs').children) {
             const current = tab.dataset.panel === this.panel;
@@ -306,7 +317,7 @@ export class UISystem {
         this.$('panel-tabs').hidden = title || !this.panel;
         this.$('modal').dataset.panel = this.panel || '';
         // Controls are open on a first visit and folded away after that.
-        this.$('controls-wrap').hidden = !menu;
+        this.$('controls-wrap').hidden = !menu || this.ending;
         if (menu) this.$('controls-wrap').open = title || !this.game.touchControls?.enabled;
         this.$('panel-copy').textContent = trade
             ? (poiById(this.tradeId)?.kind === 'trader'
@@ -326,6 +337,7 @@ export class UISystem {
                 : 'Choose a structure, then aim where it should stand. Click to place it, R to rotate, Esc to cancel.')
             : craft ? 'Better tools gather faster. Food and dressings work straight from your pack.'
             : title ? 'Gather, craft and build before nightfall. The cold, hunger and wolves will not wait.'
+            : this.ending ? `Three legends slain and the First Wolf broken on day ${this.game.raids?.crowned || this.game.dayCount}. This is the story of the expedition so far. It goes on for as long as you like.`
             : 'Follow your field notes, keep a fire going, and rest in a shelter at night. Progress saves on this device.';
         const returning = this.game.dayCount > 1 || this.game.progression?.completed.size > 0;
         this.$('resume').textContent = build || craft || gear || perks || map || storage || trade ? 'Back to the wilds'
@@ -426,7 +438,7 @@ export class UISystem {
             + (hollow ? `<li>${key(MAP_MARKS.seen[1], MAP_MARKS.seen[0], true)} Hollow marks · seen from a watchtower</li>` : '')
             + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} landmarks and ${game.pois?.found.size || 0} points of interest found</li>`
             + (game.seasons ? `<li class="map-scale">${game.seasons.calendar}</li>` : '')
-            + (game.raids ? `<li class="map-scale">${game.raids.next === game.dayCount ? 'A pack hunts tonight' : `The next pack hunts on the night of day ${game.raids.next}`}</li>` : '')
+            + (game.raids ? `<li class="map-scale">${game.raids.finaleDue ? (game.raids.next === game.dayCount ? 'The First Wolf hunts tonight' : `The First Wolf hunts on the night of day ${game.raids.next}`) : game.raids.next === game.dayCount ? 'A pack hunts tonight' : `The next pack hunts on the night of day ${game.raids.next}`}</li>` : '')
             + (game.bounties?.list() || []).map(line => `<li class="map-scale">Bounty · ${line}</li>`).join('');
         this.drawTravel();
     }
@@ -565,7 +577,7 @@ export class UISystem {
         const underground = dungeon.active;
         this.$('minimap').hidden = !underground;
         this.$('exploration-card').hidden = underground;
-        const legend = underground ? null : this.game.legends?.active;
+        const legend = underground ? null : this.game.legends?.active || this.game.raids?.boss;
         const boss = underground ? dungeon.boss : legend?.animal || null, bar = this.$('boss-bar');
         bar.hidden = legend ? false : !(boss && boss.alerted !== undefined && (boss.alert > 0 || boss.health < boss.maxHealth));
         if (!bar.hidden) {

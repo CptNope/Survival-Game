@@ -138,6 +138,18 @@ export const QUESTS = Object.freeze([
         text: 'Keep the expedition alive through five full days.',
         done: g => g.dayCount >= 6,
         progress: g => `Day ${Math.min(6, g.dayCount)} of 6`
+    },
+    {
+        id: 'legends', xp: 300, title: 'Slay all three legends',
+        text: 'Frostfell, Sunscar and Mirefen each have one. The Greenwood has one too, and it is waiting for the other three to fall.',
+        done: g => g.progression.stats.legends >= 3,
+        progress: g => `${Math.min(3, g.progression.stats.legends)} of 3`
+    },
+    {
+        id: 'firstwolf', xp: 500, title: 'Break the First Wolf',
+        text: 'It leads the next pack night and comes at midnight, wherever you are. Traps, a palisade, a full stomach and a dog all help.',
+        done: g => g.progression.stats.firstWolf > 0,
+        progress: g => g.raids ? (g.raids.next === g.dayCount ? 'It hunts tonight' : `It hunts on the night of day ${g.raids.next}`) : ''
     }
 ]);
 
@@ -153,7 +165,8 @@ export const STAT_LABELS = Object.freeze({
     places: 'Points of interest found', dens: 'Dens cleared',
     caches: 'Caches dug up', wrecks: 'Wrecks plundered', trades: 'Trades made',
     winters: 'Winters seen out', bounties: 'Bounties claimed',
-    raids: 'Packs broken', stews: 'Pots of stew cooked'
+    raids: 'Packs broken', stews: 'Pots of stew cooked',
+    firstWolf: 'First Wolf broken'
 });
 
 export class ProgressionSystem {
