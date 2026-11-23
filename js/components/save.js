@@ -47,6 +47,7 @@ export class SaveSystem {
             legends:g.legends?.capture?.() || null,
             pois:g.pois?.capture?.() || null,
             bounties:g.bounties?.capture?.() || null,
+            raids:g.raids?.capture?.() || null,
             gardens:g.gardens?.capture?.() || null,
             companion:g.companion?.capture?.() || null,
             storage:g.storage?.capture?.() || null,
@@ -147,6 +148,7 @@ export class SaveSystem {
             g.legends?.restore?.(saved.legends);
             g.pois?.restore?.(saved.pois);
             g.bounties?.restore?.(saved.bounties);
+            g.raids?.restore?.(saved.raids);
             g.companion?.restore?.(saved.companion);
             p.health=finite(saved.health,p.maxHealth,1,p.maxHealth);
         }

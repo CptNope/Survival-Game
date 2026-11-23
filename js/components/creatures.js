@@ -4,6 +4,7 @@
 // telegraphed by a wind-up so it can be read and dodged.
 import { CREATURES } from '../creatures.js';
 import { GRID, cellOf, centreOf, isOpen, lineOfSight, resolveCircle } from '../dungeon.js';
+import { RAID_SIGHT } from '../raids.js';
 
 const BOLT_SPEED = 9.5;
 
@@ -77,7 +78,8 @@ export class CreatureAI {
         const layout = this.layout();
         const dx = target.x - position.x, dz = target.z - position.z;
         const distance = Math.hypot(dx, dz);
-        const sees = !player.isDead && distance < def.aggro
+        // A pack on the hunt keeps your scent from much further off.
+        const sees = !player.isDead && distance < (animal.raid ? RAID_SIGHT : def.aggro)
             && (!layout || lineOfSight(layout, position.x, position.z, target.x, target.z));
 
         animal.fleeTimer = Math.max(0, (animal.fleeTimer || 0) - dt); // Set when struck: a provoked creature comes for you.

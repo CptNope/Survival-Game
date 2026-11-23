@@ -406,6 +406,7 @@ export class UISystem {
             + (hollow ? `<li>${key(MAP_MARKS.seen[1], MAP_MARKS.seen[0], true)} Hollow marks · seen from a watchtower</li>` : '')
             + `<li class="map-scale">${MAP_SPAN}m across · ${game.explorationSystem?.discovered.size || 0} landmarks and ${game.pois?.found.size || 0} points of interest found</li>`
             + (game.seasons ? `<li class="map-scale">${game.seasons.calendar}</li>` : '')
+            + (game.raids ? `<li class="map-scale">${game.raids.next === game.dayCount ? 'A pack hunts tonight' : `The next pack hunts on the night of day ${game.raids.next}`}</li>` : '')
             + (game.bounties?.list() || []).map(line => `<li class="map-scale">Bounty · ${line}</li>`).join('');
         this.drawTravel();
     }

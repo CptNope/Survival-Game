@@ -4,6 +4,7 @@ import { createDeerModel, createRabbitModel, createWolfModel, animateDeer, anima
 import { createCreatureModel } from '../models/creatures.js';
 import { CREATURES, ELITE, scaleFor } from '../creatures.js';
 import { CreatureAI } from './creatures.js';
+import { RAID_SIGHT } from '../raids.js';
 // Animal system for handling animal spawning and behavior
 export class AnimalSystem {
     constructor(game) {
@@ -84,7 +85,7 @@ export class AnimalSystem {
             animal.staggerTimer = Math.max(0, (animal.staggerTimer || 0) - dt);
             // Prey runs when the player is close, or for a while after being struck.
             const threatened = distance < (animal.kind === 'rabbit' ? 7 : 9) || animal.fleeTimer > 0;
-            const hunting = wolf && distance < 26 && !this.game.playerSystem.isDead;
+            const hunting = wolf && distance < (animal.raid ? RAID_SIGHT : 26) && !this.game.playerSystem.isDead;
             if (hunting && !animal.alerted) {
                 animal.alerted = true;
                 this.game.audio?.play('growl', {volume: Math.max(.25, 1 - distance / 30)});
@@ -194,6 +195,7 @@ export class AnimalSystem {
         if (def.split && animal.dungeon) game.dungeonSystem?.summonAround?.(position, def.split.kind, def.split.count, 1.3);
         if (def.boss) game.dungeonSystem?.onBossDefeated?.(animal, position);
         if (def.legend) game.legends?.onSlain?.(animal, position);
+        game.raids?.onKill(animal);
         // Last, so a bounty's tally is the message left on screen.
         game.bounties?.onKill(animal.kind);
         game.uiSystem?.updateInventoryUI?.();

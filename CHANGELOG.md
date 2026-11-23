@@ -5,6 +5,20 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.10.0 (2026-11-22)
+
+### Added
+- **Pack nights** ([#28](https://github.com/CptNope/Survival-Game/pull/28)).
+  On the last night of every season a pack of the region's hunters comes for
+  you at midnight, with a warning at dusk.
+  - Three on the first pack night, growing each season, largest in winter;
+    an elite leader outside the Greenwood from the second pack night on.
+  - Break the pack for gear, spoils and experience; outlast it until dawn for
+    a little experience; or get clear of it for nothing.
+  - No sleeping from the warning until the pack is dealt with.
+  - The map says which night the next pack comes, and the expedition summary
+    counts packs broken.
+
 ## v0.9.0 (2026-11-19)
 
 ### Added
