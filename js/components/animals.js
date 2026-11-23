@@ -5,6 +5,7 @@ import { createCreatureModel } from '../models/creatures.js';
 import { CREATURES, ELITE, scaleFor, ALPHA, wolfBite, wolfName, nightWolf } from '../creatures.js';
 import { CreatureAI } from './creatures.js';
 import { RAID_SIGHT } from '../raids.js';
+import { difficultyOf } from '../difficulty.js';
 // Animal system for handling animal spawning and behavior
 export class AnimalSystem {
     constructor(game) {
@@ -166,7 +167,7 @@ export class AnimalSystem {
                     : !this.isNight() && fromHome > 45 && count('boar') < 2 && roll < .24 ? 'boar'
                     : Math.random() < .38 ? 'rabbit' : 'deer';
                 // Now and then, after the first few days, the wolf that comes is an alpha.
-                const options = kind === 'wolf' ? nightWolf(this.game.dayCount, Math.random(), this.animals.some(a => a.kind === 'wolf' && a.elite)) : {};
+                const options = kind === 'wolf' ? nightWolf(this.game.dayCount, Math.random(), !difficultyOf(this.game.settings).alphas || this.animals.some(a => a.kind === 'wolf' && a.elite)) : {};
                 this.spawnAnimal(spawnX, terrainHeight, spawnZ, kind, options);
             }
         }

@@ -1,6 +1,6 @@
 // Versioned PWA cache. Core game assets are required; remote Babylon is
 // optional at install time but cached when available to support offline play.
-const CACHE_NAME = 'survival-game-v28-cook-pot';
+const CACHE_NAME = 'survival-game-v29-difficulty';
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS = [
   './js/avatar.js',
   './js/movement.js',
   './js/pois.js',
+  './js/difficulty.js',
   './js/defences.js',
   './js/raids.js',
   './js/components/raids.js',

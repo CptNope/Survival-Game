@@ -130,6 +130,7 @@ year lasts twelve days, an hour of play, and its fourth season is winter.
 | **Survival** | Health, hunger, thirst and cold. Eat, drink at a lake or from a waterskin, and warm up at a fire or under a roof. Sleep through the night in a shelter |
 | **Gathering** | Trees, rocks, iron ore, fiber plants, herbs, berries, mushrooms and cactus fruit. Gathered nodes stay gathered and grow back over days |
 | **Crafting** | 28 recipes: planks, stone and iron tools, a spear, a torch, a waterskin, a fishing rod, a bow and arrows, a fur cloak, remedies, cooked food, three tonics and three stews |
+| **Difficulty** | Gentle, Standard or Harsh, chosen on the menu and changeable at any time |
 | **Cooking** | A cook pot makes stews two servings at a time. Carry them and eat them when you need a full meal and a five-minute effect |
 | **Building** | A lean-to, a campfire, floors, walls and roofs that snap together, garden beds and storage chests, with a preview before you place |
 | **Combat** | Tools, spear and bow. Every enemy attack has a wind-up you can see. A dodge with a moment of safety, a heavy sweep, and a quick heal |
@@ -334,6 +335,23 @@ longer.
 | Fish chowder | 2 raw fish, 2 berries, 1 herb | 50 hunger, 15 health, and +15% move and swing speed for 5 minutes |
 | Winter pottage | 3 mushrooms, 2 berries | 45 hunger, and the cold builds 70% slower for 6 minutes |
 
+## Difficulty
+
+The menu has a difficulty setting next to sound and graphics. It is kept with
+your other device settings, not in the expedition, and you can change it at
+any time; it applies from that moment.
+
+| | Gentle | Standard | Harsh |
+| --- | --- | --- | --- |
+| A blow from anything that attacks | 40% less | as made | 40% more |
+| Hunger, thirst and the cold | build 30% slower | as made | build a quarter faster |
+| Pack nights | one fewer, never under two | as made | one more |
+| Alpha wolves on ordinary nights | none | from day 4 | from day 4 |
+
+Starvation, thirst, the cold, drowning, falls and venom do the same harm at
+every level: the setting changes how fast you get there, not what it does.
+Warming up by a fire is never slowed.
+
 ## Building and crafting
 
 | Piece | Cost | What it is for |
@@ -418,13 +436,13 @@ stateDiagram-v2
 | --- | --- |
 | **Engine** | [Babylon.js](https://www.babylonjs.com/), loaded from its CDN. Tests run against `babylonjs` 9.32.0 from npm |
 | **Language** | Plain JavaScript as ES modules, with HTML and CSS. No framework and no build step |
-| **Size** | About 12,600 lines of JavaScript in 63 modules |
+| **Size** | About 12,600 lines of JavaScript in 64 modules |
 | **Models** | Every tree, rock, creature and the explorer is low-poly geometry built in code. There are no model or texture downloads |
 | **Sound** | Synthesised in the browser with the Web Audio API |
 | **Saves** | `localStorage`, under `the-wilds-save-v1` and `the-wilds-settings-v1` |
 | **Offline** | A service worker caches the game's own files and the engine |
 | **Hosting** | GitHub Pages from `main`, and a zip of the same files on itch.io |
-| **Checks** | 250 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
+| **Checks** | 255 unit tests on Node's test runner, plus a startup check in real desktop and mobile Chrome, run by GitHub Actions |
 
 ### How the code is arranged
 
@@ -562,7 +580,7 @@ npm ci
 npm test
 ```
 
-`npm test` runs 250 unit tests on Node's built-in test runner. They cover the
+`npm test` runs 255 unit tests on Node's built-in test runner. They cover the
 rule modules directly and drive the systems on Babylon's `NullEngine`, which
 needs no browser or graphics card.
 
@@ -593,10 +611,12 @@ timeline
                      : v0.11.0 Camp defences
                      : v0.12.0 Alpha wolves
                      : v0.13.0 The cook pot
+                     : v0.14.0 Difficulty settings
 ```
 
 | Version | Date | What it brought | Pull requests |
 | --- | --- | --- | --- |
+| **v0.14.0** | 22 Nov 2026 | Difficulty: Gentle, Standard and Harsh, on the menu and changeable at any time | 32 |
 | **v0.13.0** | 22 Nov 2026 | The cook pot: three stews cooked two servings at a time, carried, and eaten for a long effect | 31 |
 | **v0.12.0** | 22 Nov 2026 | Alpha wolves: wolves toughen by tier and have an elite form; the map is drawn in the season's colours | 30 |
 | **v0.11.0** | 22 Nov 2026 | Camp defences: spike traps, palisades and watch fires; chests and garden beds lose a stray campfire | 29 |
@@ -1891,6 +1911,36 @@ it one piece at a time. Food now does more when it is cooked together.
   under the vitals, and a save and restore.
 - Not verified here: whether the ingredients are easy enough to come by in
   each region, and whether five minutes of +15% is felt in a fight.
+
+### Difficulty: Gentle, Standard and Harsh
+
+Seasons, pack nights and alpha wolves each made the game harder, and none of
+them has been balanced by play. This lets each player set it.
+
+- **On the menu.** A three-way control under Graphics, with a line saying
+  what the chosen level does. It is on the title screen and the pause menu.
+- **Gentle.** Blows hurt 40% less, hunger, thirst and the cold build 30%
+  slower, packs come one short (never fewer than two), and no alpha wolf
+  turns up on an ordinary night.
+- **Standard.** The game as it was. Nothing changes for existing players.
+- **Harsh.** Blows hurt 40% more, needs build a quarter faster, and packs
+  come one stronger.
+- **Kept with the device.** The level is stored with sound and graphics, not
+  in the expedition, so it survives a new game and never touches a save.
+
+#### Verification
+
+- 255 unit tests pass, 5 of them new. They cover the three levels and bad
+  data, a blow scaled and hunger, cold and falls not, needs building at each
+  pace while warming by a fire does not slow, pack sizes through the real
+  pack night including the number in the warning, and alphas staying away on
+  Gentle. Ten deliberate bugs were each caught by a test.
+- Played in a headless browser on a desktop page and an emulated phone:
+  Gentle chosen on the title screen, a blow of 20 landing as 12, Harsh chosen
+  from the pause menu and the same blow landing as 28, and the choice still
+  there after a reload.
+- Not verified here: whether these are the right three sets of numbers. They
+  are a first guess at "easier" and "harder", and easy to change.
 
 ---
 

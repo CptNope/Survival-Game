@@ -35,9 +35,11 @@ export function raidPhase(day, dayTime, dayLength) {
 // The pack that comes on a given day in a given region. It grows with every
 // season survived, winter's is one stronger again, and from the second raid
 // on it has an elite leader.
-export function raidPack(day, region = 'meadow') {
+// `extra` is the difficulty's say: one fewer on Gentle, one more on Harsh,
+// and never fewer than two.
+export function raidPack(day, region = 'meadow', extra = 0) {
     const kind = RAIDERS[region] || RAIDERS.meadow, number = Math.max(1, raidNumber(day));
-    const size = Math.min(7, 2 + number) + (seasonAt(day).id === 'winter' ? 1 : 0);
+    const size = Math.max(2, Math.min(7, 2 + number) + (seasonAt(day).id === 'winter' ? 1 : 0) + (Number.isInteger(extra) ? extra : 0));
     const level = Math.min(6, 1 + Math.floor(number / 2));
     const leader = number >= 2;   // In the Greenwood the leader is an alpha wolf.
     return {kind, number, size, level, tier: 1 + (level - 1) * .5,

@@ -1,4 +1,5 @@
 // Real-time survival needs. UI is updated by the HUD; values tick only while playing.
+import { difficultyOf } from '../difficulty.js';
 export const WATERSKIN_CAPACITY = 3;
 
 export class SurvivalSystem {
@@ -150,7 +151,9 @@ export class SurvivalSystem {
         const perks = this.game.perks, regions = this.game.regions;
         // The season only reaches the surface.
         const seasons = this.game.dungeonSystem?.active ? null : this.game.seasons;
-        const appetite = (1 - (gear?.stat('endurance') || 0) / 100) * (1 - (perks?.value('appetite') || 0));
+        // Gentle and Harsh slow or quicken every need.
+        const needs = difficultyOf(this.game.settings).needs;
+        const appetite = (1 - (gear?.stat('endurance') || 0) / 100) * (1 - (perks?.value('appetite') || 0)) * needs;
         this.hunger = Math.max(0, this.hunger - dt * (sprinting ? .065 : .045) * appetite);
         // The desert sun doubles thirst; its nights are no worse than anywhere.
         this.thirst = Math.max(0, this.thirst - dt * (sprinting ? .15 : .09) * appetite * (regions?.thirstFactor(this.isNight()) || 1)
@@ -173,8 +176,8 @@ export class SurvivalSystem {
         // Summer nights are mild, and winter is cold even at noon.
         const weather = night || storm || rain ? .65 * (night ? seasons?.nightChill() ?? 1 : 1) + (storm ? .85 : rain ? .3 : 0) : 0;
         const surface = exposed ? weather + (regions?.coldRate(night) || 0) + (seasons?.chill() || 0) : 0;
-        const coldRate = underground ? (chill > 0 ? chill * (torch < 1 ? .15 : 1) * shield : chill)
-            : surface > 0 ? surface * torch * shield : -1.4;
+        const coldRate = underground ? (chill > 0 ? chill * (torch < 1 ? .15 : 1) * shield * needs : chill)
+            : surface > 0 ? surface * torch * shield * needs : -1.4;
         this.cold = SurvivalSystem.clamp(this.cold + dt * coldRate, 0);
         if (this.hunger <= 0) player.takeDamage(.65 * dt, 'starvation');
         if (this.thirst <= 0) player.takeDamage(1.2 * dt, 'thirst');
