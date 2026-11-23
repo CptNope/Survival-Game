@@ -1,5 +1,6 @@
 // Player system for handling player controls and physics
 import { SPEED, MAX_STEP_UNITS, keyboardSpeed, frameFactor } from '../movement.js';
+import { difficultyOf } from '../difficulty.js';
 // Dodge timings (ms) and speed (m/s).
 export const DODGE = Object.freeze({distance: 3.4, invulnerable: 340, cooldown: 1100, speed: 14});
 
@@ -336,7 +337,8 @@ export class PlayerSystem {
         // Armour turns blows, but does nothing against hunger, cold or water.
         if (!ENVIRONMENTAL.has(cause)) {
             if (performance.now() < (this.invulnerableUntil || 0)) return; // Dodged.
-            amount *= (1 - (this.game.gear?.stat('armor') || 0) / 100) * (this.game.buffs?.factor('defence') || 1);
+            amount *= (1 - (this.game.gear?.stat('armor') || 0) / 100) * (this.game.buffs?.factor('defence') || 1)
+                * difficultyOf(this.game.settings).damage;
         }
         this.health -= amount;
         this.lastDamageCause = cause;

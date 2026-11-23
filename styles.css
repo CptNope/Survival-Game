@@ -274,10 +274,11 @@ body.underwater::before{content:'';position:fixed;inset:0;z-index:1;pointer-even
 #settings label,.settings-label{font-size:.8125rem;font-weight:600;color:#dfe5d6}
 #settings input[type=range]{width:100%;min-height:1.75rem;accent-color:var(--accent)}
 #sensitivity-value,#quality-value{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-#set-quality{display:flex;border:1px solid var(--card-line);border-radius:.5rem;overflow:hidden}
-#set-quality button{flex:1;min-height:2.25rem;border:0;border-radius:0;background:none;color:var(--muted);padding:0 .5rem}
-#set-quality button + button{border-left:1px solid var(--card-line)}
-#set-quality button.current{background:rgb(197 221 138 / .16);color:var(--accent)}
+#set-quality,#set-difficulty{display:flex;border:1px solid var(--card-line);border-radius:.5rem;overflow:hidden}
+#set-quality button,#set-difficulty button{flex:1;min-height:2.25rem;border:0;border-radius:0;background:none;color:var(--muted);padding:0 .5rem}
+#set-quality button + button,#set-difficulty button + button{border-left:1px solid var(--card-line)}
+#set-quality button.current,#set-difficulty button.current{background:rgb(197 221 138 / .16);color:var(--accent)}
+#difficulty-note{grid-column:1 / -1;margin:-.25rem 0 0;font-size:.75rem;line-height:1.4;color:var(--muted)}
 
 #controls-wrap{margin-top:.875rem;border:1px solid var(--card-line);border-radius:.75rem;background:rgb(255 255 255 / .03)}
 #controls-wrap summary{padding:.75rem 1rem;font-size:.8125rem;font-weight:600;cursor:pointer;border-radius:.75rem;list-style-position:inside}
@@ -510,9 +511,10 @@ body.view-third #hud.touch #target-hint,body.view-overhead #hud.touch #target-hi
   .panel-tabs button{min-height:2.75rem}
   #settings{grid-template-columns:auto minmax(0,1fr) auto}
   .settings-label{grid-column:1 / -1;margin-top:.25rem}
-  #set-quality{grid-column:1 / -1}
+  #set-quality,#set-difficulty{grid-column:1 / -1}
   #quality-value{grid-column:1 / -1}
-  #set-quality button{min-height:2.75rem}
+  #set-quality button,#set-difficulty button{min-height:2.75rem}
+  #set-difficulty + span{display:none}
   .key-list{grid-template-columns:1fr}
   .key-list div{grid-template-columns:5.5rem minmax(0,1fr)}
   .storage-moves button{min-width:2.75rem;min-height:2.75rem}

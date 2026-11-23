@@ -1,6 +1,8 @@
 // Device preferences, kept apart from the expedition save so a new game keeps them.
 export const SETTINGS_KEY = 'the-wilds-settings-v1';
-export const DEFAULT_SETTINGS = Object.freeze({volume: .7, muted: false, sensitivity: 1, view: 'first', quality: 'auto'});
+import { DIFFICULTIES } from './difficulty.js';
+
+export const DEFAULT_SETTINGS = Object.freeze({volume: .7, muted: false, sensitivity: 1, view: 'first', quality: 'auto', difficulty: 'standard'});
 const VIEWS = ['first', 'third', 'overhead'];
 const QUALITIES = ['auto', 'low', 'medium', 'high'];
 
@@ -14,7 +16,8 @@ export function normalizeSettings(raw) {
         muted: source.muted === true,
         sensitivity: clamp(source.sensitivity, .3, 2.5, DEFAULT_SETTINGS.sensitivity),
         view: VIEWS.includes(source.view) ? source.view : DEFAULT_SETTINGS.view,
-        quality: QUALITIES.includes(source.quality) ? source.quality : DEFAULT_SETTINGS.quality
+        quality: QUALITIES.includes(source.quality) ? source.quality : DEFAULT_SETTINGS.quality,
+        difficulty: DIFFICULTIES.includes(source.difficulty) ? source.difficulty : DEFAULT_SETTINGS.difficulty
     };
 }
 

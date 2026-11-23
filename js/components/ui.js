@@ -5,6 +5,7 @@ import { REGIONS } from '../regions.js';
 import { poiById } from '../pois.js';
 import { CHEST_CAPACITY } from '../storage.js';
 import { QUALITY_CHOICES, QUALITY_LABELS } from '../quality.js';
+import { DIFFICULTIES, DIFFICULTY, difficultyOf } from '../difficulty.js';
 import { PERKS } from '../perks.js';
 import { BUILDINGS } from './building.js';
 import { STAT_LABELS } from './progression.js';
@@ -89,7 +90,7 @@ export class UISystem {
                 <div class="panel-body">
                     <header class="panel-head"><small id="panel-kicker" class="sr-only"></small><h1 id="panel-title">The Wilds</h1><p id="panel-copy">Explore the wilderness, gather supplies, and craft the tools to keep going.</p></header>
                     <div id="recipes"></div><div id="build-options"></div><div id="gear-panel"></div><div id="perk-panel"></div><div id="storage-panel"></div><div id="trade-panel"></div><div id="map-panel"><div id="map-travel" class="map-travel" hidden></div><canvas id="map-canvas" width="540" height="540" aria-label="Map of the country around you"></canvas><ul id="map-legend"></ul></div>
-                    <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span><span class="settings-label" id="quality-label">Graphics</span><div id="set-quality" role="group" aria-labelledby="quality-label">${QUALITY_CHOICES.map(choice => `<button type="button" data-quality="${choice}">${QUALITY_LABELS[choice]}</button>`).join('')}</div><span id="quality-value"></span></div>
+                    <div id="settings"><label for="set-volume">Sound</label><input id="set-volume" type="range" min="0" max="100" step="5"><button id="set-mute" type="button">Mute</button><label for="set-sensitivity">Look speed</label><input id="set-sensitivity" type="range" min="30" max="250" step="10"><span id="sensitivity-value"></span><span class="settings-label" id="quality-label">Graphics</span><div id="set-quality" role="group" aria-labelledby="quality-label">${QUALITY_CHOICES.map(choice => `<button type="button" data-quality="${choice}">${QUALITY_LABELS[choice]}</button>`).join('')}</div><span id="quality-value"></span><span class="settings-label" id="difficulty-label">Difficulty</span><div id="set-difficulty" role="group" aria-labelledby="difficulty-label">${DIFFICULTIES.map(choice => `<button type="button" data-difficulty="${choice}">${DIFFICULTY[choice].label}</button>`).join('')}</div><span></span><p id="difficulty-note"></p></div>
                     <details id="controls-wrap"><summary>Controls</summary><div id="controls"></div></details>
                     <dl id="stats"></dl>
                 </div>
@@ -121,6 +122,13 @@ export class UISystem {
             if (!tab || tab.dataset.panel === this.panel) return;
             if (tab.dataset.panel === 'map' && game.dungeonSystem?.active) { this.showNotification('No map underground · the corner chart shows this floor'); return; }
             this.openPanel(tab.dataset.panel);
+        };
+        this.$('set-difficulty').onclick = event => {
+            const button = event.target.closest('button[data-difficulty]');
+            if (!button || !game.settings || game.settings.difficulty === button.dataset.difficulty) return;
+            game.updateSettings({difficulty: button.dataset.difficulty});
+            game.audio?.play('click');
+            this.syncSettings();
         };
         this.$('set-quality').onclick = event => {
             const button = event.target.closest('button[data-quality]');
@@ -245,6 +253,12 @@ export class UISystem {
             button.setAttribute('aria-pressed', String(chosen));
         }
         this.$('quality-value').textContent = quality?.choice === 'auto' ? quality.describe().replace('Auto · ', 'Now: ') : '';
+        for (const button of this.$('set-difficulty').children) {
+            const chosen = button.dataset.difficulty === (settings.difficulty || 'standard');
+            button.classList.toggle('current', chosen);
+            button.setAttribute('aria-pressed', String(chosen));
+        }
+        this.$('difficulty-note').textContent = difficultyOf(settings).note + ' · change it whenever you like';
     }
     renderPanel() {
         const build = this.panel === 'build', craft = this.panel === 'craft', gear = this.panel === 'gear', perks = this.panel === 'perks';

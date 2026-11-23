@@ -4,6 +4,7 @@
 import { raidPhase, raidPack, raidReward, raidOutcome, raiderName, isRaidDay, nextRaidDay, RAID_RING, OUTLAST_XP } from '../raids.js';
 import { rollGear } from '../gear.js';
 import { itemAmount } from '../resources.js';
+import { difficultyOf } from '../difficulty.js';
 
 export class RaidSystem {
     constructor(game) {
@@ -43,7 +44,7 @@ export class RaidSystem {
     }
 
     warn() {
-        const game = this.game, pack = raidPack(game.dayCount, this.region);
+        const game = this.game, pack = raidPack(game.dayCount, this.region, difficultyOf(game.settings).pack);
         game.audio?.play('growl');
         game.uiSystem?.showDayBanner?.('A pack is hunting tonight',
             `${pack.size} ${raiderName(pack.kind, pack.size)} will come for you at midnight · there will be no sleeping until they are dealt with`, false, true);
@@ -57,7 +58,7 @@ export class RaidSystem {
             game.saveSystem?.save?.();
             return null;
         }
-        const region = this.region, pack = raidPack(day, region), terrain = game.terrainSystem;
+        const region = this.region, pack = raidPack(day, region, difficultyOf(game.settings).pack), terrain = game.terrainSystem;
         const player = game.playerSystem.camera.position, animals = [];
         pack.members.forEach((one, n) => {
             // Spread round the player, nudged along the ring off any water.

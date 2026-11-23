@@ -5,6 +5,18 @@ requests, dated the day the last of them was merged, and matches a post in the
 [devlog on itch.io](https://cptnope.itch.io/survival-game-web-demo/devlog).
 The README has the full notes for every update.
 
+## v0.14.0 (2026-11-22)
+
+### Added
+- **Difficulty settings** ([#32](https://github.com/CptNope/Survival-Game/pull/32)).
+  Gentle, Standard and Harsh, on the title screen and the pause menu,
+  changeable at any time.
+  - Gentle: blows hurt 40% less, needs build 30% slower, packs come one
+    short, and no alpha wolves on ordinary nights.
+  - Harsh: blows hurt 40% more, needs build a quarter faster, and packs come
+    one stronger.
+  - Standard is the game as it was.
+
 ## v0.13.0 (2026-11-22)
 
 ### Added
